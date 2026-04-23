@@ -12,18 +12,10 @@
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>⚽ Foreros Fútbol</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<!-- Firebase SDK -->
-<script type="module">
-// ═══════════════════════════════════════════════
-//  FIREBASE — sustituye aquí tu configuración
-//  (la encontrarás en Firebase Console → Project Settings → Your apps)
-// ═══════════════════════════════════════════════
-import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js';
-import {
-  getFirestore, doc, getDoc, setDoc, deleteDoc,
-  collection, query, where, getDocs, onSnapshot
-} from 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js';
-
+<!-- Firebase SDK (UMD — compatible con scripts normales) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script>
 const FIREBASE_CONFIG = {
   apiKey:            "AIzaSyC5rT8GxB_OgYa_cjVgCztgKCHu2heT2_c",
   authDomain:        "futbol-payer-gestor-de-ligas.firebaseapp.com",
@@ -33,17 +25,34 @@ const FIREBASE_CONFIG = {
   appId:             "1:424414767949:web:852540814bca0b40c6e504"
 };
 
-const fbApp = initializeApp(FIREBASE_CONFIG);
-const db    = getFirestore(fbApp);
+try {
+  const fbApp = firebase.initializeApp(FIREBASE_CONFIG);
+  const db    = firebase.firestore();
 
-// ── Exponer al scope global para que el resto del script los use ──
-window._fb = {
-  db,
-  doc, getDoc, setDoc, deleteDoc,
-  collection, query, where, getDocs, onSnapshot
-};
-window._fbReady = true;
-window.dispatchEvent(new Event('fb-ready'));
+  // Adaptar la API compat a la misma interfaz que usa el código
+  window._fb = {
+    db,
+    doc:        (db, ...path) => db.collection(path.filter((_,i)=>i%2===0).join('/')).doc(path.filter((_,i)=>i%2!==0).pop()),
+    getDoc:     ref => ref.get(),
+    setDoc:     (ref, data) => ref.set(data),
+    deleteDoc:  ref => ref.delete(),
+    collection: (db, path) => db.collection(path),
+    query:      (ref, ...constraints) => { let q = ref; constraints.forEach(c => { q = c(q); }); return q; },
+    where:      (field, op, val) => (ref => ref.where(field, op, val)),
+    getDocs:    ref => ref.get(),
+    onSnapshot: (ref, cb, err) => ref.onSnapshot(snap => {
+      snap.exists !== undefined
+        ? cb({ exists: () => snap.exists, data: () => snap.data(), id: snap.id })
+        : cb(snap);
+    }, err)
+  };
+  window._fbReady = true;
+  window.dispatchEvent(new Event('fb-ready'));
+} catch(e) {
+  console.warn('Firebase init error:', e);
+  window._fbReady = false;
+  window.dispatchEvent(new Event('fb-ready'));
+}
 </script>
 <style>
   :root {
@@ -1455,36 +1464,27 @@ let ligaActual = null; // id de la liga activa
 
 let _unsubscribeLiga = null; // listener en tiempo real activo
 
-function _fb() { return window._fb || null; }
-function _db() { return _fb()?.db || null; }
+function _db() { return window._fb?.db || null; }
 
 // ── Índice de ligas ──
-// En Firebase: colección "ligas", cada documento es una liga del índice
-// En local: clave 'foreros_ligas_index'
-
 async function getLigasIndex() {
-  const fb = _fb();
-  if (fb) {
+  const db = _db();
+  if (db) {
     try {
-      // Leer IDs locales para filtrar solo las ligas de este dispositivo
       const idsLocales = JSON.parse(localStorage.getItem('foreros_ligas_ids') || '[]');
       if (idsLocales.length === 0) return [];
-      const snap = await fb.getDocs(fb.collection(fb.db, 'ligas'));
+      const snap = await db.collection('ligas').get();
       const todas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
       return todas.filter(l => idsLocales.includes(l.id));
-    } catch(e) {
-      console.warn('Firebase getLigasIndex fallback local', e);
-    }
+    } catch(e) { console.warn('Firebase getLigasIndex fallback', e); }
   }
   try { return JSON.parse(localStorage.getItem('foreros_ligas_index') || '[]'); }
   catch { return []; }
 }
 
 async function saveLigasIndex(ligas) {
-  // Local siempre (índice de IDs conocidos en este dispositivo)
-  const ids = ligas.map(l => l.id);
-  localStorage.setItem('foreros_ligas_ids', JSON.stringify(ids));
-  localStorage.setItem('foreros_ligas_index', JSON.stringify(ligas)); // fallback
+  localStorage.setItem('foreros_ligas_ids', JSON.stringify(ligas.map(l => l.id)));
+  localStorage.setItem('foreros_ligas_index', JSON.stringify(ligas));
 }
 
 function getLigaKey(id) { return `foreros_liga_${id}`; }
@@ -1504,20 +1504,19 @@ async function crearLiga() {
   const id     = 'liga_' + Date.now();
   const codigo = generarCodigo();
   const nuevaLiga = { id, nombre, codigo, creada: new Date().toLocaleDateString('es-ES') };
-
   const estadoInicial = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
     config: { partidos: 0, password: pass, campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false, _nuevaTemporada2025: true
   };
 
-  const fb = _fb();
-  if (fb) {
+  const db = _db();
+  if (db) {
     try {
-      await fb.setDoc(fb.doc(fb.db, 'ligas', id), nuevaLiga);
-      await fb.setDoc(fb.doc(fb.db, 'ligas', id, 'data', 'state'), estadoInicial);
+      await db.collection('ligas').doc(id).set(nuevaLiga);
+      await db.collection('ligas').doc(id).collection('data').doc('state').set(estadoInicial);
     } catch(e) {
-      console.warn('Firebase crearLiga fallback local', e);
+      console.warn('Firebase crearLiga fallback', e);
       localStorage.setItem(getLigaKey(id), JSON.stringify(estadoInicial));
     }
   } else {
@@ -1526,7 +1525,6 @@ async function crearLiga() {
 
   ligas.push(nuevaLiga);
   await saveLigasIndex(ligas);
-
   document.getElementById('nuevaLigaNombre').value = '';
   document.getElementById('nuevaLigaPass').value   = '';
   toggleNuevaLiga();
@@ -1539,20 +1537,16 @@ async function unirseConCodigo() {
   const codigo = document.getElementById('codigoAcceso').value.trim().toUpperCase();
   if (codigo.length < 6) { notifInicio('Introduce un código de 6 caracteres', 'error'); return; }
 
-  const fb = _fb();
+  const db = _db();
   let liga = null;
 
-  if (fb) {
+  if (db) {
     try {
-      const q = fb.query(fb.collection(fb.db, 'ligas'), fb.where('codigo', '==', codigo));
-      const snap = await fb.getDocs(q);
+      const snap = await db.collection('ligas').where('codigo', '==', codigo).get();
       if (!snap.empty) liga = { id: snap.docs[0].id, ...snap.docs[0].data() };
-    } catch(e) {
-      console.warn('Firebase unirseConCodigo fallback local', e);
-    }
+    } catch(e) { console.warn('Firebase unirseConCodigo fallback', e); }
   }
 
-  // Fallback local
   if (!liga) {
     const ligas = JSON.parse(localStorage.getItem('foreros_ligas_index') || '[]');
     liga = ligas.find(l => l.codigo === codigo) || null;
@@ -1560,12 +1554,8 @@ async function unirseConCodigo() {
 
   if (!liga) { notifInicio('Código no encontrado', 'error'); return; }
 
-  // Guardar en el índice local si no estaba
   const ligas = await getLigasIndex();
-  if (!ligas.find(l => l.id === liga.id)) {
-    ligas.push(liga);
-    await saveLigasIndex(ligas);
-  }
+  if (!ligas.find(l => l.id === liga.id)) { ligas.push(liga); await saveLigasIndex(ligas); }
 
   document.getElementById('codigoAcceso').value = '';
   entrarLiga(liga.id);
@@ -1578,11 +1568,11 @@ async function eliminarLiga(id) {
   if (!liga) return;
   if (!confirm(`¿Eliminar la liga "${liga.nombre}"?\n\nSe borrarán todos sus datos. No se puede deshacer.`)) return;
 
-  const fb = _fb();
-  if (fb) {
+  const db = _db();
+  if (db) {
     try {
-      await fb.deleteDoc(fb.doc(fb.db, 'ligas', id, 'data', 'state'));
-      await fb.deleteDoc(fb.doc(fb.db, 'ligas', id));
+      await db.collection('ligas').doc(id).collection('data').doc('state').delete();
+      await db.collection('ligas').doc(id).delete();
     } catch(e) { console.warn('Firebase eliminarLiga', e); }
   }
   localStorage.removeItem(getLigaKey(id));
@@ -1591,57 +1581,62 @@ async function eliminarLiga(id) {
   notifInicio(`Liga "${liga.nombre}" eliminada`);
 }
 
-// ── Cargar estado de liga (+ suscripción en tiempo real) ──
+// ── Cargar estado de liga + suscripción en tiempo real ──
 async function cargar() {
   if (!ligaActual) return;
   _statsCache = null;
 
-  // Estado por defecto
   state = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
     config: { partidos: 0, password: 'foreros2025', campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false, _nuevaTemporada2025: true
   };
 
-  const fb = _fb();
-
-  if (fb) {
+  const db = _db();
+  if (db) {
     try {
-      // Carga inicial
-      const snap = await fb.getDoc(fb.doc(fb.db, 'ligas', ligaActual, 'data', 'state'));
-      if (snap.exists()) {
-        state = snap.data();
-        _migrarConfig();
-      } else {
-        await guardar(); // primera vez en Firebase
-      }
+      const snap = await db.collection('ligas').doc(ligaActual).collection('data').doc('state').get();
+      if (snap.exists) { state = snap.data(); _migrarConfig(); }
+      else { await guardar(); }
 
-      // Suscripción en tiempo real
       if (_unsubscribeLiga) _unsubscribeLiga();
-      _unsubscribeLiga = fb.onSnapshot(
-        fb.doc(fb.db, 'ligas', ligaActual, 'data', 'state'),
-        (docSnap) => {
-          if (!docSnap.exists()) return;
-          const remoto = docSnap.data();
+      _unsubscribeLiga = db.collection('ligas').doc(ligaActual).collection('data').doc('state')
+        .onSnapshot(docSnap => {
+          if (!docSnap.exists) return;
           const adminSalvado = state.adminLoggedIn;
-          state = remoto;
-          state.adminLoggedIn = adminSalvado; // no sobreescribir sesión local
+          state = docSnap.data();
+          state.adminLoggedIn = adminSalvado;
           _migrarConfig();
           _statsCache = null;
-          // Re-renderizar la pestaña activa silenciosamente
           _refrescarVista();
-        },
-        (err) => console.warn('onSnapshot error', err)
-      );
+        }, err => console.warn('onSnapshot error', err));
     } catch(e) {
-      console.warn('Firebase cargar fallback local', e);
+      console.warn('Firebase cargar fallback', e);
       _cargarLocal();
     }
   } else {
     _cargarLocal();
   }
-
   state.adminLoggedIn = false;
+}
+
+// ── Guardar estado de liga ──
+async function guardar() {
+  if (!ligaActual) return;
+  state._nuevaTemporada2025 = true;
+  _statsCache = null;
+  const datos = { ...state };
+  delete datos.adminLoggedIn;
+
+  const db = _db();
+  if (db) {
+    try {
+      await db.collection('ligas').doc(ligaActual).collection('data').doc('state').set(datos);
+      localStorage.setItem(getLigaKey(ligaActual), JSON.stringify(datos));
+      return;
+    } catch(e) { console.warn('Firebase guardar fallback', e); }
+  }
+  localStorage.setItem(getLigaKey(ligaActual), JSON.stringify(datos));
 }
 
 function _cargarLocal() {
@@ -1649,9 +1644,7 @@ function _cargarLocal() {
   if (raw) {
     try { state = JSON.parse(raw); _migrarConfig(); }
     catch(e) { guardar(); }
-  } else {
-    guardar();
-  }
+  } else { guardar(); }
 }
 
 function _migrarConfig() {
@@ -1664,32 +1657,10 @@ function _migrarConfig() {
 
 function _refrescarVista() {
   const activa = document.querySelector('.page.active')?.id;
-  if (activa === 'page-ranking')    renderRanking();
+  if      (activa === 'page-ranking')    renderRanking();
   else if (activa === 'page-partido')    renderPartido();
   else if (activa === 'page-historial')  renderHistorial();
   else if (activa === 'page-calendario') renderCalendario();
-}
-
-// ── Guardar estado de liga ──
-async function guardar() {
-  if (!ligaActual) return;
-  state._nuevaTemporada2025 = true;
-  _statsCache = null;
-
-  const datos = { ...state };
-  delete datos.adminLoggedIn; // nunca persistir la sesión de admin
-
-  const fb = _fb();
-  if (fb) {
-    try {
-      await fb.setDoc(fb.doc(fb.db, 'ligas', ligaActual, 'data', 'state'), datos);
-      localStorage.setItem(getLigaKey(ligaActual), JSON.stringify(datos)); // caché local
-      return;
-    } catch(e) {
-      console.warn('Firebase guardar fallback local', e);
-    }
-  }
-  localStorage.setItem(getLigaKey(ligaActual), JSON.stringify(datos));
 }
 
 // ── Generar código único de 6 caracteres ──
