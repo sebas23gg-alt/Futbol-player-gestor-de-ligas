@@ -1,4 +1,4 @@
-const CACHE = 'foreros-fc-v1';
+const CACHE = 'foreros-fc-v2';
 const ARCHIVOS = [
   './foreros_futbol.html',
   './manifest.json',
