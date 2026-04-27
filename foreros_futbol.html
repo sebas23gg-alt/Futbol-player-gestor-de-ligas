@@ -85,17 +85,6 @@ window.addEventListener('error', function(e) {
   }, 5000);
 })();
 </script>
-  document.head.appendChild(s);
-
-  // Timeout de seguridad — si Firebase tarda más de 5s, arrancar sin él
-  setTimeout(function() {
-    if (!window._fbReady) {
-      console.warn('Firebase timeout — arrancando sin Firebase');
-      marcarFallback();
-    }
-  }, 5000);
-})();
-</script>
 <style>
   :root {
     --verde: #1a7a3c;
@@ -755,10 +744,130 @@ window.addEventListener('error', function(e) {
   width: 100%;
   max-width: 420px;
 }
+
+/* ═══ MENÚ DE AJUSTES ═══ */
+.ajustes-wrap {
+  position: relative;
+  display: inline-block;
+}
+.btn-ajustes {
+  background: none;
+  border: 1px solid #333;
+  border-radius: 6px;
+  padding: 4px 10px;
+  color: #ccc;
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-family: inherit;
+}
+.btn-ajustes:hover {
+  color: #fff;
+  border-color: #555;
+}
+.btn-ajustes .icon-cog {
+  font-size: 0.95rem;
+  line-height: 1;
+}
+.btn-ajustes .lang-code {
+  font-size: 0.7rem;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  color: #f5a623;
+}
+.menu-ajustes {
+  position: absolute;
+  top: calc(100% + 6px);
+  right: 0;
+  min-width: 180px;
+  background: #1a1a1a;
+  border: 1px solid #333;
+  border-radius: 8px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.6);
+  padding: 6px 0;
+  z-index: 9999;
+  display: none;
+  font-family: 'DM Sans', sans-serif;
+}
+.menu-ajustes.open { display: block; }
+.menu-ajustes .menu-header {
+  padding: 6px 14px 4px;
+  font-size: 0.65rem;
+  letter-spacing: 1.5px;
+  text-transform: uppercase;
+  color: #666;
+}
+.menu-ajustes .menu-item {
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  color: #ddd;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  transition: background 0.15s;
+  background: none;
+  border: none;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+}
+.menu-ajustes .menu-item:hover {
+  background: rgba(255,255,255,0.06);
+  color: #fff;
+}
+.menu-ajustes .menu-item.activo {
+  color: #f5a623;
+}
+.menu-ajustes .menu-item.activo::after {
+  content: '✓';
+  font-weight: 700;
+}
+.menu-ajustes .menu-divider {
+  height: 1px;
+  background: #2a2a2a;
+  margin: 6px 0;
+}
+.menu-ajustes .menu-item-rojo {
+  color: #ff6b6b;
+}
+.menu-ajustes .menu-item-rojo:hover {
+  background: rgba(255,107,107,0.08);
+  color: #ff8585;
+}
+
+/* Ajustes flotantes en la pantalla de selección de ligas */
+.ajustes-flotante {
+  position: absolute;
+  top: max(12px, env(safe-area-inset-top));
+  right: 12px;
+  z-index: 100;
+}
 </style>
 
 <div id="pantalla-inicio">
   <div id="inicio-bg"></div>
+
+  <!-- Botón de ajustes flotante (solo idioma; cerrar sesión ya existe abajo) -->
+  <div class="ajustes-flotante ajustes-wrap">
+    <button class="btn-ajustes" onclick="toggleMenuAjustes('menu-ajustes-inicio', event)" aria-label="Ajustes" aria-haspopup="true">
+      <span class="icon-cog">⚙️</span><span class="lang-code" id="lang-code-inicio">ES</span>
+    </button>
+    <div class="menu-ajustes" id="menu-ajustes-inicio" role="menu">
+      <div class="menu-header">Idioma</div>
+      <button class="menu-item" data-idioma="es" onclick="cambiarIdioma('es')">Español</button>
+      <button class="menu-item" data-idioma="en" onclick="cambiarIdioma('en')">English</button>
+      <button class="menu-item" data-idioma="fr" onclick="cambiarIdioma('fr')">Français</button>
+      <button class="menu-item" data-idioma="de" onclick="cambiarIdioma('de')">Deutsch</button>
+      <button class="menu-item" data-idioma="it" onclick="cambiarIdioma('it')">Italiano</button>
+      <button class="menu-item" data-idioma="pt" onclick="cambiarIdioma('pt')">Português</button>
+    </div>
+  </div>
+
   <div id="inicio-content">
 
     <!-- Hero logo -->
@@ -902,7 +1011,22 @@ window.addEventListener('error', function(e) {
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
       <button onclick="volverALigas()" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
-      <button onclick="cerrarSesion()" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'" title="Cerrar sesión">🚪</button>
+      <div class="ajustes-wrap">
+        <button class="btn-ajustes" onclick="toggleMenuAjustes('menu-ajustes-app', event)" aria-label="Ajustes" aria-haspopup="true">
+          <span class="icon-cog">⚙️</span><span class="lang-code" id="lang-code-app">ES</span>
+        </button>
+        <div class="menu-ajustes" id="menu-ajustes-app" role="menu">
+          <div class="menu-header">Idioma</div>
+          <button class="menu-item" data-idioma="es" onclick="cambiarIdioma('es')">Español</button>
+          <button class="menu-item" data-idioma="en" onclick="cambiarIdioma('en')">English</button>
+          <button class="menu-item" data-idioma="fr" onclick="cambiarIdioma('fr')">Français</button>
+          <button class="menu-item" data-idioma="de" onclick="cambiarIdioma('de')">Deutsch</button>
+          <button class="menu-item" data-idioma="it" onclick="cambiarIdioma('it')">Italiano</button>
+          <button class="menu-item" data-idioma="pt" onclick="cambiarIdioma('pt')">Português</button>
+          <div class="menu-divider"></div>
+          <button class="menu-item menu-item-rojo" onclick="cerrarMenuAjustes(); cerrarSesion();">🚪 Cerrar sesión</button>
+        </div>
+      </div>
       <div class="partidos-badge">
         <strong id="totalPartidos">0</strong>
         PARTIDOS
@@ -1742,6 +1866,68 @@ async function enviarRecuperacion() {
   } else {
     mostrarError(msgEl, 'Sin conexión — inténtalo de nuevo');
   }
+}
+
+// ═══ MENÚ DE AJUSTES ═══
+const IDIOMAS_DISPONIBLES = ['es','en','fr','de','it','pt'];
+let _idiomaActual = 'es'; // se inicializa en initIdioma()
+
+function toggleMenuAjustes(menuId, ev) {
+  if (ev) ev.stopPropagation();
+  const menu = document.getElementById(menuId);
+  if (!menu) return;
+  const yaAbierto = menu.classList.contains('open');
+  // cerrar todos los menús abiertos
+  document.querySelectorAll('.menu-ajustes.open').forEach(m => m.classList.remove('open'));
+  if (!yaAbierto) {
+    menu.classList.add('open');
+    // marcar idioma activo
+    menu.querySelectorAll('.menu-item[data-idioma]').forEach(it => {
+      it.classList.toggle('activo', it.dataset.idioma === _idiomaActual);
+    });
+  }
+}
+
+function cerrarMenuAjustes() {
+  document.querySelectorAll('.menu-ajustes.open').forEach(m => m.classList.remove('open'));
+}
+
+function cambiarIdioma(codigo) {
+  if (!IDIOMAS_DISPONIBLES.includes(codigo)) return;
+  _idiomaActual = codigo;
+  try { localStorage.setItem('fp_idioma', codigo); } catch(e) {}
+  // actualizar el código mostrado al lado del ⚙️
+  document.querySelectorAll('.lang-code').forEach(el => {
+    el.textContent = codigo.toUpperCase();
+  });
+  cerrarMenuAjustes();
+  // TODO (paso 3): aplicar traducciones al DOM con aplicarIdioma(codigo)
+  // TODO (paso 3): persistir en /usuarios/{uid}.idioma cuando haya sesión
+}
+
+function initIdioma() {
+  let guardado = null;
+  try { guardado = localStorage.getItem('fp_idioma'); } catch(e) {}
+  const codigo = (guardado && IDIOMAS_DISPONIBLES.includes(guardado)) ? guardado : 'es';
+  _idiomaActual = codigo;
+  document.querySelectorAll('.lang-code').forEach(el => {
+    el.textContent = codigo.toUpperCase();
+  });
+}
+
+// Cerrar el menú al hacer click fuera o pulsar Escape
+document.addEventListener('click', (e) => {
+  if (!e.target.closest('.ajustes-wrap')) cerrarMenuAjustes();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape') cerrarMenuAjustes();
+});
+
+// Inicializar al cargar
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initIdioma);
+} else {
+  initIdioma();
 }
 
 async function cerrarSesion() {
