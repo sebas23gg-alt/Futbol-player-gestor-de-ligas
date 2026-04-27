@@ -779,6 +779,7 @@ window.addEventListener('error', function(e) {
           <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">🔗 Unirse con código de liga</div>
           <div style="display:flex;gap:8px;">
             <input type="text" id="codigoAcceso" placeholder="Código de 6 caracteres" maxlength="6"
+              autocomplete="off"
               style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:4px;text-transform:uppercase;outline:none;text-align:center;"
               oninput="this.value=this.value.toUpperCase()"
               onkeydown="if(event.key==='Enter')unirseConCodigo()">
@@ -901,6 +902,7 @@ window.addEventListener('error', function(e) {
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
       <button onclick="volverALigas()" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
+      <button onclick="cerrarSesion()" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'" title="Cerrar sesión">🚪</button>
       <div class="partidos-badge">
         <strong id="totalPartidos">0</strong>
         PARTIDOS
@@ -1673,11 +1675,17 @@ async function enviarRecuperacion() {
 }
 
 async function cerrarSesion() {
+  if (!confirm('¿Cerrar sesión?')) return;
   const auth = _auth();
   if (auth) await auth.signOut();
   usuarioActual = null;
   ligaActual = null;
   if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
+  // Limpiar estado local
+  localStorage.removeItem('foreros_ligas_ids');
+  localStorage.removeItem('foreros_ligas_index');
+  localStorage.removeItem('fp_nick');
+  localStorage.removeItem('fp_posiciones');
   document.getElementById('app-principal').style.display   = 'none';
   document.getElementById('pantalla-inicio').style.display = 'flex';
   mostrarVista('login');
@@ -4568,7 +4576,11 @@ function notif(msg, tipo = 'ok') {
 // ═══════════════════════════════════════════════
 
 // Mostrar login inmediatamente sin esperar Firebase
+// Limpiar estado local para forzar login siempre
+localStorage.removeItem('foreros_ligas_ids');
+localStorage.removeItem('foreros_ligas_index');
 document.getElementById('pantalla-inicio').style.display = 'flex';
+document.getElementById('app-principal').style.display   = 'none';
 mostrarVista('login');
 
 async function init() {
