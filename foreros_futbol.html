@@ -6,53 +6,95 @@
 <meta name="theme-color" content="#1a1a2e">
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="Foreros FC">
-<meta name="description" content="Gestor de ligas de fútbol amateur">
+<meta name="apple-mobile-web-app-title" content="Futbol Player">
+<meta name="description" content="Futbol Player — Gestor de ligas de fútbol amateur">
 <link rel="manifest" href="manifest.json">
 <link rel="apple-touch-icon" href="icon-192.png">
 <title>⚽ Foreros Fútbol</title>
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
-<!-- Firebase SDK (UMD — compatible con scripts normales) -->
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<!-- Firebase SDK — carga dinámica garantizada en todos los navegadores -->
 <script>
-const FIREBASE_CONFIG = {
-  apiKey:            "AIzaSyC5rT8GxB_OgYa_cjVgCztgKCHu2heT2_c",
-  authDomain:        "futbol-payer-gestor-de-ligas.firebaseapp.com",
-  projectId:         "futbol-payer-gestor-de-ligas",
-  storageBucket:     "futbol-payer-gestor-de-ligas.firebasestorage.app",
-  messagingSenderId: "424414767949",
-  appId:             "1:424414767949:web:852540814bca0b40c6e504"
-};
+// Captura global de errores para evitar Script error genérico en Safari
+window.addEventListener('error', function(e) {
+  if (e.message === 'Script error.' || e.message === 'Script error') return;
+  console.warn('Error capturado:', e.message);
+});
 
-try {
-  const fbApp = firebase.initializeApp(FIREBASE_CONFIG);
-  const db    = firebase.firestore();
-
-  // Adaptar la API compat a la misma interfaz que usa el código
-  window._fb = {
-    db,
-    doc:        (db, ...path) => db.collection(path.filter((_,i)=>i%2===0).join('/')).doc(path.filter((_,i)=>i%2!==0).pop()),
-    getDoc:     ref => ref.get(),
-    setDoc:     (ref, data) => ref.set(data),
-    deleteDoc:  ref => ref.delete(),
-    collection: (db, path) => db.collection(path),
-    query:      (ref, ...constraints) => { let q = ref; constraints.forEach(c => { q = c(q); }); return q; },
-    where:      (field, op, val) => (ref => ref.where(field, op, val)),
-    getDocs:    ref => ref.get(),
-    onSnapshot: (ref, cb, err) => ref.onSnapshot(snap => {
-      snap.exists !== undefined
-        ? cb({ exists: () => snap.exists, data: () => snap.data(), id: snap.id })
-        : cb(snap);
-    }, err)
+(function() {
+  const FIREBASE_CONFIG = {
+    apiKey:            "AIzaSyC5rT8GxB_OgYa_cjVgCztgKCHu2heT2_c",
+    authDomain:        "futbol-payer-gestor-de-ligas.firebaseapp.com",
+    projectId:         "futbol-payer-gestor-de-ligas",
+    storageBucket:     "futbol-payer-gestor-de-ligas.firebasestorage.app",
+    messagingSenderId: "424414767949",
+    appId:             "1:424414767949:web:852540814bca0b40c6e504"
   };
-  window._fbReady = true;
-  window.dispatchEvent(new Event('fb-ready'));
-} catch(e) {
-  console.warn('Firebase init error:', e);
-  window._fbReady = false;
-  window.dispatchEvent(new Event('fb-ready'));
-}
+
+  function marcarFallback() {
+    window._db   = null;
+    window._auth = null;
+    window._fbReady = false;
+    window.dispatchEvent(new Event('fb-ready'));
+  }
+
+  function initFirebase() {
+    try {
+      if (typeof firebase === 'undefined') { marcarFallback(); return; }
+      firebase.initializeApp(FIREBASE_CONFIG);
+      window._db   = firebase.firestore();
+      window._auth = firebase.auth();
+      window._fbReady = true;
+      window.dispatchEvent(new Event('fb-ready'));
+    } catch(e) {
+      console.warn('Firebase init error:', e);
+      marcarFallback();
+    }
+  }
+
+  function cargarAuth() {
+    const s = document.createElement('script');
+    s.crossOrigin = 'anonymous';
+    s.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js';
+    s.onload = initFirebase;
+    s.onerror = marcarFallback;
+    document.head.appendChild(s);
+  }
+
+  function cargarFirestore() {
+    const s = document.createElement('script');
+    s.crossOrigin = 'anonymous';
+    s.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js';
+    s.onload = cargarAuth;
+    s.onerror = marcarFallback;
+    document.head.appendChild(s);
+  }
+
+  const s = document.createElement('script');
+  s.crossOrigin = 'anonymous';
+  s.src = 'https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js';
+  s.onload = cargarFirestore;
+  s.onerror = marcarFallback;
+  document.head.appendChild(s);
+
+  // Timeout de seguridad — si Firebase tarda más de 5s, arrancar sin él
+  setTimeout(function() {
+    if (!window._fbReady) {
+      console.warn('Firebase timeout — arrancando sin Firebase');
+      marcarFallback();
+    }
+  }, 5000);
+})();
+</script>
+  document.head.appendChild(s);
+
+  // Timeout de seguridad — si Firebase tarda más de 5s, arrancar sin él
+  setTimeout(function() {
+    if (!window._fbReady) {
+      console.warn('Firebase timeout — arrancando sin Firebase');
+      marcarFallback();
+    }
+  }, 5000);
+})();
 </script>
 <style>
   :root {
@@ -86,6 +128,7 @@ try {
   header {
     background: linear-gradient(135deg, var(--cesped) 0%, var(--negro) 100%);
     padding: 0;
+    padding-top: env(safe-area-inset-top, 0px);
     border-bottom: 2px solid var(--verde);
     position: sticky;
     top: 0;
@@ -601,7 +644,7 @@ try {
   .pab-text { font-size: 0.9rem; color: #aaa; }
   /* ── RESPONSIVE MÓVIL ── */
   @media (max-width: 600px) {
-    .header-inner { padding: 10px 14px; }
+    .header-inner { padding: 8px 14px; }
     .container { padding: 12px; }
     .card { padding: 14px; }
     .admin-grid { grid-template-columns: 1fr !important; }
@@ -726,49 +769,114 @@ try {
       <div class="inicio-divider"></div>
     </div>
 
-    <!-- Panel principal -->
+    <!-- Panel auth -->
     <div class="inicio-panel">
 
-      <!-- Mis ligas (protagonista) -->
-      <div id="ligas-lista" style="margin-bottom:12px;"></div>
-
-      <!-- Acceder con código -->
-      <div style="background:rgba(20,20,20,0.82);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:12px;backdrop-filter:blur(8px);">
-        <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">🔗 Unirse con código de liga</div>
-        <div style="display:flex;gap:8px;">
-          <input type="text" id="codigoAcceso" placeholder="Código de 6 caracteres" maxlength="6"
-            style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:4px;text-transform:uppercase;outline:none;text-align:center;"
-            oninput="this.value=this.value.toUpperCase()"
-            onkeydown="if(event.key==='Enter')unirseConCodigo()">
-          <button onclick="unirseConCodigo()" style="background:var(--verde);border:none;border-radius:8px;padding:9px 16px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Entrar</button>
+      <!-- Vista: mis ligas (tras login) -->
+      <div id="vista-ligas" style="display:none;">
+        <div id="ligas-lista" style="margin-bottom:12px;"></div>
+        <div style="background:rgba(20,20,20,0.82);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:14px 16px;margin-bottom:12px;backdrop-filter:blur(8px);">
+          <div style="font-size:0.75rem;color:rgba(255,255,255,0.4);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:10px;">🔗 Unirse con código de liga</div>
+          <div style="display:flex;gap:8px;">
+            <input type="text" id="codigoAcceso" placeholder="Código de 6 caracteres" maxlength="6"
+              style="flex:1;background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:9px 12px;color:#fff;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:4px;text-transform:uppercase;outline:none;text-align:center;"
+              oninput="this.value=this.value.toUpperCase()"
+              onkeydown="if(event.key==='Enter')unirseConCodigo()">
+            <button onclick="unirseConCodigo()" style="background:var(--verde);border:none;border-radius:8px;padding:9px 16px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;white-space:nowrap;">Entrar</button>
+          </div>
+        </div>
+        <button onclick="toggleNuevaLiga()" id="btn-nueva-liga"
+          style="width:100%;background:rgba(245,166,35,0.1);border:1px dashed rgba(245,166,35,0.35);border-radius:12px;padding:12px;color:rgba(245,166,35,0.7);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all 0.2s;">
+          + Crear nueva liga
+        </button>
+        <div id="form-nueva-liga" style="display:none;background:rgba(20,20,20,0.88);border:1px solid rgba(245,166,35,0.25);border-radius:14px;padding:20px;margin-top:10px;backdrop-filter:blur(8px);">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:#f5a623;margin-bottom:14px;">NUEVA LIGA</div>
+          <div class="form-group">
+            <label>Nombre de la liga</label>
+            <input type="text" id="nuevaLigaNombre" placeholder="Ej: Foreros Lunes" maxlength="30" onkeydown="if(event.key==='Enter')crearLiga()">
+          </div>
+          <div style="display:flex;gap:8px;margin-top:4px;">
+            <button class="btn btn-verde" style="flex:1;" onclick="crearLiga()">Crear liga</button>
+            <button class="btn btn-gris" onclick="toggleNuevaLiga()">Cancelar</button>
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:16px;">
+          <span id="auth-user-email" style="font-size:0.75rem;color:#444;"></span>
+          <button onclick="cerrarSesion()" style="background:none;border:none;color:#444;font-size:0.75rem;cursor:pointer;margin-left:8px;text-decoration:underline;">Cerrar sesión</button>
         </div>
       </div>
 
-      <!-- Botón nueva liga -->
-      <button onclick="toggleNuevaLiga()" id="btn-nueva-liga"
-        style="width:100%;background:rgba(245,166,35,0.1);border:1px dashed rgba(245,166,35,0.35);border-radius:12px;padding:12px;color:rgba(245,166,35,0.7);font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all 0.2s;"
-        onmouseenter="this.style.background='rgba(245,166,35,0.18)';this.style.color='#f5a623'"
-        onmouseleave="this.style.background='rgba(245,166,35,0.1)';this.style.color='rgba(245,166,35,0.7)'">
-        + Crear nueva liga
-      </button>
-
-      <!-- Formulario nueva liga (oculto por defecto) -->
-      <div id="form-nueva-liga" style="display:none;background:rgba(20,20,20,0.88);border:1px solid rgba(245,166,35,0.25);border-radius:14px;padding:20px;margin-top:10px;backdrop-filter:blur(8px);">
-        <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:#f5a623;margin-bottom:14px;">NUEVA LIGA</div>
+      <!-- Vista: login -->
+      <div id="vista-login" style="display:none;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:#fff;margin-bottom:16px;text-align:center;">INICIAR SESIÓN</div>
         <div class="form-group">
-          <label>Nombre de la liga</label>
-          <input type="text" id="nuevaLigaNombre" placeholder="Ej: Foreros Lunes" maxlength="30" onkeydown="if(event.key==='Enter')crearLiga()">
+          <label>Correo electrónico</label>
+          <input type="email" id="loginEmail" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')loginConEmail()">
         </div>
         <div class="form-group">
-          <label>Contraseña de admin</label>
+          <label>Contraseña</label>
           <div class="pass-wrap">
-            <input type="password" id="nuevaLigaPass" placeholder="Mínimo 4 caracteres" onkeydown="if(event.key==='Enter')crearLiga()">
-            <button class="pass-eye" type="button" onclick="togglePass('nuevaLigaPass',this)" tabindex="-1">👁</button>
+            <input type="password" id="loginPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginConEmail()">
+            <button class="pass-eye" type="button" onclick="togglePass('loginPass',this)" tabindex="-1">👁</button>
           </div>
         </div>
-        <div style="display:flex;gap:8px;">
-          <button class="btn btn-verde" style="flex:1;" onclick="crearLiga()">Crear liga</button>
-          <button class="btn btn-gris" onclick="toggleNuevaLiga()">Cancelar</button>
+        <div id="loginError" style="color:var(--rojo);font-size:0.8rem;margin-bottom:10px;display:none;"></div>
+        <button class="btn btn-verde btn-full" onclick="loginConEmail()" style="margin-bottom:12px;">Entrar</button>
+        <div style="text-align:center;display:flex;flex-direction:column;gap:8px;">
+          <button onclick="mostrarVista('registro')" style="background:none;border:none;color:#aaa;font-size:0.82rem;cursor:pointer;">¿No tienes cuenta? <span style="color:var(--verde-neon);">Regístrate</span></button>
+          <button onclick="mostrarVista('recuperar')" style="background:none;border:none;color:#555;font-size:0.78rem;cursor:pointer;text-decoration:underline;">¿Olvidaste tu contraseña?</button>
+        </div>
+      </div>
+
+      <!-- Vista: registro -->
+      <div id="vista-registro" style="display:none;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:#fff;margin-bottom:16px;text-align:center;">CREAR CUENTA</div>
+        <div class="form-group">
+          <label>Nick (tu nombre en el juego)</label>
+          <input type="text" id="regNick" placeholder="Ej: PACO" maxlength="20"
+            oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')registrarUsuario()">
+        </div>
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="regEmail" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')registrarUsuario()">
+        </div>
+        <div class="form-group">
+          <label>Contraseña</label>
+          <div class="pass-wrap">
+            <input type="password" id="regPass" placeholder="Mínimo 6 caracteres" onkeydown="if(event.key==='Enter')registrarUsuario()">
+            <button class="pass-eye" type="button" onclick="togglePass('regPass',this)" tabindex="-1">👁</button>
+          </div>
+        </div>
+        <div class="form-group">
+          <label>Posiciones <span style="color:#555;font-weight:400;">(opcional)</span></label>
+          <div style="background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;">
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="portero" class="reg-pos" style="width:auto;"> 🧤 Portero</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="defensa" class="reg-pos" style="width:auto;"> 🛡 Defensa</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="lateral" class="reg-pos" style="width:auto;"> ↔️ Lateral</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="mediocentro" class="reg-pos" style="width:auto;"> ⚙️ Medio</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="delantero" class="reg-pos" style="width:auto;"> ⚡ Delantero</label>
+            <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--amarillo);cursor:pointer;"><input type="checkbox" value="polivalente" class="reg-pos" style="width:auto;"> 🔄 Polivalente</label>
+          </div>
+        </div>
+        <div id="regError" style="color:var(--rojo);font-size:0.8rem;margin-bottom:10px;display:none;"></div>
+        <button class="btn btn-verde btn-full" onclick="registrarUsuario()" style="margin-bottom:12px;">Crear cuenta</button>
+        <div style="text-align:center;">
+          <button onclick="mostrarVista('login')" style="background:none;border:none;color:#aaa;font-size:0.82rem;cursor:pointer;">¿Ya tienes cuenta? <span style="color:var(--verde-neon);">Inicia sesión</span></button>
+        </div>
+      </div>
+
+      <!-- Vista: recuperar contraseña -->
+      <div id="vista-recuperar" style="display:none;">
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:#fff;margin-bottom:16px;text-align:center;">RECUPERAR CONTRASEÑA</div>
+        <p style="color:#aaa;font-size:0.83rem;margin-bottom:16px;text-align:center;">Te enviaremos un correo para restablecer tu contraseña.</p>
+        <div class="form-group">
+          <label>Correo electrónico</label>
+          <input type="email" id="recuperarEmail" placeholder="tu@email.com" onkeydown="if(event.key==='Enter')enviarRecuperacion()">
+        </div>
+        <div id="recuperarMsg" style="font-size:0.82rem;margin-bottom:10px;display:none;"></div>
+        <button class="btn btn-azul btn-full" onclick="enviarRecuperacion()" style="margin-bottom:12px;">Enviar correo</button>
+        <div style="text-align:center;">
+          <button onclick="mostrarVista('login')" style="background:none;border:none;color:#555;font-size:0.78rem;cursor:pointer;text-decoration:underline;">Volver al login</button>
         </div>
       </div>
 
@@ -1379,6 +1487,39 @@ try {
   </div>
 </div>
 
+<!-- ═══ MODAL REGISTRO JUGADOR ═══ -->
+<div class="modal-overlay" id="modalRegistro">
+  <div class="modal" style="max-width:400px;">
+    <h2>👤 ¿Cómo te llamas?</h2>
+    <p style="color:#aaa;font-size:0.85rem;margin-bottom:20px;">La primera vez que entras en una liga debes identificarte. Tu nombre aparecerá en el ranking y en las convocatorias.</p>
+
+    <div class="form-group">
+      <label>Tu nombre (como aparece en el ranking)</label>
+      <input type="text" id="registroNombre" placeholder="Ej: PACO" style="text-transform:uppercase;"
+        oninput="this.value=this.value.toUpperCase()" onkeydown="if(event.key==='Enter')confirmarRegistro()">
+      <div id="registroError" style="color:var(--rojo);font-size:0.8rem;margin-top:6px;display:none;"></div>
+    </div>
+
+    <div class="form-group">
+      <label>Tus posiciones <span style="color:#555;font-weight:400;">(opcional)</span></label>
+      <div style="background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;">
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="portero" class="reg-pos" style="width:auto;"> 🧤 Portero</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="defensa" class="reg-pos" style="width:auto;"> 🛡 Defensa</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="lateral" class="reg-pos" style="width:auto;"> ↔️ Lateral</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="mediocentro" class="reg-pos" style="width:auto;"> ⚙️ Medio</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="delantero" class="reg-pos" style="width:auto;"> ⚡ Delantero</label>
+        <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--amarillo);cursor:pointer;"><input type="checkbox" value="polivalente" class="reg-pos" style="width:auto;"> 🔄 Polivalente</label>
+      </div>
+    </div>
+
+    <div style="display:flex;gap:10px;margin-top:4px;">
+      <button class="btn btn-verde btn-full" onclick="confirmarRegistro()">✅ Confirmar</button>
+      <button class="btn btn-gris" onclick="saltarRegistro()" style="white-space:nowrap;">Solo ver</button>
+    </div>
+    <p style="color:#444;font-size:0.75rem;text-align:center;margin-top:12px;">Si eres admin, accede desde la pestaña Admin.</p>
+  </div>
+</div>
+
 <!-- ═══ MODAL RESULTADO ═══ -->
 <div class="modal-overlay" id="modalResultado">
   <div class="modal" style="max-width:360px;">
@@ -1458,24 +1599,175 @@ let _statsCache = null; // caché de stats por jugador, invalidado en cada guard
 let ligaActual = null; // id de la liga activa
 
 // ═══════════════════════════════════════════════
+//  AUTENTICACIÓN — Firebase Auth
+// ═══════════════════════════════════════════════
+
+let usuarioActual = null;
+
+function _auth() { return window._auth || null; }
+
+function mostrarVista(vista) {
+  ['login','registro','recuperar','ligas'].forEach(v => {
+    const el = document.getElementById('vista-' + v);
+    if (el) el.style.display = v === vista ? 'block' : 'none';
+  });
+  ['loginError','regError','recuperarMsg'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+}
+
+async function loginConEmail() {
+  const auth = _auth();
+  const email = document.getElementById('loginEmail').value.trim();
+  const pass  = document.getElementById('loginPass').value;
+  const errEl = document.getElementById('loginError');
+  if (!email || !pass) { mostrarError(errEl, 'Rellena email y contraseña'); return; }
+  if (auth) {
+    try {
+      await auth.signInWithEmailAndPassword(email, pass);
+    } catch(e) { mostrarError(errEl, traducirErrorAuth(e.code)); }
+  } else {
+    mostrarError(errEl, 'Sin conexión — inténtalo de nuevo');
+  }
+}
+
+async function registrarUsuario() {
+  const auth = _auth();
+  const nick  = document.getElementById('regNick').value.trim().toUpperCase();
+  const email = document.getElementById('regEmail').value.trim();
+  const pass  = document.getElementById('regPass').value;
+  const posiciones = [...document.querySelectorAll('.reg-pos:checked')].map(cb => cb.value);
+  const errEl = document.getElementById('regError');
+  if (!nick)  { mostrarError(errEl, 'El nick es obligatorio'); return; }
+  if (!email) { mostrarError(errEl, 'El correo es obligatorio'); return; }
+  if (pass.length < 6) { mostrarError(errEl, 'La contraseña debe tener al menos 6 caracteres'); return; }
+  if (auth) {
+    try {
+      const cred = await auth.createUserWithEmailAndPassword(email, pass);
+      const db = _db();
+      if (db) await db.collection('usuarios').doc(cred.user.uid).set({ nick, email, posiciones, creadoEn: new Date().toISOString() });
+      localStorage.setItem('fp_nick', nick);
+      localStorage.setItem('fp_posiciones', JSON.stringify(posiciones));
+    } catch(e) { mostrarError(errEl, traducirErrorAuth(e.code)); }
+  } else {
+    mostrarError(errEl, 'Sin conexión — inténtalo de nuevo');
+  }
+}
+
+async function enviarRecuperacion() {
+  const auth  = _auth();
+  const email = document.getElementById('recuperarEmail').value.trim();
+  const msgEl = document.getElementById('recuperarMsg');
+  if (!email) { mostrarError(msgEl, 'Introduce tu correo'); return; }
+  if (auth) {
+    try {
+      await auth.sendPasswordResetEmail(email);
+      msgEl.style.display = 'block';
+      msgEl.style.color = 'var(--verde-neon)';
+      msgEl.textContent = '✅ Correo enviado. Revisa tu bandeja de entrada.';
+    } catch(e) { mostrarError(msgEl, traducirErrorAuth(e.code)); }
+  } else {
+    mostrarError(msgEl, 'Sin conexión — inténtalo de nuevo');
+  }
+}
+
+async function cerrarSesion() {
+  const auth = _auth();
+  if (auth) await auth.signOut();
+  usuarioActual = null;
+  ligaActual = null;
+  if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
+  document.getElementById('app-principal').style.display   = 'none';
+  document.getElementById('pantalla-inicio').style.display = 'flex';
+  mostrarVista('login');
+}
+
+function mostrarError(el, msg) {
+  if (!el) return;
+  el.textContent = msg;
+  el.style.color = 'var(--rojo)';
+  el.style.display = 'block';
+}
+
+function traducirErrorAuth(code) {
+  const errores = {
+    'auth/user-not-found':         'No existe ninguna cuenta con ese correo',
+    'auth/wrong-password':         'Contraseña incorrecta',
+    'auth/email-already-in-use':   'Ese correo ya está registrado',
+    'auth/invalid-email':          'El correo no es válido',
+    'auth/weak-password':          'La contraseña es demasiado débil',
+    'auth/too-many-requests':      'Demasiados intentos. Espera un momento',
+    'auth/network-request-failed': 'Sin conexión a internet',
+    'auth/invalid-credential':     'Email o contraseña incorrectos',
+  };
+  return errores[code] || 'Error: ' + code;
+}
+
+async function getNickUsuario(uid) {
+  const db = _db();
+  if (db && uid) {
+    try {
+      const snap = await db.collection('usuarios').doc(uid).get();
+      if (snap.exists) return snap.data().nick || null;
+    } catch(e) {}
+  }
+  return localStorage.getItem('fp_nick') || null;
+}
+
+function iniciarListenerAuth() {
+  // Asegurar que la pantalla de inicio es visible
+  document.getElementById('pantalla-inicio').style.display = 'flex';
+  document.getElementById('app-principal').style.display   = 'none';
+
+  const auth = _auth();
+  if (!auth) {
+    mostrarVista('login');
+    return;
+  }
+  auth.onAuthStateChanged(async (user) => {
+    usuarioActual = user;
+    if (user) {
+      const nick = await getNickUsuario(user.uid);
+      const emailEl = document.getElementById('auth-user-email');
+      if (emailEl) emailEl.textContent = nick ? `${nick} · ${user.email}` : user.email;
+      mostrarVista('ligas');
+      await renderPantallaInicio();
+    } else {
+      mostrarVista('login');
+    }
+  });
+}
+
+// ═══════════════════════════════════════════════
 //  PERSISTENCIA — Firebase Firestore
 //  Fallback a localStorage si Firebase no está disponible
 // ═══════════════════════════════════════════════
 
 let _unsubscribeLiga = null; // listener en tiempo real activo
 
-function _db() { return window._fb?.db || null; }
+function _db() { return window._db || null; }
 
 // ── Índice de ligas ──
 async function getLigasIndex() {
   const db = _db();
+  const uid = usuarioActual?.uid;
   if (db) {
     try {
+      // Leer IDs de ligas del usuario desde Firestore
+      if (uid) {
+        const snap = await db.collection('usuarios').doc(uid).collection('ligas').get();
+        if (!snap.empty) {
+          const ids = snap.docs.map(d => d.id);
+          const ligasSnap = await Promise.all(ids.map(id => db.collection('ligas').doc(id).get()));
+          return ligasSnap.filter(d => d.exists).map(d => ({ id: d.id, ...d.data() }));
+        }
+      }
+      // Fallback: leer IDs locales
       const idsLocales = JSON.parse(localStorage.getItem('foreros_ligas_ids') || '[]');
       if (idsLocales.length === 0) return [];
       const snap = await db.collection('ligas').get();
-      const todas = snap.docs.map(d => ({ id: d.id, ...d.data() }));
-      return todas.filter(l => idsLocales.includes(l.id));
+      return snap.docs.map(d => ({ id: d.id, ...d.data() })).filter(l => idsLocales.includes(l.id));
     } catch(e) { console.warn('Firebase getLigasIndex fallback', e); }
   }
   try { return JSON.parse(localStorage.getItem('foreros_ligas_index') || '[]'); }
@@ -1485,6 +1777,18 @@ async function getLigasIndex() {
 async function saveLigasIndex(ligas) {
   localStorage.setItem('foreros_ligas_ids', JSON.stringify(ligas.map(l => l.id)));
   localStorage.setItem('foreros_ligas_index', JSON.stringify(ligas));
+  // Guardar en Firestore bajo el usuario
+  const db = _db();
+  const uid = usuarioActual?.uid;
+  if (db && uid) {
+    try {
+      const batch = db.batch();
+      ligas.forEach(l => {
+        batch.set(db.collection('usuarios').doc(uid).collection('ligas').doc(l.id), { unidoEn: l.creadoEn || new Date().toISOString() });
+      });
+      await batch.commit();
+    } catch(e) { console.warn('saveLigasIndex Firebase error', e); }
+  }
 }
 
 function getLigaKey(id) { return `foreros_liga_${id}`; }
@@ -1492,9 +1796,10 @@ function getLigaKey(id) { return `foreros_liga_${id}`; }
 // ── Crear liga ──
 async function crearLiga() {
   const nombre = document.getElementById('nuevaLigaNombre').value.trim();
-  const pass   = document.getElementById('nuevaLigaPass').value;
   if (!nombre) { notifInicio('Escribe un nombre para la liga', 'error'); return; }
-  if (pass.length < 4) { notifInicio('La contraseña debe tener al menos 4 caracteres', 'error'); return; }
+
+  const uid  = usuarioActual?.uid;
+  const nick = await getNickUsuario(uid);
 
   const ligas = await getLigasIndex();
   if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
@@ -1503,11 +1808,16 @@ async function crearLiga() {
 
   const id     = 'liga_' + Date.now();
   const codigo = generarCodigo();
-  const nuevaLiga = { id, nombre, codigo, creada: new Date().toLocaleDateString('es-ES') };
+  const nuevaLiga = { id, nombre, codigo, creada: new Date().toLocaleDateString('es-ES'), adminUid: uid || null };
+
+  // Contraseña de admin = uid del usuario (o código si no hay auth)
+  const passAdmin = uid || codigo;
+
   const estadoInicial = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
-    config: { partidos: 0, password: pass, campo: '', hora: '', precio: '', diaSemana: 1 },
-    adminLoggedIn: false, _nuevaTemporada2025: true
+    config: { partidos: 0, password: passAdmin, campo: '', hora: '', precio: '', diaSemana: 1 },
+    adminLoggedIn: false, _nuevaTemporada2025: true,
+    adminUid: uid || null
   };
 
   const db = _db();
@@ -1526,7 +1836,6 @@ async function crearLiga() {
   ligas.push(nuevaLiga);
   await saveLigasIndex(ligas);
   document.getElementById('nuevaLigaNombre').value = '';
-  document.getElementById('nuevaLigaPass').value   = '';
   toggleNuevaLiga();
   await renderPantallaInicio();
   notifInicio(`Liga "${nombre}" creada · Código: ${codigo}`);
@@ -1685,11 +1994,11 @@ async function entrarLiga(id) {
   let liga = ligas.find(l => l.id === id);
 
   if (!liga) {
-    const fb = _fb();
-    if (fb) {
+    const db = _db();
+    if (db) {
       try {
-        const snap = await fb.getDoc(fb.doc(fb.db, 'ligas', id));
-        if (snap.exists()) liga = { id: snap.id, ...snap.data() };
+        const snap = await db.collection('ligas').doc(id).get();
+        if (snap.exists) liga = { id: snap.id, ...snap.data() };
       } catch(e) {}
     }
   }
@@ -1706,6 +2015,61 @@ async function entrarLiga(id) {
   document.getElementById('page-ranking').classList.add('active');
   document.querySelector('.tab').classList.add('active');
   renderRanking();
+
+  // Mostrar modal de registro si no tiene perfil en esta liga
+  const perfilKey = `futbolplayer_perfil_${id}`;
+  const perfilGuardado = localStorage.getItem(perfilKey);
+  if (!perfilGuardado) {
+    setTimeout(() => abrirModalRegistro(), 400);
+  }
+}
+
+function abrirModalRegistro() {
+  document.getElementById('registroNombre').value = '';
+  document.getElementById('registroError').style.display = 'none';
+  document.querySelectorAll('.reg-pos').forEach(cb => cb.checked = false);
+  document.getElementById('modalRegistro').classList.add('show');
+  setTimeout(() => document.getElementById('registroNombre').focus(), 100);
+}
+
+function confirmarRegistro() {
+  const nombre = document.getElementById('registroNombre').value.trim().toUpperCase();
+  const errorEl = document.getElementById('registroError');
+
+  if (!nombre) {
+    errorEl.textContent = 'Escribe tu nombre para continuar.';
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // Validar duplicado (case-insensitive)
+  const duplicado = state.jugadores.find(j => j.nombre.toUpperCase() === nombre);
+  if (duplicado) {
+    errorEl.textContent = `Ya existe un jugador llamado "${duplicado.nombre}". Elige otro nombre o habla con el admin.`;
+    errorEl.style.display = 'block';
+    return;
+  }
+
+  // Guardar perfil local
+  const posiciones = [...document.querySelectorAll('.reg-pos:checked')].map(cb => cb.value);
+  const perfil = { nombre, posiciones };
+  localStorage.setItem(`futbolplayer_perfil_${ligaActual}`, JSON.stringify(perfil));
+
+  // Actualizar posiciones del jugador si ya existe en el ranking (mismo nombre exacto)
+  const jugadorExistente = state.jugadores.find(j => j.nombre === nombre);
+  if (jugadorExistente && posiciones.length > 0) {
+    jugadorExistente.posiciones = posiciones;
+    guardar();
+  }
+
+  document.getElementById('modalRegistro').classList.remove('show');
+  notif(`¡Bienvenido, ${nombre}!`);
+}
+
+function saltarRegistro() {
+  // Guardar que eligió "solo ver" para no volver a preguntar
+  localStorage.setItem(`futbolplayer_perfil_${ligaActual}`, JSON.stringify({ nombre: null, posiciones: [] }));
+  document.getElementById('modalRegistro').classList.remove('show');
 }
 
 async function volverALigas() {
@@ -1714,6 +2078,7 @@ async function volverALigas() {
   ligaActual = null;
   document.getElementById('app-principal').style.display   = 'none';
   document.getElementById('pantalla-inicio').style.display = 'flex';
+  mostrarVista('ligas');
   await renderPantallaInicio();
 }
 
@@ -1806,7 +2171,15 @@ function showTab(name, el) {
   if (name === 'ranking') renderRanking();
   if (name === 'partido') renderPartido();
   if (name === 'calendario') renderCalendario();
-  if (name === 'admin') renderAdmin();
+  if (name === 'admin') {
+    // Auto-login si el usuario autenticado es el admin de la liga
+    if (usuarioActual && state.adminUid && usuarioActual.uid === state.adminUid && !state.adminLoggedIn) {
+      state.adminLoggedIn = true;
+      document.getElementById('admin-login').style.display = 'none';
+      document.getElementById('admin-panel').style.display = 'block';
+    }
+    renderAdmin();
+  }
   if (name === 'historial') renderHistorial();
 }
 
@@ -2035,6 +2408,15 @@ function confirmarBaja() {
 //  ADMIN
 // ═══════════════════════════════════════════════
 function loginAdmin() {
+  // Si el usuario autenticado es el admin de la liga → acceso directo sin contraseña
+  if (usuarioActual && state.adminUid && usuarioActual.uid === state.adminUid) {
+    state.adminLoggedIn = true;
+    document.getElementById('admin-login').style.display = 'none';
+    document.getElementById('admin-panel').style.display = 'block';
+    renderAdmin();
+    return;
+  }
+  // Si no, validar contraseña
   const pass = document.getElementById('adminPass').value;
   if (pass === state.config.password) {
     state.adminLoggedIn = true;
@@ -2053,14 +2435,44 @@ function logoutAdmin() {
   document.getElementById('adminPass').value = '';
 }
 
-function renderAdmin() {
+async function renderAdmin() {
   if (!state.adminLoggedIn) {
-    // Mostrar nombre de la liga en el formulario de login
-    const ligas = getLigasIndex();
+    const ligas = await getLigasIndex();
     const liga = ligas.find(l => l.id === ligaActual);
     const label = document.getElementById('admin-liga-label');
     if (label && liga) label.textContent = `Liga: ${liga.nombre}`;
     return;
+  }
+
+  // ── Aviso de partidos sin resultado ──
+  const sinResultado = (state.partidos_jugados || [])
+    .map((p, i) => ({ ...p, _idx: i }))
+    .filter(p => !p.resultado);
+
+  let avisoEl = document.getElementById('aviso-sin-resultado');
+  if (!avisoEl) {
+    avisoEl = document.createElement('div');
+    avisoEl.id = 'aviso-sin-resultado';
+    const adminPanel = document.getElementById('admin-panel');
+    adminPanel.insertBefore(avisoEl, adminPanel.firstChild);
+  }
+
+  if (sinResultado.length > 0) {
+    avisoEl.innerHTML = `
+      <div style="background:rgba(241,196,15,0.1);border:1px solid rgba(241,196,15,0.4);border-radius:10px;padding:14px;margin-bottom:16px;">
+        <div style="font-weight:700;color:var(--amarillo);margin-bottom:10px;">⚠️ ${sinResultado.length} partido${sinResultado.length>1?'s':''} sin resultado</div>
+        <div style="display:flex;flex-direction:column;gap:6px;">
+          ${sinResultado.map(p => {
+            const fecha = p.fecha ? new Date(p.fecha+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'}) : '—';
+            return `<div style="display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);border-radius:7px;padding:8px 12px;">
+              <span style="font-size:0.85rem;color:#ccc;">Partido #${p._idx+1} · ${fecha} · ${p.titulares?.length||0} jugadores</span>
+              <button onclick="abrirModalResultadoIdx(${p._idx})" class="btn btn-amarillo" style="font-size:0.75rem;padding:5px 10px;">Anotar resultado</button>
+            </div>`;
+          }).join('')}
+        </div>
+      </div>`;
+  } else {
+    avisoEl.innerHTML = '';
   }
   document.getElementById('configPartidos').value  = state.config.partidos;
   document.getElementById('configCampo').value     = state.config.campo     || '';
@@ -3562,11 +3974,20 @@ function dibujarCampo(titulares, formacion) {
 // ── Dibujar campo completo ──
 // titularesOGrupos: si equipoRojo existe → array plano de jugadores; si no → grupos ya calculados
 function dibujarCampoEnCanvas(canvas, titularesOGrupos, lineasBOLabel, lineasR, equipoRojo) {
-  const ANCHO = 500, ALTO = 860;
-  canvas.width = ANCHO * 2; canvas.height = ALTO * 2;
-  canvas.style.width = ANCHO + 'px'; canvas.style.height = ALTO + 'px';
+  // Usar el ancho real del contenedor para que en móvil no desborde
+  const contenedor = canvas.parentElement;
+  const anchoReal = contenedor ? Math.min(contenedor.clientWidth || 500, 500) : 500;
+  const escala = window.devicePixelRatio || 2;
+  const ANCHO = anchoReal;
+  const ALTO  = Math.round(ANCHO * (860 / 500)); // mantener proporción
+
+  canvas.width  = ANCHO * escala;
+  canvas.height = ALTO  * escala;
+  canvas.style.width  = ANCHO + 'px';
+  canvas.style.height = ALTO  + 'px';
+
   const ctx = canvas.getContext('2d');
-  ctx.scale(2, 2);
+  ctx.scale(escala, escala);
 
   // ── Césped con franjas ──
   for (let i = 0; i < 14; i++) {
@@ -3575,71 +3996,70 @@ function dibujarCampoEnCanvas(canvas, titularesOGrupos, lineasBOLabel, lineasR, 
   }
 
   // ── Líneas del campo ──
+  const escalaX = ANCHO / 500; // factor de escala respecto al diseño base
   ctx.strokeStyle = 'rgba(255,255,255,0.8)';
-  ctx.lineWidth = 1.6;
-  const pad = 26;
+  ctx.lineWidth = Math.max(1, 1.6 * escalaX);
+  const pad = Math.round(26 * escalaX);
   const cW = ANCHO - pad * 2, cH = ALTO - pad * 2;
   ctx.strokeRect(pad, pad, cW, cH);
   ctx.beginPath(); ctx.moveTo(pad, ALTO/2); ctx.lineTo(ANCHO-pad, ALTO/2); ctx.stroke();
-  ctx.beginPath(); ctx.arc(ANCHO/2, ALTO/2, 52, 0, Math.PI*2); ctx.stroke();
+  const radio = Math.round(52 * escalaX);
+  ctx.beginPath(); ctx.arc(ANCHO/2, ALTO/2, radio, 0, Math.PI*2); ctx.stroke();
   ctx.beginPath(); ctx.arc(ANCHO/2, ALTO/2, 3, 0, Math.PI*2);
   ctx.fillStyle = 'rgba(255,255,255,0.8)'; ctx.fill();
-  const aw = 200, ah = 78, asw = 96, ash = 36;
+  const aw = Math.round(200*escalaX), ah = Math.round(78*escalaX);
+  const asw = Math.round(96*escalaX), ash = Math.round(36*escalaX);
   ctx.strokeRect((ANCHO-aw)/2, pad, aw, ah);
   ctx.strokeRect((ANCHO-asw)/2, pad, asw, ash);
   ctx.strokeRect((ANCHO-aw)/2, ALTO-pad-ah, aw, ah);
   ctx.strokeRect((ANCHO-asw)/2, ALTO-pad-ash, asw, ash);
-  ctx.beginPath(); ctx.arc(ANCHO/2, pad+52, 2.5, 0, Math.PI*2); ctx.fill();
-  ctx.beginPath(); ctx.arc(ANCHO/2, ALTO-pad-52, 2.5, 0, Math.PI*2); ctx.fill();
+  const penY = Math.round(52 * escalaX);
+  ctx.beginPath(); ctx.arc(ANCHO/2, pad+penY, 2.5, 0, Math.PI*2); ctx.fill();
+  ctx.beginPath(); ctx.arc(ANCHO/2, ALTO-pad-penY, 2.5, 0, Math.PI*2); ctx.fill();
 
   if (equipoRojo && equipoRojo.length > 0) {
-    // Modo dos equipos: cada uno con su propia formación
-    const titulares = titularesOGrupos; // array plano
+    const titulares = titularesOGrupos;
     const blancos = titulares.filter(j => !equipoRojo.includes(j.nombre));
     const rojos   = titulares.filter(j =>  equipoRojo.includes(j.nombre));
     const gruposBlancos = asignarPosicionesWA([...blancos], lineasBOLabel);
     const gruposRojos   = asignarPosicionesWA([...rojos],   lineasR);
-    dibujarEquipoEnMitad(ctx, gruposBlancos, false, pad, ANCHO, ALTO); // blanco abajo
-    dibujarEquipoEnMitad(ctx, gruposRojos,   true,  pad, ANCHO, ALTO); // rojo arriba
+    dibujarEquipoEnMitad(ctx, gruposBlancos, false, pad, ANCHO, ALTO, escalaX);
+    dibujarEquipoEnMitad(ctx, gruposRojos,   true,  pad, ANCHO, ALTO, escalaX);
   } else {
-    // Modo un equipo (pestaña Alineación admin)
     const grupos = asignarPosicionesWA([...titularesOGrupos], lineasBOLabel);
-    const yPos = [ ALTO - 78, ALTO - 220, ALTO/2 + 8, 90 ];
+    const yPos = [ ALTO - Math.round(78*escalaX), ALTO - Math.round(220*escalaX), ALTO/2 + 8, Math.round(90*escalaX) ];
     grupos.forEach((grupo, gi) => {
       const y = yPos[gi] ?? (ALTO/2);
       grupo.forEach((j, idx) => {
         const n = grupo.length;
-        const x = n === 1 ? ANCHO/2 : pad + 36 + idx * (ANCHO - pad*2 - 72) / (n-1);
-        dibujarCamiseta(ctx, x, y, j.nombre, gi === 0, false);
+        const x = n === 1 ? ANCHO/2 : pad + Math.round(36*escalaX) + idx * (ANCHO - pad*2 - Math.round(72*escalaX)) / (n-1);
+        dibujarCamiseta(ctx, x, y, j.nombre, gi === 0, false, escalaX);
       });
     });
   }
 
-  // Watermark
-  ctx.font = '700 10px sans-serif';
+  ctx.font = `700 ${Math.round(10*escalaX)}px sans-serif`;
   ctx.fillStyle = 'rgba(255,255,255,0.25)';
   ctx.textAlign = 'right';
-  ctx.fillText('FOREROS FC', ANCHO - pad - 2, ALTO - 6);
+  ctx.fillText('FUTBOL PLAYER', ANCHO - pad - 2, ALTO - 6);
 }
 
 // ── Dibujar un equipo en su mitad del campo ──
 // esRojo=false → mitad inferior (blanco); esRojo=true → mitad superior (rojo)
-function dibujarEquipoEnMitad(ctx, grupos, esRojo, pad, ANCHO, ALTO) {
-  const margenSup = 68;
-  const margenInf = ALTO - 68;
+function dibujarEquipoEnMitad(ctx, grupos, esRojo, pad, ANCHO, ALTO, escalaX = 1) {
+  const margenSup = Math.round(68 * (ALTO/860));
+  const margenInf = ALTO - margenSup;
   const mitadY    = ALTO / 2;
   const numLineas = grupos.length;
   const numLineasCampo = Math.max(numLineas - 1, 1);
 
   let yLineas;
   if (!esRojo) {
-    // Blanco: portero en margenInf, delanteros cerca del centro
-    const espacio = (margenInf - mitadY - 40) / numLineasCampo;
+    const espacio = (margenInf - mitadY - Math.round(40*(ALTO/860))) / numLineasCampo;
     yLineas = [margenInf];
     for (let i = 1; i < numLineas; i++) yLineas.push(margenInf - i * espacio);
   } else {
-    // Rojo: portero en margenSup, delanteros cerca del centro
-    const espacio = (mitadY - margenSup - 40) / numLineasCampo;
+    const espacio = (mitadY - margenSup - Math.round(40*(ALTO/860))) / numLineasCampo;
     yLineas = [margenSup];
     for (let i = 1; i < numLineas; i++) yLineas.push(margenSup + i * espacio);
   }
@@ -3649,14 +4069,15 @@ function dibujarEquipoEnMitad(ctx, grupos, esRojo, pad, ANCHO, ALTO) {
     const y = yLineas[gi] ?? (esRojo ? mitadY - 30 : mitadY + 30);
     linea.forEach((j, idx) => {
       const n = linea.length;
-      const x = n === 1 ? ANCHO/2 : pad + 36 + idx * (ANCHO - pad*2 - 72) / (n-1);
-      dibujarCamiseta(ctx, x, y, j.nombre, gi === 0, esRojo);
+      const margen = Math.round(36 * escalaX);
+      const x = n === 1 ? ANCHO/2 : pad + margen + idx * (ANCHO - pad*2 - margen*2) / (n-1);
+      dibujarCamiseta(ctx, x, y, j.nombre, gi === 0, esRojo, escalaX);
     });
   });
 }
 
 // ── Dibujar camiseta estilo Lineup11 ──
-function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo) {
+function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo, escalaX = 1) {
   let cuerpoColor, mangaColor, numColor, textColor;
   if (esPortero) {
     cuerpoColor = '#27ae60'; mangaColor = '#1d8348'; numColor = '#fff'; textColor = '#fff';
@@ -3669,7 +4090,7 @@ function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo) {
   ctx.save();
   ctx.translate(x, y);
 
-  const W = 38, H = 36, hw = W / 2;
+  const W = Math.round(38 * escalaX), H = Math.round(36 * escalaX), hw = W / 2;
 
   // Sombra
   ctx.globalAlpha = 0.2;
@@ -3702,7 +4123,7 @@ function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo) {
   // Número en la camiseta: inicial del nombre
   const inicial = nombre.trim().charAt(0).toUpperCase();
   ctx.fillStyle = numColor;
-  ctx.font = 'bold 13px Arial, sans-serif';
+  ctx.font = `bold ${Math.round(13*escalaX)}px Arial, sans-serif`;
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.fillText(inicial, 0, H/2 + 1);
@@ -3710,12 +4131,12 @@ function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo) {
   // Nombre debajo con sombra para legibilidad
   const palabras = nombre.trim().split(/\s+/);
   const short = palabras.map(p => p.substring(0,6)).join('').substring(0, 11).toUpperCase();
-  ctx.font = 'bold 8.5px Arial, sans-serif';
+  ctx.font = `bold ${Math.round(8.5*escalaX)}px Arial, sans-serif`;
   ctx.textBaseline = 'top';
   ctx.shadowColor = 'rgba(0,0,0,0.9)';
   ctx.shadowBlur = 4;
   ctx.fillStyle = '#fff';
-  ctx.fillText(short, 0, H + 5);
+  ctx.fillText(short, 0, H + Math.round(5*escalaX));
   ctx.shadowBlur = 0;
 
   ctx.restore();
@@ -4091,24 +4512,37 @@ function abrirModalResultado(numPartido) {
   document.getElementById('modalResultado').classList.add('show');
 }
 
+// También permite editar el resultado de un partido específico por índice
+function abrirModalResultadoIdx(idx) {
+  const p = state.partidos_jugados[idx];
+  if (!p) return;
+  document.getElementById('resultado-num').textContent = '#' + (idx + 1);
+  document.getElementById('modalResultado').classList.add('show');
+  // Guardar idx temporalmente para que guardarResultado sepa qué partido editar
+  document.getElementById('modalResultado').dataset.idx = idx;
+}
+
 function cerrarModalResultado() {
   document.getElementById('modalResultado').classList.remove('show');
+  delete document.getElementById('modalResultado').dataset.idx;
 }
 
 function guardarResultado(resultado) {
-  // Guardar en el último partido jugado
   if (!state.partidos_jugados) return;
-  const ultimo = state.partidos_jugados[state.partidos_jugados.length - 1];
-  if (ultimo) {
-    ultimo.resultado = resultado;
-    const labels = { blanco: '⚪ Gana blanco', rojo: '🔴 Gana rojo', empate: '🤝 Empate' };
-    registrarHistorial(`🏆 Resultado partido #${state.config.partidos}: ${labels[resultado]}`);
-    guardar();
-    notif(labels[resultado]);
-  }
+  const modal = document.getElementById('modalResultado');
+  const idx = modal.dataset.idx !== undefined ? parseInt(modal.dataset.idx) : state.partidos_jugados.length - 1;
+  const partido = state.partidos_jugados[idx];
+  if (!partido) return;
+
+  partido.resultado = resultado;
+  const labels = { blanco: '⚪ Gana blanco', rojo: '🔴 Gana rojo', empate: '🤝 Empate' };
+  registrarHistorial(`🏆 Resultado partido #${idx + 1}: ${labels[resultado]}`);
+  guardar();
+  notif(labels[resultado]);
   cerrarModalResultado();
-  // Actualizar stats en ranking
   renderRanking();
+  // Si estamos en admin, refrescar el aviso de pendientes
+  if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
 }
 
 
@@ -4132,17 +4566,21 @@ function notif(msg, tipo = 'ok') {
 // ═══════════════════════════════════════════════
 //  INIT
 // ═══════════════════════════════════════════════
+
+// Mostrar login inmediatamente sin esperar Firebase
+document.getElementById('pantalla-inicio').style.display = 'flex';
+mostrarVista('login');
+
 async function init() {
-  await renderPantallaInicio();
+  iniciarListenerAuth();
 }
 
-// Esperar a Firebase si está disponible, sino arrancar directamente
+// Arrancar cuando Firebase esté listo (o después de 5s de timeout)
 if (window._fbReady) {
   init();
 } else {
   window.addEventListener('fb-ready', init, { once: true });
-  // Si Firebase tarda más de 3s, arrancar de todas formas con datos locales
-  setTimeout(() => { if (!window._fbReady) init(); }, 3000);
+  setTimeout(() => { if (!window._fbReady) { window._fbReady = false; init(); } }, 5000);
 }
 
 // Registrar Service Worker para PWA
