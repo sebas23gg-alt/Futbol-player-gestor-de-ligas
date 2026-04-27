@@ -915,6 +915,7 @@ window.addEventListener('error', function(e) {
     <div class="tab" onclick="showTab('calendario', this)">📅 Calendario</div>
     <div class="tab" onclick="showTab('admin', this)">🔧 Admin</div>
     <div class="tab" onclick="showTab('historial', this)">📋 Historial</div>
+    <div class="tab" onclick="showTab('perfil', this)">👤 Perfil</div>
   </div>
 </header>
 
@@ -1465,6 +1466,75 @@ window.addEventListener('error', function(e) {
       <div id="historialLista"><p style="color:#555;text-align:center;padding:20px;">Sin registros todavía</p></div>
     </div>
   </div>
+
+  <!-- ═══ PERFIL ═══ -->
+  <div id="page-perfil" class="page">
+
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">👤 Mi perfil</div>
+
+      <!-- Nick -->
+      <div class="form-group">
+        <label>Nick</label>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <input type="text" id="perfilNick" disabled
+            style="flex:1;background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:10px 14px;color:#666;font-family:'DM Sans',sans-serif;font-size:0.9rem;">
+          <span style="font-size:0.72rem;color:#444;">Solo el admin puede cambiarlo</span>
+        </div>
+      </div>
+
+      <!-- Email -->
+      <div class="form-group">
+        <label>Correo electrónico</label>
+        <input type="text" id="perfilEmail" disabled
+          style="width:100%;background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:10px 14px;color:#666;font-family:'DM Sans',sans-serif;font-size:0.9rem;">
+      </div>
+
+      <!-- Posiciones -->
+      <div class="form-group">
+        <label>Mis posiciones</label>
+        <div style="background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:10px 12px;display:flex;flex-wrap:wrap;gap:10px;" id="perfilPosiciones">
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="portero" class="perfil-pos" style="width:auto;"> 🧤 Portero</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="defensa" class="perfil-pos" style="width:auto;"> 🛡 Defensa</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="lateral" class="perfil-pos" style="width:auto;"> ↔️ Lateral</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="mediocentro" class="perfil-pos" style="width:auto;"> ⚙️ Medio</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--blanco);cursor:pointer;"><input type="checkbox" value="delantero" class="perfil-pos" style="width:auto;"> ⚡ Delantero</label>
+          <label style="display:flex;align-items:center;gap:5px;font-size:0.82rem;text-transform:none;letter-spacing:0;color:var(--amarillo);cursor:pointer;"><input type="checkbox" value="polivalente" class="perfil-pos" style="width:auto;"> 🔄 Polivalente</label>
+        </div>
+      </div>
+
+      <button class="btn btn-verde btn-full" onclick="guardarPerfil()">💾 Guardar cambios</button>
+    </div>
+
+    <!-- Cambiar contraseña -->
+    <div class="card" style="margin-bottom:16px;">
+      <div class="card-title">🔑 Cambiar contraseña</div>
+      <div class="form-group">
+        <label>Nueva contraseña</label>
+        <div class="pass-wrap">
+          <input type="password" id="perfilNewPass" placeholder="Mínimo 6 caracteres">
+          <button class="pass-eye" type="button" onclick="togglePass('perfilNewPass',this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>Confirmar contraseña</label>
+        <div class="pass-wrap">
+          <input type="password" id="perfilConfPass" placeholder="Repite la contraseña">
+          <button class="pass-eye" type="button" onclick="togglePass('perfilConfPass',this)" tabindex="-1">👁</button>
+        </div>
+      </div>
+      <div id="perfilPassError" style="color:var(--rojo);font-size:0.8rem;margin-bottom:10px;display:none;"></div>
+      <button class="btn btn-azul btn-full" onclick="cambiarPasswordPerfil()">🔑 Cambiar contraseña</button>
+    </div>
+
+    <!-- Zona de peligro -->
+    <div class="card" style="border-color:rgba(192,57,43,0.3);">
+      <div class="card-title" style="color:var(--rojo);">⚠️ Zona de peligro</div>
+      <p style="color:#777;font-size:0.82rem;margin-bottom:16px;">Borrar tu cuenta elimina permanentemente tu perfil, tus datos en Firebase y te saca de todas las ligas. <strong style="color:#aaa;">Esta acción no se puede deshacer.</strong></p>
+      <button class="btn btn-rojo btn-full" onclick="borrarCuenta()">🗑 Borrar mi cuenta</button>
+    </div>
+
+  </div><!-- /page-perfil -->
 
 </div><!-- /container -->
 
@@ -2168,8 +2238,168 @@ function notifInicio(msg, tipo = 'ok') {
 }
 
 // ═══════════════════════════════════════════════
-//  TABS
+//  PERFIL
 // ═══════════════════════════════════════════════
+async function renderPerfil() {
+  const user = usuarioActual;
+  if (!user) return;
+
+  // Rellenar email
+  const emailEl = document.getElementById('perfilEmail');
+  if (emailEl) emailEl.value = user.email || '';
+
+  // Rellenar nick y posiciones desde Firestore o localStorage
+  const db = _db();
+  let nick = localStorage.getItem('fp_nick') || '';
+  let posiciones = JSON.parse(localStorage.getItem('fp_posiciones') || '[]');
+
+  if (db) {
+    try {
+      const snap = await db.collection('usuarios').doc(user.uid).get();
+      if (snap.exists) {
+        nick = snap.data().nick || nick;
+        posiciones = snap.data().posiciones || posiciones;
+      }
+    } catch(e) {}
+  }
+
+  const nickEl = document.getElementById('perfilNick');
+  if (nickEl) nickEl.value = nick;
+
+  // Marcar posiciones
+  document.querySelectorAll('.perfil-pos').forEach(cb => {
+    cb.checked = posiciones.includes(cb.value);
+  });
+
+  // Limpiar campos de contraseña
+  document.getElementById('perfilNewPass').value  = '';
+  document.getElementById('perfilConfPass').value = '';
+  document.getElementById('perfilPassError').style.display = 'none';
+}
+
+async function guardarPerfil() {
+  const user = usuarioActual;
+  if (!user) return;
+
+  const posiciones = [...document.querySelectorAll('.perfil-pos:checked')].map(cb => cb.value);
+
+  // Guardar en localStorage
+  localStorage.setItem('fp_posiciones', JSON.stringify(posiciones));
+
+  // Guardar en Firestore
+  const db = _db();
+  if (db) {
+    try {
+      await db.collection('usuarios').doc(user.uid).update({ posiciones });
+    } catch(e) { console.warn('guardarPerfil Firestore error', e); }
+  }
+
+  // Actualizar posiciones del jugador en la liga activa
+  if (ligaActual) {
+    const nick = document.getElementById('perfilNick').value;
+    const jugador = state.jugadores.find(j => j.nombre === nick);
+    if (jugador && posiciones.length > 0) {
+      jugador.posiciones = posiciones;
+      jugador.portero = posiciones.includes('portero');
+      await guardar();
+    }
+  }
+
+  notif('Perfil guardado ✓');
+}
+
+async function borrarCuenta() {
+  const user = usuarioActual;
+  if (!user) return;
+
+  // Primera confirmación
+  if (!confirm('¿Seguro que quieres borrar tu cuenta?\n\nSe eliminarán todos tus datos. Esta acción no se puede deshacer.')) return;
+
+  // Segunda confirmación con el email
+  const emailConfirm = prompt(`Para confirmar, escribe tu correo electrónico:\n${user.email}`);
+  if (!emailConfirm || emailConfirm.trim().toLowerCase() !== user.email.toLowerCase()) {
+    notif('Correo incorrecto — cuenta no borrada', 'error');
+    return;
+  }
+
+  const db = _db();
+  const auth = _auth();
+
+  try {
+    // 1. Borrar documento de usuario en Firestore (perfil + ligas del usuario)
+    if (db) {
+      try {
+        const ligasSnap = await db.collection('usuarios').doc(user.uid).collection('ligas').get();
+        const batch = db.batch();
+        ligasSnap.docs.forEach(d => batch.delete(d.ref));
+        batch.delete(db.collection('usuarios').doc(user.uid));
+        await batch.commit();
+      } catch(e) { console.warn('borrarCuenta Firestore error', e); }
+    }
+
+    // 2. Limpiar localStorage
+    localStorage.removeItem('fp_nick');
+    localStorage.removeItem('fp_posiciones');
+    localStorage.removeItem('foreros_ligas_ids');
+    localStorage.removeItem('foreros_ligas_index');
+
+    // 3. Borrar cuenta de Firebase Auth (debe ser la última operación)
+    if (auth) await user.delete();
+
+    // 4. Resetear estado y volver al login
+    usuarioActual = null;
+    ligaActual = null;
+    if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
+    document.getElementById('app-principal').style.display   = 'none';
+    document.getElementById('pantalla-inicio').style.display = 'flex';
+    mostrarVista('login');
+    notifInicio('Cuenta eliminada correctamente');
+
+  } catch(e) {
+    if (e.code === 'auth/requires-recent-login') {
+      notif('Por seguridad, cierra sesión, vuelve a entrar y repite la operación', 'error');
+    } else {
+      notif('Error al borrar la cuenta: ' + e.message, 'error');
+    }
+  }
+}
+
+async function cambiarPasswordPerfil() {
+  const user = usuarioActual;
+  if (!user) return;
+
+  const newPass  = document.getElementById('perfilNewPass').value;
+  const confPass = document.getElementById('perfilConfPass').value;
+  const errEl    = document.getElementById('perfilPassError');
+
+  errEl.style.display = 'none';
+
+  if (newPass.length < 6) {
+    errEl.textContent = 'La contraseña debe tener al menos 6 caracteres';
+    errEl.style.display = 'block'; return;
+  }
+  if (newPass !== confPass) {
+    errEl.textContent = 'Las contraseñas no coinciden';
+    errEl.style.display = 'block'; return;
+  }
+
+  const auth = _auth();
+  if (!auth) { errEl.textContent = 'Sin conexión'; errEl.style.display = 'block'; return; }
+
+  try {
+    await user.updatePassword(newPass);
+    document.getElementById('perfilNewPass').value  = '';
+    document.getElementById('perfilConfPass').value = '';
+    notif('Contraseña cambiada ✓');
+  } catch(e) {
+    if (e.code === 'auth/requires-recent-login') {
+      errEl.textContent = 'Por seguridad, cierra sesión y vuelve a entrar antes de cambiar la contraseña';
+    } else {
+      errEl.textContent = traducirErrorAuth(e.code);
+    }
+    errEl.style.display = 'block';
+  }
+}
 function showTab(name, el) {
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
@@ -2189,6 +2419,7 @@ function showTab(name, el) {
     renderAdmin();
   }
   if (name === 'historial') renderHistorial();
+  if (name === 'perfil')    renderPerfil();
 }
 
 // ═══════════════════════════════════════════════
