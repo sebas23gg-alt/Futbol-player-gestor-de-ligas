@@ -1800,7 +1800,7 @@ let ligaActual = null; // id de la liga activa
 
 let usuarioActual = null;
 
-function _auth() { return window._auth || null; }
+function fbAuth() { return window._auth || null; }
 
 function mostrarVista(vista) {
   ['login','registro','recuperar','ligas'].forEach(v => {
@@ -1814,7 +1814,7 @@ function mostrarVista(vista) {
 }
 
 async function loginConEmail() {
-  const auth = _auth();
+  const auth = fbAuth();
   const email = document.getElementById('loginEmail').value.trim();
   const pass  = document.getElementById('loginPass').value;
   const errEl = document.getElementById('loginError');
@@ -1829,7 +1829,7 @@ async function loginConEmail() {
 }
 
 async function registrarUsuario() {
-  const auth = _auth();
+  const auth = fbAuth();
   const nick  = document.getElementById('regNick').value.trim().toUpperCase();
   const email = document.getElementById('regEmail').value.trim();
   const pass  = document.getElementById('regPass').value;
@@ -1841,7 +1841,7 @@ async function registrarUsuario() {
   if (auth) {
     try {
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
-      const db = _db();
+      const db = fbDb();
       if (db) await db.collection('usuarios').doc(cred.user.uid).set({ nick, email, posiciones, creadoEn: new Date().toISOString() });
       localStorage.setItem('fp_nick', nick);
       localStorage.setItem('fp_posiciones', JSON.stringify(posiciones));
@@ -1852,7 +1852,7 @@ async function registrarUsuario() {
 }
 
 async function enviarRecuperacion() {
-  const auth  = _auth();
+  const auth  = fbAuth();
   const email = document.getElementById('recuperarEmail').value.trim();
   const msgEl = document.getElementById('recuperarMsg');
   if (!email) { mostrarError(msgEl, 'Introduce tu correo'); return; }
@@ -1932,7 +1932,7 @@ if (document.readyState === 'loading') {
 
 async function cerrarSesion() {
   if (!confirm('¿Cerrar sesión?')) return;
-  const auth = _auth();
+  const auth = fbAuth();
   if (auth) await auth.signOut();
   usuarioActual = null;
   ligaActual = null;
@@ -1969,7 +1969,7 @@ function traducirErrorAuth(code) {
 }
 
 async function getNickUsuario(uid) {
-  const db = _db();
+  const db = fbDb();
   if (db && uid) {
     try {
       const snap = await db.collection('usuarios').doc(uid).get();
@@ -1984,7 +1984,7 @@ function iniciarListenerAuth() {
   document.getElementById('pantalla-inicio').style.display = 'flex';
   document.getElementById('app-principal').style.display   = 'none';
 
-  const auth = _auth();
+  const auth = fbAuth();
   if (!auth) {
     mostrarVista('login');
     return;
@@ -2010,11 +2010,11 @@ function iniciarListenerAuth() {
 
 let _unsubscribeLiga = null; // listener en tiempo real activo
 
-function _db() { return window._db || null; }
+function fbDb() { return window._db || null; }
 
 // ── Índice de ligas ──
 async function getLigasIndex() {
-  const db = _db();
+  const db = fbDb();
   const uid = usuarioActual?.uid;
   if (db) {
     try {
@@ -2042,7 +2042,7 @@ async function saveLigasIndex(ligas) {
   localStorage.setItem('foreros_ligas_ids', JSON.stringify(ligas.map(l => l.id)));
   localStorage.setItem('foreros_ligas_index', JSON.stringify(ligas));
   // Guardar en Firestore bajo el usuario
-  const db = _db();
+  const db = fbDb();
   const uid = usuarioActual?.uid;
   if (db && uid) {
     try {
@@ -2084,7 +2084,7 @@ async function crearLiga() {
     adminUid: uid || null
   };
 
-  const db = _db();
+  const db = fbDb();
   if (db) {
     try {
       await db.collection('ligas').doc(id).set(nuevaLiga);
@@ -2110,7 +2110,7 @@ async function unirseConCodigo() {
   const codigo = document.getElementById('codigoAcceso').value.trim().toUpperCase();
   if (codigo.length < 6) { notifInicio('Introduce un código de 6 caracteres', 'error'); return; }
 
-  const db = _db();
+  const db = fbDb();
   let liga = null;
 
   if (db) {
@@ -2141,7 +2141,7 @@ async function eliminarLiga(id) {
   if (!liga) return;
   if (!confirm(`¿Eliminar la liga "${liga.nombre}"?\n\nSe borrarán todos sus datos. No se puede deshacer.`)) return;
 
-  const db = _db();
+  const db = fbDb();
   if (db) {
     try {
       await db.collection('ligas').doc(id).collection('data').doc('state').delete();
@@ -2165,7 +2165,7 @@ async function cargar() {
     adminLoggedIn: false, _nuevaTemporada2025: true
   };
 
-  const db = _db();
+  const db = fbDb();
   if (db) {
     try {
       const snap = await db.collection('ligas').doc(ligaActual).collection('data').doc('state').get();
@@ -2201,7 +2201,7 @@ async function guardar() {
   const datos = { ...state };
   delete datos.adminLoggedIn;
 
-  const db = _db();
+  const db = fbDb();
   if (db) {
     try {
       await db.collection('ligas').doc(ligaActual).collection('data').doc('state').set(datos);
@@ -2258,7 +2258,7 @@ async function entrarLiga(id) {
   let liga = ligas.find(l => l.id === id);
 
   if (!liga) {
-    const db = _db();
+    const db = fbDb();
     if (db) {
       try {
         const snap = await db.collection('ligas').doc(id).get();
@@ -2435,7 +2435,7 @@ async function renderPerfil() {
   if (emailEl) emailEl.value = user.email || '';
 
   // Rellenar nick y posiciones desde Firestore o localStorage
-  const db = _db();
+  const db = fbDb();
   let nick = localStorage.getItem('fp_nick') || '';
   let posiciones = JSON.parse(localStorage.getItem('fp_posiciones') || '[]');
 
@@ -2473,7 +2473,7 @@ async function guardarPerfil() {
   localStorage.setItem('fp_posiciones', JSON.stringify(posiciones));
 
   // Guardar en Firestore
-  const db = _db();
+  const db = fbDb();
   if (db) {
     try {
       await db.collection('usuarios').doc(user.uid).update({ posiciones });
@@ -2508,8 +2508,8 @@ async function borrarCuenta() {
     return;
   }
 
-  const db = _db();
-  const auth = _auth();
+  const db = fbDb();
+  const auth = fbAuth();
 
   try {
     // 1. Borrar documento de usuario en Firestore (perfil + ligas del usuario)
@@ -2569,7 +2569,7 @@ async function cambiarPasswordPerfil() {
     errEl.style.display = 'block'; return;
   }
 
-  const auth = _auth();
+  const auth = fbAuth();
   if (!auth) { errEl.textContent = 'Sin conexión'; errEl.style.display = 'block'; return; }
 
   try {
