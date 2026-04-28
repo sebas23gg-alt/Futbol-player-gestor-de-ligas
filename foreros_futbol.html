@@ -860,7 +860,7 @@ window.addEventListener('error', function(e) {
       <span class="icon-cog">⚙️</span><span class="lang-code" id="lang-code-inicio">ES</span>
     </button>
     <div class="menu-ajustes" id="menu-ajustes-inicio" role="menu">
-      <div class="menu-header">Idioma</div>
+      <div class="menu-header" data-i18n="menu.idioma">Idioma</div>
       <button class="menu-item" data-idioma="es" onclick="cambiarIdioma('es')">Español</button>
       <button class="menu-item" data-idioma="en" onclick="cambiarIdioma('en')">English</button>
       <button class="menu-item" data-idioma="fr" onclick="cambiarIdioma('fr')">Français</button>
@@ -1012,13 +1012,13 @@ window.addEventListener('error', function(e) {
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
-      <button onclick="volverALigas()" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
+      <button onclick="volverALigas()" data-i18n="header.volver_ligas" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
       <div class="ajustes-wrap">
         <button class="btn-ajustes" onclick="toggleMenuAjustes('menu-ajustes-app', event)" aria-label="Ajustes" aria-haspopup="true">
           <span class="icon-cog">⚙️</span><span class="lang-code" id="lang-code-app">ES</span>
         </button>
         <div class="menu-ajustes" id="menu-ajustes-app" role="menu">
-          <div class="menu-header">Idioma</div>
+          <div class="menu-header" data-i18n="menu.idioma">Idioma</div>
           <button class="menu-item" data-idioma="es" onclick="cambiarIdioma('es')">Español</button>
           <button class="menu-item" data-idioma="en" onclick="cambiarIdioma('en')">English</button>
           <button class="menu-item" data-idioma="fr" onclick="cambiarIdioma('fr')">Français</button>
@@ -1026,22 +1026,22 @@ window.addEventListener('error', function(e) {
           <button class="menu-item" data-idioma="it" onclick="cambiarIdioma('it')">Italiano</button>
           <button class="menu-item" data-idioma="pt" onclick="cambiarIdioma('pt')">Português</button>
           <div class="menu-divider"></div>
-          <button class="menu-item menu-item-rojo" onclick="cerrarMenuAjustes(); cerrarSesion();">🚪 Cerrar sesión</button>
+          <button class="menu-item menu-item-rojo" data-i18n="menu.cerrar_sesion" onclick="cerrarMenuAjustes(); cerrarSesion();">🚪 Cerrar sesión</button>
         </div>
       </div>
       <div class="partidos-badge">
         <strong id="totalPartidos">0</strong>
-        PARTIDOS
+        <span data-i18n="header.partidos">PARTIDOS</span>
       </div>
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" onclick="showTab('ranking', this)">🏆 Ranking</div>
-    <div class="tab" onclick="showTab('partido', this)">⚽ Partido</div>
-    <div class="tab" onclick="showTab('calendario', this)">📅 Calendario</div>
-    <div class="tab" onclick="showTab('admin', this)">🔧 Admin</div>
-    <div class="tab" onclick="showTab('historial', this)">📋 Historial</div>
-    <div class="tab" onclick="showTab('perfil', this)">👤 Perfil</div>
+    <div class="tab active" data-i18n="tab.ranking" onclick="showTab('ranking', this)">🏆 Ranking</div>
+    <div class="tab" data-i18n="tab.partido" onclick="showTab('partido', this)">⚽ Partido</div>
+    <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)">📅 Calendario</div>
+    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)">🔧 Admin</div>
+    <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)">📋 Historial</div>
+    <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)">👤 Perfil</div>
   </div>
 </header>
 
@@ -1844,7 +1844,7 @@ async function registrarUsuario() {
     try {
       const cred = await auth.createUserWithEmailAndPassword(email, pass);
       const db = fbDb();
-      if (db) await db.collection('usuarios').doc(cred.user.uid).set({ nick, email, posiciones, creadoEn: new Date().toISOString() });
+      if (db) await db.collection('usuarios').doc(cred.user.uid).set({ nick, email, posiciones, creadoEn: new Date().toISOString(), idioma: _idiomaActual });
       localStorage.setItem('fp_nick', nick);
       localStorage.setItem('fp_posiciones', JSON.stringify(posiciones));
     } catch(e) { mostrarError(errEl, traducirErrorAuth(e.code)); }
@@ -1870,20 +1870,188 @@ async function enviarRecuperacion() {
   }
 }
 
-// ═══ MENÚ DE AJUSTES ═══
+// ═══ SISTEMA DE TRADUCCIONES (i18n) ═══
 const IDIOMAS_DISPONIBLES = ['es','en','fr','de','it','pt'];
 let _idiomaActual = 'es'; // se inicializa en initIdioma()
 
+// Diccionario de traducciones. Las claves son identificadores estables.
+// El idioma de fallback es siempre español.
+const I18N = {
+  es: {
+    // Pestañas
+    'tab.ranking': '🏆 Ranking',
+    'tab.partido': '⚽ Partido',
+    'tab.calendario': '📅 Calendario',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 Historial',
+    'tab.perfil': '👤 Perfil',
+    // Header app
+    'header.volver_ligas': '← Ligas',
+    'header.partidos': 'PARTIDOS',
+    // Menú de ajustes
+    'menu.idioma': 'Idioma',
+    'menu.cerrar_sesion': '🚪 Cerrar sesión',
+    // Pantalla de inicio
+    'inicio.iniciar_sesion': 'Iniciar sesión',
+    'inicio.registrarse': 'Regístrate',
+    'inicio.email': 'Correo electrónico',
+    'inicio.contrasena': 'Contraseña',
+    'inicio.entrar': 'Entrar',
+    'inicio.no_cuenta': '¿No tienes cuenta?',
+    'inicio.olvidaste': '¿Olvidaste tu contraseña?',
+    // Mensajes generales
+    'msg.confirmar_cerrar_sesion': '¿Cerrar sesión?',
+  },
+  en: {
+    'tab.ranking': '🏆 Ranking',
+    'tab.partido': '⚽ Match',
+    'tab.calendario': '📅 Calendar',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 History',
+    'tab.perfil': '👤 Profile',
+    'header.volver_ligas': '← Leagues',
+    'header.partidos': 'MATCHES',
+    'menu.idioma': 'Language',
+    'menu.cerrar_sesion': '🚪 Sign out',
+    'inicio.iniciar_sesion': 'Sign in',
+    'inicio.registrarse': 'Sign up',
+    'inicio.email': 'Email',
+    'inicio.contrasena': 'Password',
+    'inicio.entrar': 'Enter',
+    'inicio.no_cuenta': "Don't have an account?",
+    'inicio.olvidaste': 'Forgot your password?',
+    'msg.confirmar_cerrar_sesion': 'Sign out?',
+  },
+  fr: {
+    'tab.ranking': '🏆 Classement',
+    'tab.partido': '⚽ Match',
+    'tab.calendario': '📅 Calendrier',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 Historique',
+    'tab.perfil': '👤 Profil',
+    'header.volver_ligas': '← Ligues',
+    'header.partidos': 'MATCHS',
+    'menu.idioma': 'Langue',
+    'menu.cerrar_sesion': '🚪 Déconnexion',
+    'inicio.iniciar_sesion': 'Connexion',
+    'inicio.registrarse': "S'inscrire",
+    'inicio.email': 'E-mail',
+    'inicio.contrasena': 'Mot de passe',
+    'inicio.entrar': 'Entrer',
+    'inicio.no_cuenta': "Pas de compte ?",
+    'inicio.olvidaste': 'Mot de passe oublié ?',
+    'msg.confirmar_cerrar_sesion': 'Se déconnecter ?',
+  },
+  de: {
+    'tab.ranking': '🏆 Rangliste',
+    'tab.partido': '⚽ Spiel',
+    'tab.calendario': '📅 Kalender',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 Verlauf',
+    'tab.perfil': '👤 Profil',
+    'header.volver_ligas': '← Ligen',
+    'header.partidos': 'SPIELE',
+    'menu.idioma': 'Sprache',
+    'menu.cerrar_sesion': '🚪 Abmelden',
+    'inicio.iniciar_sesion': 'Anmelden',
+    'inicio.registrarse': 'Registrieren',
+    'inicio.email': 'E-Mail',
+    'inicio.contrasena': 'Passwort',
+    'inicio.entrar': 'Eintreten',
+    'inicio.no_cuenta': 'Noch kein Konto?',
+    'inicio.olvidaste': 'Passwort vergessen?',
+    'msg.confirmar_cerrar_sesion': 'Abmelden?',
+  },
+  it: {
+    'tab.ranking': '🏆 Classifica',
+    'tab.partido': '⚽ Partita',
+    'tab.calendario': '📅 Calendario',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 Cronologia',
+    'tab.perfil': '👤 Profilo',
+    'header.volver_ligas': '← Leghe',
+    'header.partidos': 'PARTITE',
+    'menu.idioma': 'Lingua',
+    'menu.cerrar_sesion': '🚪 Esci',
+    'inicio.iniciar_sesion': 'Accedi',
+    'inicio.registrarse': 'Registrati',
+    'inicio.email': 'E-mail',
+    'inicio.contrasena': 'Password',
+    'inicio.entrar': 'Entra',
+    'inicio.no_cuenta': 'Non hai un account?',
+    'inicio.olvidaste': 'Password dimenticata?',
+    'msg.confirmar_cerrar_sesion': 'Uscire?',
+  },
+  pt: {
+    'tab.ranking': '🏆 Classificação',
+    'tab.partido': '⚽ Jogo',
+    'tab.calendario': '📅 Calendário',
+    'tab.admin': '🔧 Admin',
+    'tab.historial': '📋 Histórico',
+    'tab.perfil': '👤 Perfil',
+    'header.volver_ligas': '← Ligas',
+    'header.partidos': 'JOGOS',
+    'menu.idioma': 'Idioma',
+    'menu.cerrar_sesion': '🚪 Sair',
+    'inicio.iniciar_sesion': 'Iniciar sessão',
+    'inicio.registrarse': 'Registar',
+    'inicio.email': 'E-mail',
+    'inicio.contrasena': 'Palavra-passe',
+    'inicio.entrar': 'Entrar',
+    'inicio.no_cuenta': 'Não tem conta?',
+    'inicio.olvidaste': 'Esqueceu a palavra-passe?',
+    'msg.confirmar_cerrar_sesion': 'Terminar sessão?',
+  }
+};
+
+// Devuelve la traducción para una clave en el idioma activo,
+// con fallback a español y, si falta también, a la clave misma.
+function t(clave) {
+  const dic = I18N[_idiomaActual] || I18N.es;
+  if (clave in dic) return dic[clave];
+  if (clave in I18N.es) return I18N.es[clave];
+  return clave;
+}
+
+// Aplica el idioma actual a todos los elementos anotados con data-i18n
+// y data-i18n-placeholder. No toca textos generados dinámicamente
+// (esos usarán t() directamente).
+function aplicarIdioma(codigo) {
+  if (codigo && IDIOMAS_DISPONIBLES.includes(codigo)) {
+    _idiomaActual = codigo;
+  }
+  // Atributo lang del documento (mejora accesibilidad)
+  try { document.documentElement.lang = _idiomaActual; } catch(e) {}
+  // Texto interior
+  document.querySelectorAll('[data-i18n]').forEach(el => {
+    const clave = el.getAttribute('data-i18n');
+    el.textContent = t(clave);
+  });
+  // Placeholders de inputs
+  document.querySelectorAll('[data-i18n-placeholder]').forEach(el => {
+    const clave = el.getAttribute('data-i18n-placeholder');
+    el.setAttribute('placeholder', t(clave));
+  });
+  // Atributo title
+  document.querySelectorAll('[data-i18n-title]').forEach(el => {
+    const clave = el.getAttribute('data-i18n-title');
+    el.setAttribute('title', t(clave));
+  });
+  // Código mostrado al lado del ⚙️
+  document.querySelectorAll('.lang-code').forEach(el => {
+    el.textContent = _idiomaActual.toUpperCase();
+  });
+}
+
+// ═══ MENÚ DE AJUSTES ═══
 function toggleMenuAjustes(menuId, ev) {
   if (ev) ev.stopPropagation();
   const menu = document.getElementById(menuId);
   if (!menu) return;
   const yaAbierto = menu.classList.contains('open');
-  // cerrar todos los menús abiertos
   document.querySelectorAll('.menu-ajustes.open').forEach(m => m.classList.remove('open'));
   if (!yaAbierto) {
     menu.classList.add('open');
-    // marcar idioma activo
     menu.querySelectorAll('.menu-item[data-idioma]').forEach(it => {
       it.classList.toggle('activo', it.dataset.idioma === _idiomaActual);
     });
@@ -1894,27 +2062,69 @@ function cerrarMenuAjustes() {
   document.querySelectorAll('.menu-ajustes.open').forEach(m => m.classList.remove('open'));
 }
 
-function cambiarIdioma(codigo) {
+async function cambiarIdioma(codigo) {
   if (!IDIOMAS_DISPONIBLES.includes(codigo)) return;
-  _idiomaActual = codigo;
-  try { localStorage.setItem('fp_idioma', codigo); } catch(e) {}
-  // actualizar el código mostrado al lado del ⚙️
-  document.querySelectorAll('.lang-code').forEach(el => {
-    el.textContent = codigo.toUpperCase();
-  });
+  aplicarIdioma(codigo);
   cerrarMenuAjustes();
-  // TODO (paso 3): aplicar traducciones al DOM con aplicarIdioma(codigo)
-  // TODO (paso 3): persistir en /usuarios/{uid}.idioma cuando haya sesión
+  // Persistencia local
+  try { localStorage.setItem('fp_idioma', codigo); } catch(e) {}
+  // Persistencia en Firestore si hay usuario logueado
+  const uid = usuarioActual?.uid;
+  const db = fbDb();
+  if (uid && db) {
+    try {
+      await db.collection('usuarios').doc(uid).set({ idioma: codigo }, { merge: true });
+    } catch(e) { console.warn('No se pudo persistir idioma en Firestore', e); }
+  }
 }
 
+// Detecta el idioma del navegador y devuelve uno de los soportados, o null.
+function detectarIdiomaNavegador() {
+  try {
+    const langs = (navigator.languages && navigator.languages.length)
+      ? navigator.languages
+      : [navigator.language || ''];
+    for (const l of langs) {
+      const corto = String(l).slice(0, 2).toLowerCase();
+      if (IDIOMAS_DISPONIBLES.includes(corto)) return corto;
+    }
+  } catch(e) {}
+  return null;
+}
+
+// Inicialización del idioma al cargar la app.
+// Orden de prioridad: localStorage → navegador → español.
+// Si después detectamos que hay sesión, sobrescribimos con el idioma de Firestore.
 function initIdioma() {
-  let guardado = null;
-  try { guardado = localStorage.getItem('fp_idioma'); } catch(e) {}
-  const codigo = (guardado && IDIOMAS_DISPONIBLES.includes(guardado)) ? guardado : 'es';
-  _idiomaActual = codigo;
-  document.querySelectorAll('.lang-code').forEach(el => {
-    el.textContent = codigo.toUpperCase();
-  });
+  let codigo = null;
+  try {
+    const guardado = localStorage.getItem('fp_idioma');
+    if (guardado && IDIOMAS_DISPONIBLES.includes(guardado)) codigo = guardado;
+  } catch(e) {}
+  if (!codigo) codigo = detectarIdiomaNavegador();
+  if (!codigo) codigo = 'es';
+  aplicarIdioma(codigo);
+}
+
+// Llamado desde iniciarListenerAuth cuando hay usuario logueado:
+// trae el idioma de Firestore y, si difiere del actual, lo aplica.
+async function sincronizarIdiomaUsuario(uid) {
+  if (!uid) return;
+  const db = fbDb();
+  if (!db) return;
+  try {
+    const snap = await db.collection('usuarios').doc(uid).get();
+    if (snap.exists) {
+      const idiomaRemoto = snap.data().idioma;
+      if (idiomaRemoto && IDIOMAS_DISPONIBLES.includes(idiomaRemoto) && idiomaRemoto !== _idiomaActual) {
+        aplicarIdioma(idiomaRemoto);
+        try { localStorage.setItem('fp_idioma', idiomaRemoto); } catch(e) {}
+      } else if (!idiomaRemoto) {
+        // Si el usuario no tiene idioma en Firestore, guardamos el actual como suyo
+        try { await db.collection('usuarios').doc(uid).set({ idioma: _idiomaActual }, { merge: true }); } catch(e) {}
+      }
+    }
+  } catch(e) { console.warn('sincronizarIdiomaUsuario fallback', e); }
 }
 
 // Cerrar el menú al hacer click fuera o pulsar Escape
@@ -1933,7 +2143,7 @@ if (document.readyState === 'loading') {
 }
 
 async function cerrarSesion() {
-  if (!confirm('¿Cerrar sesión?')) return;
+  if (!confirm(t('msg.confirmar_cerrar_sesion'))) return;
   const auth = fbAuth();
   if (auth) await auth.signOut();
   usuarioActual = null;
@@ -2031,6 +2241,8 @@ function iniciarListenerAuth() {
       const nick = await getNickUsuario(user.uid);
       const emailEl = document.getElementById('auth-user-email');
       if (emailEl) emailEl.textContent = nick ? `${nick} · ${user.email}` : user.email;
+      // Sincronizar el idioma preferido del usuario con Firestore
+      sincronizarIdiomaUsuario(user.uid);
       mostrarVista('ligas');
       await renderPantallaInicio();
     } else {
