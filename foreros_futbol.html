@@ -2104,7 +2104,6 @@ async function crearLiga() {
   if (!nick && usuarioActual?.email) {
     nick = usuarioActual.email.split('@')[0].toUpperCase();
   }
-  console.log('[crearLiga] uid:', uid, 'nick:', nick, 'usuarioActual:', usuarioActual);
 
   const ligas = await getLigasIndex();
   if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
@@ -2123,7 +2122,6 @@ async function crearLiga() {
   if (nick) {
     const posiciones = await getPosicionesUsuario(uid);
     const jugadorCreador = construirJugadorDesdeUsuario(nick, uid, posiciones, 1);
-    console.log('[crearLiga] añadiendo jugador creador:', jugadorCreador);
     jugadoresIniciales.push(jugadorCreador);
   } else {
     console.warn('[crearLiga] No se pudo determinar nick; la liga se crea SIN el creador como jugador');
@@ -2132,7 +2130,7 @@ async function crearLiga() {
   const estadoInicial = {
     jugadores: jugadoresIniciales, partido: null, historial: [], partidos_jugados: [],
     config: { partidos: 0, password: passAdmin, campo: '', hora: '', precio: '', diaSemana: 1 },
-    adminLoggedIn: false, _nuevaTemporada2025: true,
+    adminLoggedIn: false,
     adminUid: uid || null
   };
 
@@ -2188,7 +2186,6 @@ async function unirseConCodigo() {
   if (!nickPerfil && usuarioActual?.email) {
     nickPerfil = usuarioActual.email.split('@')[0].toUpperCase();
   }
-  console.log('[unirseConCodigo] uid:', uid, 'nickPerfil:', nickPerfil);
 
   if (uid && nickPerfil && db) {
     try {
@@ -2308,7 +2305,7 @@ async function cargar() {
   state = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
     config: { partidos: 0, password: 'foreros2025', campo: '', hora: '', precio: '', diaSemana: 1 },
-    adminLoggedIn: false, _nuevaTemporada2025: true
+    adminLoggedIn: false
   };
 
   const db = fbDb();
@@ -2342,7 +2339,6 @@ async function cargar() {
 // ── Guardar estado de liga ──
 async function guardar() {
   if (!ligaActual) return;
-  state._nuevaTemporada2025 = true;
   _statsCache = null;
   const datos = { ...state };
   delete datos.adminLoggedIn;
@@ -3424,7 +3420,6 @@ function resetTemporada() {
   state.historial = [];
   state.partidos_jugados = [];
   state.config.partidos = 0;
-  state._nuevaTemporada2025 = true;
   guardar();
   notif('✅ Temporada reiniciada. ¡Empieza desde cero!');
   renderAdmin();
