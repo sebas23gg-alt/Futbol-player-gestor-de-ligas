@@ -2429,7 +2429,23 @@ async function entrarLiga(id) {
   // Mostrar modal de registro si no tiene perfil en esta liga
   const perfilKey = `futbolplayer_perfil_${id}`;
   const perfilGuardado = localStorage.getItem(perfilKey);
-  if (!perfilGuardado) {
+
+  // Si el usuario está autenticado y ya figura como jugador (vinculado por uid),
+  // saltamos el modal y guardamos el perfil local automáticamente.
+  const uidActual = usuarioActual?.uid;
+  const yaSoyJugador = uidActual
+    ? (state.jugadores || []).find(j => j.uid === uidActual)
+    : null;
+
+  if (yaSoyJugador) {
+    if (!perfilGuardado) {
+      const perfilAuto = {
+        nombre: yaSoyJugador.nombre,
+        posiciones: yaSoyJugador.posiciones || []
+      };
+      localStorage.setItem(perfilKey, JSON.stringify(perfilAuto));
+    }
+  } else if (!perfilGuardado) {
     setTimeout(() => abrirModalRegistro(), 400);
   }
 }
