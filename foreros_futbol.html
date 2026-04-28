@@ -2099,7 +2099,12 @@ async function crearLiga() {
   if (!nombre) { notifInicio('Escribe un nombre para la liga', 'error'); return; }
 
   const uid  = usuarioActual?.uid;
-  const nick = await getNickUsuario(uid);
+  let nick = await getNickUsuario(uid);
+  // Fallback: si no se obtuvo nick (timing de Firestore, primera carga), usar la parte local del email
+  if (!nick && usuarioActual?.email) {
+    nick = usuarioActual.email.split('@')[0].toUpperCase();
+  }
+  console.log('[crearLiga] uid:', uid, 'nick:', nick, 'usuarioActual:', usuarioActual);
 
   const ligas = await getLigasIndex();
   if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
@@ -2117,7 +2122,11 @@ async function crearLiga() {
   const jugadoresIniciales = [];
   if (nick) {
     const posiciones = await getPosicionesUsuario(uid);
-    jugadoresIniciales.push(construirJugadorDesdeUsuario(nick, uid, posiciones, 1));
+    const jugadorCreador = construirJugadorDesdeUsuario(nick, uid, posiciones, 1);
+    console.log('[crearLiga] añadiendo jugador creador:', jugadorCreador);
+    jugadoresIniciales.push(jugadorCreador);
+  } else {
+    console.warn('[crearLiga] No se pudo determinar nick; la liga se crea SIN el creador como jugador');
   }
 
   const estadoInicial = {
@@ -2132,6 +2141,9 @@ async function crearLiga() {
     try {
       await db.collection('ligas').doc(id).set(nuevaLiga);
       await db.collection('ligas').doc(id).collection('data').doc('state').set(estadoInicial);
+      // También guardamos copia local para que renderPantallaInicio muestre stats correctas
+      const datosLocal = { ...estadoInicial }; delete datosLocal.adminLoggedIn;
+      localStorage.setItem(getLigaKey(id), JSON.stringify(datosLocal));
     } catch(e) {
       console.warn('Firebase crearLiga fallback', e);
       localStorage.setItem(getLigaKey(id), JSON.stringify(estadoInicial));
@@ -2172,7 +2184,11 @@ async function unirseConCodigo() {
 
   // ── Añadir al usuario como jugador (D1) ──
   const uid = usuarioActual?.uid || null;
-  const nickPerfil = await getNickUsuario(uid);
+  let nickPerfil = await getNickUsuario(uid);
+  if (!nickPerfil && usuarioActual?.email) {
+    nickPerfil = usuarioActual.email.split('@')[0].toUpperCase();
+  }
+  console.log('[unirseConCodigo] uid:', uid, 'nickPerfil:', nickPerfil);
 
   if (uid && nickPerfil && db) {
     try {
@@ -2181,10 +2197,10 @@ async function unirseConCodigo() {
       const stateData = stateSnap.exists ? stateSnap.data() : null;
       const jugadores = (stateData && Array.isArray(stateData.jugadores)) ? stateData.jugadores : [];
 
-      // ¿Ya estoy unido? → mensaje "Ya estás en esta liga"
+      // ¿Ya estoy unido? → aviso y entrada directa
       const yaSoyJugador = jugadores.find(j => j.uid === uid);
       if (yaSoyJugador) {
-        notifInicio(`Ya estás en la liga "${liga.nombre}"`);
+        alert(`Ya estás en la liga "${liga.nombre}"`);
       } else {
         // Determinar nick a usar (puede pedirse cambio si choca)
         let nickFinal = nickPerfil;
