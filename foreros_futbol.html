@@ -1981,6 +1981,40 @@ async function getNickUsuario(uid) {
   return localStorage.getItem('fp_nick') || null;
 }
 
+async function getPosicionesUsuario(uid) {
+  const db = fbDb();
+  if (db && uid) {
+    try {
+      const snap = await db.collection('usuarios').doc(uid).get();
+      if (snap.exists && Array.isArray(snap.data().posiciones)) {
+        return snap.data().posiciones;
+      }
+    } catch(e) {}
+  }
+  try {
+    const local = JSON.parse(localStorage.getItem('fp_posiciones') || '[]');
+    return Array.isArray(local) ? local : [];
+  } catch(e) { return []; }
+}
+
+// Construye un objeto jugador a partir de los datos del usuario actual
+// para usarlo cuando alguien se une o crea una liga.
+function construirJugadorDesdeUsuario(nick, uid, posiciones, idExistente) {
+  const posArr = Array.isArray(posiciones) ? posiciones : [];
+  const portero = posArr.includes('portero');
+  return {
+    id: idExistente,
+    nombre: nick,
+    puntos: 0,
+    totales: 0,
+    portero,
+    sancionado: false,
+    posicion: posArr[0] || (portero ? 'portero' : ''),
+    posiciones: posArr,
+    uid: uid || null
+  };
+}
+
 function iniciarListenerAuth() {
   // Asegurar que la pantalla de inicio es visible
   document.getElementById('pantalla-inicio').style.display = 'flex';
@@ -2079,8 +2113,15 @@ async function crearLiga() {
   // Contraseña de admin = uid del usuario (o código si no hay auth)
   const passAdmin = uid || codigo;
 
+  // Añadir al creador como jugador inicial (D3)
+  const jugadoresIniciales = [];
+  if (nick) {
+    const posiciones = await getPosicionesUsuario(uid);
+    jugadoresIniciales.push(construirJugadorDesdeUsuario(nick, uid, posiciones, 1));
+  }
+
   const estadoInicial = {
-    jugadores: [], partido: null, historial: [], partidos_jugados: [],
+    jugadores: jugadoresIniciales, partido: null, historial: [], partidos_jugados: [],
     config: { partidos: 0, password: passAdmin, campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false, _nuevaTemporada2025: true,
     adminUid: uid || null
@@ -2128,6 +2169,93 @@ async function unirseConCodigo() {
   }
 
   if (!liga) { notifInicio('Código no encontrado', 'error'); return; }
+
+  // ── Añadir al usuario como jugador (D1) ──
+  const uid = usuarioActual?.uid || null;
+  const nickPerfil = await getNickUsuario(uid);
+
+  if (uid && nickPerfil && db) {
+    try {
+      const stateRef = db.collection('ligas').doc(liga.id).collection('data').doc('state');
+      const stateSnap = await stateRef.get();
+      const stateData = stateSnap.exists ? stateSnap.data() : null;
+      const jugadores = (stateData && Array.isArray(stateData.jugadores)) ? stateData.jugadores : [];
+
+      // ¿Ya estoy unido? → mensaje "Ya estás en esta liga"
+      const yaSoyJugador = jugadores.find(j => j.uid === uid);
+      if (yaSoyJugador) {
+        notifInicio(`Ya estás en la liga "${liga.nombre}"`);
+      } else {
+        // Determinar nick a usar (puede pedirse cambio si choca)
+        let nickFinal = nickPerfil;
+        let jugadorNuevo = null;
+
+        while (true) {
+          const existe = jugadores.find(j => j.nombre.toLowerCase() === nickFinal.toLowerCase());
+
+          if (!existe) {
+            // Caso A: nick libre → me añado directamente
+            const posiciones = await getPosicionesUsuario(uid);
+            const newId = Math.max(0, ...jugadores.map(j => j.id || 0)) + 1;
+            jugadorNuevo = construirJugadorDesdeUsuario(nickFinal, uid, posiciones, newId);
+            jugadores.push(jugadorNuevo);
+            break;
+          }
+
+          if (existe.uid && existe.uid !== uid) {
+            // Caso C: ya hay un jugador con ese nick vinculado a otra cuenta → forzar cambio
+            const nuevo = prompt(
+              `Ya existe un jugador llamado "${nickFinal}" en esta liga vinculado a otra cuenta.\n\nElige un nick distinto para esta liga:`,
+              ''
+            );
+            if (!nuevo || !nuevo.trim()) {
+              notifInicio('Te has unido a la liga sin asignar nick. Pide al admin que te añada manualmente.', 'error');
+              break;
+            }
+            nickFinal = nuevo.trim().toUpperCase();
+            continue;
+          }
+
+          if (!existe.uid) {
+            // Caso B: existe sin cuenta vinculada → ¿eres tú?
+            const soyYo = confirm(
+              `Ya existe un jugador llamado "${nickFinal}" en esta liga.\n\n¿Eres tú? (acepta para vincular tu cuenta a ese jugador)`
+            );
+            if (soyYo) {
+              // Vincular: añadir uid al jugador existente, conservar puntos/historial
+              existe.uid = uid;
+              jugadorNuevo = existe; // marcar para reseñar
+              break;
+            } else {
+              const nuevo = prompt('Elige un nick distinto para esta liga:', '');
+              if (!nuevo || !nuevo.trim()) {
+                notifInicio('Te has unido a la liga sin asignar nick. Pide al admin que te añada manualmente.', 'error');
+                break;
+              }
+              nickFinal = nuevo.trim().toUpperCase();
+              continue;
+            }
+          }
+
+          // existe.uid === uid → ya cubierto antes con yaSoyJugador, pero por seguridad
+          break;
+        }
+
+        // Si conseguimos crear/vincular jugador, guardamos el state actualizado
+        if (jugadorNuevo) {
+          try {
+            await stateRef.update({ jugadores });
+          } catch(e) {
+            // Si el documento no tenía el campo o falló update, intentar set parcial
+            try { await stateRef.set({ jugadores }, { merge: true }); }
+            catch(e2) { console.warn('No se pudo guardar el jugador en la liga', e2); }
+          }
+        }
+      }
+    } catch(e) {
+      console.warn('Error gestionando alta automática como jugador', e);
+    }
+  }
 
   const ligas = await getLigasIndex();
   if (!ligas.find(l => l.id === liga.id)) { ligas.push(liga); await saveLigasIndex(ligas); }
@@ -3228,10 +3356,22 @@ function confirmarEliminar(id) {
   const j = state.jugadores.find(x => x.id === id);
   if (!j) return;
   if (!confirm(`¿Eliminar a ${j.nombre}? No se puede deshacer.`)) return;
+  const uidJugador = j.uid || null;
   state.jugadores = state.jugadores.filter(x => x.id !== id);
   registrarHistorial(`🗑 Jugador eliminado: ${j.nombre}`);
   guardar(); renderGestionJugadores(); renderRanking();
   notif(`${j.nombre} eliminado`);
+
+  // D5: si el jugador tenía cuenta vinculada, también le quitamos la liga
+  // de su lista personal en /usuarios/{uid}/ligas/{ligaId}
+  if (uidJugador && ligaActual) {
+    const db = fbDb();
+    if (db) {
+      db.collection('usuarios').doc(uidJugador)
+        .collection('ligas').doc(ligaActual).delete()
+        .catch(e => console.warn('No se pudo desvincular la liga del usuario', e));
+    }
+  }
 }
 
 function resetPuntos() {
