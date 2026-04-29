@@ -1617,11 +1617,12 @@ window.addEventListener('error', function(e) {
       <!-- Nick -->
       <div class="form-group">
         <label>Nick</label>
-        <div style="display:flex;align-items:center;gap:10px;">
-          <input type="text" id="perfilNick" disabled
-            style="flex:1;background:#1a1a1a;border:1px solid #222;border-radius:8px;padding:10px 14px;color:#666;font-family:'DM Sans',sans-serif;font-size:0.9rem;">
-          <span style="font-size:0.72rem;color:#444;">Solo el admin puede cambiarlo</span>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
+          <input type="text" id="perfilNick" maxlength="20"
+            style="flex:1;min-width:160px;background:#1a1a1a;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#eee;font-family:'DM Sans',sans-serif;font-size:0.9rem;">
+          <button class="btn btn-azul" onclick="guardarNickGlobal()" style="padding:8px 14px;font-size:0.85rem;">Guardar nick</button>
         </div>
+        <p style="font-size:0.72rem;color:#555;margin-top:6px;">Tu nick es el nombre con el que apareces en las ligas. Si lo cambias, podrás aplicarlo también a las ligas en las que estás.</p>
       </div>
 
       <!-- Email -->
@@ -2339,7 +2340,14 @@ async function crearLiga() {
 
   const id     = 'liga_' + Date.now();
   const codigo = generarCodigo();
-  const nuevaLiga = { id, nombre, codigo, creada: new Date().toLocaleDateString('es-ES'), adminUid: uid || null };
+  // Usamos adminUids[] (plural) y mantenemos adminUid (singular) por
+  // retrocompatibilidad con versiones viejas de la app que aún lean ese campo.
+  const nuevaLiga = {
+    id, nombre, codigo,
+    creada: new Date().toLocaleDateString('es-ES'),
+    adminUid: uid || null,
+    adminUids: uid ? [uid] : []
+  };
 
   // Añadir al creador como jugador inicial (D3)
   const jugadoresIniciales = [];
@@ -2365,7 +2373,8 @@ async function crearLiga() {
     jugadores: jugadoresIniciales, partido: null, historial: historialInicial, partidos_jugados: [],
     config: { partidos: 0, campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false,
-    adminUid: uid || null
+    adminUid: uid || null,
+    adminUids: uid ? [uid] : []
   };
 
   const db = fbDb();
@@ -2512,23 +2521,99 @@ async function unirseConCodigo() {
 }
 
 // ── Eliminar liga ──
+// ── Eliminar liga (solo admin, doble confirmación) ──
 async function eliminarLiga(id) {
   const ligas = await getLigasIndex();
   const liga  = ligas.find(l => l.id === id);
   if (!liga) return;
-  if (!confirm(`¿Eliminar la liga "${liga.nombre}"?\n\nSe borrarán todos sus datos. No se puede deshacer.`)) return;
+
+  // Verificación de rol: solo admin puede eliminar
+  let adminUidsLiga = getAdminUids(liga);
+  if (adminUidsLiga.length === 0) {
+    // Fallback a state local (ligas viejas sin adminUids en metadata)
+    try {
+      const raw = localStorage.getItem(getLigaKey(id));
+      if (raw) adminUidsLiga = getAdminUids(JSON.parse(raw));
+    } catch {}
+  }
+  if (!usuarioActual || !adminUidsLiga.includes(usuarioActual.uid)) {
+    alert('Solo los admins pueden eliminar la liga.');
+    return;
+  }
+
+  // Doble confirmación
+  if (!confirm(`¿Eliminar la liga "${liga.nombre}"?\n\nSe borrarán TODOS sus datos. Esta acción es PERMANENTE y no se puede deshacer.`)) return;
+  if (!confirm(`Última confirmación.\n\n¿Borrar definitivamente "${liga.nombre}"?`)) return;
 
   const db = fbDb();
   if (db) {
     try {
       await db.collection('ligas').doc(id).collection('data').doc('state').delete();
       await db.collection('ligas').doc(id).delete();
-    } catch(e) { console.warn('Firebase eliminarLiga', e); }
+    } catch(e) {
+      console.warn('Firebase eliminarLiga', e);
+      notifInicio('Error al eliminar la liga', 'error');
+      return;
+    }
   }
   localStorage.removeItem(getLigaKey(id));
   await saveLigasIndex(ligas.filter(l => l.id !== id));
   await renderPantallaInicio();
   notifInicio(`Liga "${liga.nombre}" eliminada`);
+}
+
+// ── Salir de una liga (jugador, no admin) ──
+// Se elimina al usuario del array state.jugadores y se desvincula la liga
+// de su lista personal /usuarios/{uid}/ligas/{ligaId}.
+async function salirDeLiga(id) {
+  const ligas = await getLigasIndex();
+  const liga  = ligas.find(l => l.id === id);
+  if (!liga) return;
+
+  // Verificación de rol: si eres admin, NO puedes salir directamente
+  let adminUidsLiga = getAdminUids(liga);
+  if (adminUidsLiga.length === 0) {
+    try {
+      const raw = localStorage.getItem(getLigaKey(id));
+      if (raw) adminUidsLiga = getAdminUids(JSON.parse(raw));
+    } catch {}
+  }
+  if (usuarioActual && adminUidsLiga.includes(usuarioActual.uid)) {
+    if (adminUidsLiga.length === 1) {
+      alert('Eres el único admin de esta liga. Para salir, primero promueve a otro jugador como admin desde el panel admin.');
+    } else {
+      alert('Eres admin de esta liga. Para salir, primero quítate el rol de admin desde la pestaña Admin → Gestión de jugadores.');
+    }
+    return;
+  }
+
+  if (!confirm(`¿Salir de la liga "${liga.nombre}"?\n\nTus datos en esta liga (puntos, historial) se perderán. Si quieres volver, tendrás que unirte de nuevo con el código.`)) return;
+
+  // Eliminar al usuario del state.jugadores en Firestore
+  const db = fbDb();
+  const uid = usuarioActual?.uid;
+  if (db && uid) {
+    try {
+      const stateRef = db.collection('ligas').doc(id).collection('data').doc('state');
+      const snap = await stateRef.get();
+      if (snap.exists) {
+        const data = snap.data();
+        const jugadores = (data.jugadores || []).filter(j => j.uid !== uid);
+        await stateRef.update({ jugadores });
+      }
+      // Desvincular la liga del usuario
+      await db.collection('usuarios').doc(uid).collection('ligas').doc(id).delete();
+    } catch(e) {
+      console.warn('Firebase salirDeLiga', e);
+      notifInicio('Error al salir de la liga', 'error');
+      return;
+    }
+  }
+
+  localStorage.removeItem(getLigaKey(id));
+  await saveLigasIndex(ligas.filter(l => l.id !== id));
+  await renderPantallaInicio();
+  notifInicio(`Has salido de la liga "${liga.nombre}"`);
 }
 
 // ── Cargar estado de liga + suscripción en tiempo real ──
@@ -2602,6 +2687,8 @@ function _migrarConfig() {
   if (state.config.hora      === undefined) state.config.hora      = '';
   if (state.config.precio    === undefined) state.config.precio    = '';
   if (state.config.diaSemana === undefined) state.config.diaSemana = 1;
+  // Migrar adminUid (singular) → adminUids[] (plural)
+  migrarAdminUidsEnState();
 }
 
 function _refrescarVista() {
@@ -2776,6 +2863,24 @@ async function renderPantallaInicio() {
       ? `<span style="color:rgba(255,255,255,0.4);font-size:0.7rem;margin-left:6px;">⚪${victorias.blanco} 🔴${victorias.rojo} 🤝${victorias.empate}</span>`
       : '';
     const codigo = l.codigo || '——';
+    // Determinar rol del usuario en esta liga: admin o jugador.
+    // Para detectar admin podemos mirar el campo adminUids/adminUid del
+    // documento de liga (metadata), pero si las versiones viejas solo lo
+    // tienen en state, hacemos fallback al state local cacheado.
+    let esAdminAqui = false;
+    try {
+      const adminUidsLiga = getAdminUids(l);
+      if (adminUidsLiga.length === 0) {
+        // Liga vieja sin adminUids/adminUid en metadata: leer del state local
+        const e = raw ? JSON.parse(raw) : null;
+        esAdminAqui = e ? esAdminActual(e) : false;
+      } else {
+        esAdminAqui = !!usuarioActual && adminUidsLiga.includes(usuarioActual.uid);
+      }
+    } catch { esAdminAqui = false; }
+    const botonAccion = esAdminAqui
+      ? `<button onclick="eliminarLiga('${l.id}')" style="background:none;border:none;color:rgba(231,76,60,0.5);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;" title="Eliminar liga (solo admin)">🗑</button>`
+      : `<button onclick="salirDeLiga('${l.id}')" style="background:none;border:none;color:rgba(255,255,255,0.25);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;" title="Salir de la liga">🚪</button>`;
     return `
       <div style="background:rgba(20,20,20,0.88);border:1px solid rgba(255,255,255,0.1);border-radius:14px;padding:16px;margin-bottom:10px;backdrop-filter:blur(8px);">
         <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
@@ -2783,7 +2888,7 @@ async function renderPantallaInicio() {
             <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:#f5a623;line-height:1;">${l.nombre}</div>
             <div style="font-size:0.72rem;color:rgba(255,255,255,0.3);margin-top:3px;">${jugadores} jugadores · ${partidos} partidos · creada ${l.creada}${statsHtml}</div>
           </div>
-          <button onclick="eliminarLiga('${l.id}')" style="background:none;border:none;color:rgba(255,255,255,0.2);cursor:pointer;font-size:1rem;padding:4px;flex-shrink:0;" title="Eliminar liga">🗑</button>
+          ${botonAccion}
         </div>
         <div style="display:flex;gap:8px;align-items:center;">
           <button onclick="entrarLiga('${l.id}')" style="flex:1;background:var(--verde);border:none;border-radius:8px;padding:10px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;font-weight:700;cursor:pointer;letter-spacing:.3px;">
@@ -2853,6 +2958,79 @@ async function renderPerfil() {
   document.getElementById('perfilNewPass').value  = '';
   document.getElementById('perfilConfPass').value = '';
   document.getElementById('perfilPassError').style.display = 'none';
+}
+
+// Guarda el nick global del usuario y, si tiene ligas vinculadas,
+// ofrece propagarlo a todas (saltando las que tengan conflicto de nick).
+async function guardarNickGlobal() {
+  const user = usuarioActual;
+  if (!user) return;
+  const input = document.getElementById('perfilNick');
+  const nuevo = (input.value || '').trim();
+  if (nuevo.length < 2) { notif('El nick debe tener al menos 2 caracteres', 'error'); return; }
+
+  // Guardar localmente y en Firestore (perfil)
+  localStorage.setItem('fp_nick', nuevo);
+  const db = fbDb();
+  if (db) {
+    try { await db.collection('usuarios').doc(user.uid).update({ nick: nuevo }); }
+    catch(e) { console.warn('guardarNickGlobal Firestore error', e); }
+  }
+
+  // Buscar las ligas en las que el usuario participa
+  let ligas = [];
+  try { ligas = await getLigasIndex(); } catch(e) {}
+  if (ligas.length === 0) {
+    notif('Nick actualizado');
+    return;
+  }
+
+  // Preguntar si quiere propagar a las ligas
+  const propagar = confirm(`Nick guardado en tu perfil.\n\n¿Aplicarlo también a las ${ligas.length} liga(s) en las que estás?\n\nAceptar = aplicar a todas.\nCancelar = solo en el perfil.`);
+  if (!propagar) {
+    notif('Nick actualizado solo en el perfil');
+    return;
+  }
+
+  // Propagar: en cada liga, buscar el jugador con tu uid y cambiarle el nombre.
+  // Si en esa liga ya existe otro jugador con el nuevo nick, saltar y avisar.
+  const conflictos = [];
+  let aplicadas = 0;
+  if (db) {
+    for (const liga of ligas) {
+      try {
+        const stateRef = db.collection('ligas').doc(liga.id).collection('data').doc('state');
+        const snap = await stateRef.get();
+        if (!snap.exists) continue;
+        const data = snap.data();
+        const jugadores = Array.isArray(data.jugadores) ? data.jugadores : [];
+        const yo = jugadores.find(j => j.uid === user.uid);
+        if (!yo) continue;
+        if (yo.nombre === nuevo) { aplicadas++; continue; } // ya estaba
+
+        // ¿Hay otro jugador con ese nombre en la liga?
+        const choca = jugadores.find(j => j.uid !== user.uid && j.nombre.toLowerCase() === nuevo.toLowerCase());
+        if (choca) { conflictos.push(liga.nombre); continue; }
+
+        const nuevosJugadores = jugadores.map(j =>
+          j.uid === user.uid ? { ...j, nombre: nuevo } : j
+        );
+        await stateRef.update({ jugadores: nuevosJugadores });
+        aplicadas++;
+      } catch(e) {
+        console.warn('guardarNickGlobal propagación error', liga.id, e);
+      }
+    }
+  }
+
+  // Resumen al usuario
+  let msg = `Nick aplicado en ${aplicadas} liga(s).`;
+  if (conflictos.length) msg += `\nSaltadas por conflicto de nick: ${conflictos.join(', ')}.`;
+  alert(msg);
+
+  // Actualizar el header (email/nick)
+  const emailEl = document.getElementById('auth-user-email');
+  if (emailEl) emailEl.textContent = `${nuevo} · ${user.email}`;
 }
 
 async function guardarPerfil() {
@@ -2988,8 +3166,8 @@ function showTab(name, el) {
   if (name === 'partido') renderPartido();
   if (name === 'calendario') renderCalendario();
   if (name === 'admin') {
-    // Auto-login si el usuario autenticado es el admin de la liga
-    if (usuarioActual && state.adminUid && usuarioActual.uid === state.adminUid && !state.adminLoggedIn) {
+    // Auto-login si el usuario autenticado es admin de la liga
+    if (esAdminActual(state) && !state.adminLoggedIn) {
       state.adminLoggedIn = true;
       document.getElementById('admin-login').style.display = 'none';
       document.getElementById('admin-panel').style.display = 'block';
@@ -3225,16 +3403,48 @@ function confirmarBaja() {
 // ═══════════════════════════════════════════════
 //  ADMIN
 // ═══════════════════════════════════════════════
-// El acceso admin se basa exclusivamente en el UID del usuario autenticado
-// vs state.adminUid de la liga. Ya no hay contraseña de admin.
+// El acceso admin se basa en si tu UID está en state.adminUids[]
+// (o en state.adminUid para retrocompatibilidad con ligas viejas).
+// Ya no hay contraseña de admin.
+
+// Devuelve el array de UIDs de admins de una liga, normalizando ligas
+// viejas que solo tienen el campo singular adminUid.
+function getAdminUids(stateOrLiga) {
+  if (!stateOrLiga) return [];
+  if (Array.isArray(stateOrLiga.adminUids)) return stateOrLiga.adminUids.filter(Boolean);
+  if (stateOrLiga.adminUid) return [stateOrLiga.adminUid];
+  return [];
+}
+
+// ¿El usuario actual es admin de la liga cuyos datos pasamos?
+function esAdminActual(stateOrLiga) {
+  const uid = usuarioActual?.uid;
+  if (!uid) return false;
+  return getAdminUids(stateOrLiga).includes(uid);
+}
+
+// Migración silenciosa: si el state tiene adminUid (singular) pero no
+// adminUids (plural), lo convierte. Devuelve true si modificó algo.
+function migrarAdminUidsEnState() {
+  if (!state) return false;
+  const tieneArray = Array.isArray(state.adminUids);
+  const tieneLegacy = !!state.adminUid;
+  if (tieneArray && state.adminUids.length > 0) return false;
+  if (tieneLegacy) {
+    state.adminUids = [state.adminUid];
+    return true;
+  }
+  return false;
+}
+
 function loginAdmin() {
-  if (usuarioActual && state.adminUid && usuarioActual.uid === state.adminUid) {
+  if (esAdminActual(state)) {
     state.adminLoggedIn = true;
     document.getElementById('admin-login').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
     renderAdmin();
   }
-  // Si no eres el admin, simplemente se queda mostrando el mensaje informativo.
+  // Si no eres admin, simplemente se queda mostrando el mensaje informativo.
 }
 
 function logoutAdmin() {
@@ -3499,6 +3709,7 @@ function renderGestionJugadores() {
         ${j.sancionado ? '<span title="Sancionado" style="color:var(--rojo);font-size:0.8rem;">🚫</span>' : ''}
         <span style="font-size:0.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.nombre}</span>
         ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;">POR</span>' : ''}
+        ${j.uid && getAdminUids(state).includes(j.uid) ? '<span title="Admin de la liga" style="background:#c9910a;color:#fff;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;font-weight:700;">ADMIN</span>' : ''}
       </div>
 
       <!-- Puntos actuales: editable + +/- -->
@@ -3537,6 +3748,13 @@ function renderGestionJugadores() {
 
       <!-- Acciones -->
       <div style="display:flex;gap:4px;">
+        ${j.uid ? (
+          getAdminUids(state).includes(j.uid)
+            ? `<button onclick="quitarAdmin('${j.uid}', ${j.id})" title="Quitar admin"
+                style="background:#1a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">⭐</button>`
+            : `<button onclick="promoverAdmin('${j.uid}', ${j.id})" title="Promover a admin"
+                style="background:#3a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">☆</button>`
+        ) : ''}
         <button onclick="toggleSancion(${j.id})" title="${j.sancionado?'Levantar sanción':'Sancionar'}"
           style="background:${j.sancionado?'#1a7a3c':'#5a1010'};border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">
           ${j.sancionado ? '✅' : '🚫'}
@@ -3546,6 +3764,76 @@ function renderGestionJugadores() {
       </div>
     </div>
   `).join('')}`;
+}
+
+// Promueve a un jugador (con cuenta vinculada) al rol de admin de la liga.
+async function promoverAdmin(uid, jugadorId) {
+  if (!uid) return;
+  const j = state.jugadores.find(x => x.id === jugadorId);
+  if (!j) return;
+  if (!confirm(`¿Promover a "${j.nombre}" como admin de la liga?\n\nPodrá hacer todo lo que tú haces, incluyendo eliminar la liga.`)) return;
+
+  const adminUids = getAdminUids(state);
+  if (adminUids.includes(uid)) return; // ya es admin
+  adminUids.push(uid);
+  state.adminUids = adminUids;
+
+  registrarHistorial(`⭐ ${j.nombre} promovido a admin`);
+  await guardar();
+  // También actualizamos el campo metadata de la liga
+  const db = fbDb();
+  if (db) {
+    try {
+      await db.collection('ligas').doc(ligaActual).update({ adminUids });
+    } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
+  }
+  renderGestionJugadores();
+  notif(`${j.nombre} ahora es admin`);
+}
+
+// Quita el rol admin a un jugador. No permite quedarse sin admins.
+async function quitarAdmin(uid, jugadorId) {
+  if (!uid) return;
+  const j = state.jugadores.find(x => x.id === jugadorId);
+  if (!j) return;
+
+  const adminUids = getAdminUids(state);
+  if (!adminUids.includes(uid)) return;
+
+  // Validación: no puede quedar la liga sin admin
+  if (adminUids.length <= 1) {
+    alert('No puedes quitar el rol de admin: la liga quedaría sin admin.\n\nPromueve a otro jugador como admin primero.');
+    return;
+  }
+
+  // Si te lo estás quitando a ti mismo, doble confirmación
+  const esYoMismo = uid === usuarioActual?.uid;
+  const msg = esYoMismo
+    ? `¿Renunciar al rol de admin?\n\nDejarás de tener permisos de gestión en la liga "${state?.config?.campo || ''}".`
+    : `¿Quitar el rol de admin a "${j.nombre}"?`;
+  if (!confirm(msg)) return;
+
+  state.adminUids = adminUids.filter(x => x !== uid);
+  registrarHistorial(`⭐ Rol de admin retirado: ${j.nombre}`);
+  await guardar();
+  // Sincronizar metadata de la liga
+  const db = fbDb();
+  if (db) {
+    try {
+      await db.collection('ligas').doc(ligaActual).update({ adminUids: state.adminUids });
+    } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
+  }
+
+  // Si te lo has quitado a ti mismo, salir del panel admin
+  if (esYoMismo) {
+    state.adminLoggedIn = false;
+    document.getElementById('admin-login').style.display = 'block';
+    document.getElementById('admin-panel').style.display = 'none';
+    notif('Has dejado de ser admin');
+  } else {
+    renderGestionJugadores();
+    notif(`${j.nombre} ya no es admin`);
+  }
 }
 
 function ajustarPuntos(id, delta) {
