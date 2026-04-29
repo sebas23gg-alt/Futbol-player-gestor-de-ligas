@@ -290,6 +290,22 @@ window.addEventListener('error', function(e) {
     letter-spacing: 1px;
   }
 
+  .player-cuenta-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    background: rgba(46, 204, 113, 0.15);
+    color: var(--verde-neon);
+    font-size: 0.7rem;
+    font-weight: 700;
+    border-radius: 50%;
+    border: 1px solid rgba(46, 204, 113, 0.4);
+    margin-left: 4px;
+    line-height: 1;
+  }
+
   .player-status {
     font-size: 0.7rem;
     padding: 3px 8px;
@@ -1290,19 +1306,14 @@ window.addEventListener('error', function(e) {
 
   <!-- ═══ ADMIN ═══ -->
   <div id="page-admin" class="page">
-    <!-- Login -->
+    <!-- Mensaje cuando el usuario NO es admin de la liga -->
     <div id="admin-login" class="login-box">
-      <div class="card">
-        <h2>🔐 Acceso Admin</h2>
-        <p id="admin-liga-label" style="color:#666;font-size:0.82rem;margin-bottom:14px;"></p>
-        <div class="form-group">
-          <label>Contraseña</label>
-          <div class="pass-wrap">
-            <input type="password" id="adminPass" placeholder="••••••••" onkeydown="if(event.key==='Enter')loginAdmin()">
-            <button class="pass-eye" type="button" onclick="togglePass('adminPass',this)" tabindex="-1">👁</button>
-          </div>
-        </div>
-        <button class="btn btn-verde btn-full" onclick="loginAdmin()">Entrar</button>
+      <div class="card" style="text-align:center;">
+        <h2>🔒 Acceso Admin</h2>
+        <p style="color:#aaa;font-size:0.9rem;margin:14px 0;">
+          Esta sección está reservada al administrador de la liga.
+        </p>
+        <p id="admin-liga-label" style="color:#666;font-size:0.82rem;"></p>
       </div>
     </div>
 
@@ -1500,16 +1511,20 @@ window.addEventListener('error', function(e) {
             </div>
           </div>
           <button class="btn btn-azul btn-full" onclick="guardarConfig()">💾 Guardar configuración</button>
-          <div class="divider"></div>
-          <div class="card-title" style="margin-top:8px;">🔑 Cambiar contraseña admin</div>
-          <div class="form-group">
-            <label>Nueva contraseña</label>
-            <div class="pass-wrap">
-              <input type="password" id="newPass" placeholder="••••••••">
-              <button class="pass-eye" type="button" onclick="togglePass('newPass',this)" tabindex="-1">👁</button>
-            </div>
+        </div>
+
+        <!-- Código de invitación -->
+        <div class="card">
+          <div class="card-title">🔗 Código de invitación</div>
+          <p style="color:#777;font-size:0.82rem;margin-bottom:14px;">
+            Comparte este código para que otros se unan a la liga.
+            Si se ha filtrado a alguien indeseado, regenéralo y se invalidará el anterior.
+          </p>
+          <div style="background:rgba(245,166,35,0.08);border:1px solid rgba(245,166,35,0.3);border-radius:8px;padding:14px;text-align:center;margin-bottom:12px;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;letter-spacing:6px;color:#f5a623;line-height:1;" id="admin-codigo-actual">······</div>
+            <div style="font-size:0.65rem;color:rgba(245,166,35,0.6);letter-spacing:1px;margin-top:4px;">CÓDIGO ACTUAL</div>
           </div>
-          <button class="btn btn-gris btn-full" onclick="cambiarPassword()">🔑 Cambiar</button>
+          <button class="btn btn-amarillo btn-full" onclick="regenerarCodigoLiga()">🔄 Regenerar código</button>
         </div>
 
         <!-- FILA 3: Gestión de datos -->
@@ -1782,7 +1797,7 @@ let state = {
   partido: null,
   historial: [],
   partidos_jugados: [],
-  config: { partidos: 0, password: 'foreros2025', campo: 'Don Bosco', hora: '22:00', precio: '3.5' },
+  config: { partidos: 0, campo: 'Don Bosco', hora: '22:00', precio: '3.5' },
   adminLoggedIn: false
 };
 
@@ -2326,9 +2341,6 @@ async function crearLiga() {
   const codigo = generarCodigo();
   const nuevaLiga = { id, nombre, codigo, creada: new Date().toLocaleDateString('es-ES'), adminUid: uid || null };
 
-  // Contraseña de admin = uid del usuario (o código si no hay auth)
-  const passAdmin = uid || codigo;
-
   // Añadir al creador como jugador inicial (D3)
   const jugadoresIniciales = [];
   if (nick) {
@@ -2339,9 +2351,19 @@ async function crearLiga() {
     console.warn('[crearLiga] No se pudo determinar nick; la liga se crea SIN el creador como jugador');
   }
 
+  // Entrada inicial en el historial: trazabilidad desde el primer momento
+  const historialInicial = [];
+  if (nick) {
+    historialInicial.push({
+      fecha: new Date().toLocaleString('es-ES'),
+      desc: `🏆 Liga creada por ${nick}`,
+      jugador: null
+    });
+  }
+
   const estadoInicial = {
-    jugadores: jugadoresIniciales, partido: null, historial: [], partidos_jugados: [],
-    config: { partidos: 0, password: passAdmin, campo: '', hora: '', precio: '', diaSemana: 1 },
+    jugadores: jugadoresIniciales, partido: null, historial: historialInicial, partidos_jugados: [],
+    config: { partidos: 0, campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false,
     adminUid: uid || null
   };
@@ -2516,7 +2538,7 @@ async function cargar() {
 
   state = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
-    config: { partidos: 0, password: 'foreros2025', campo: '', hora: '', precio: '', diaSemana: 1 },
+    config: { partidos: 0, campo: '', hora: '', precio: '', diaSemana: 1 },
     adminLoggedIn: false
   };
 
@@ -3063,6 +3085,7 @@ function renderRanking() {
       <div class="player-pos">${pos}</div>
       <div class="player-name">
         ${j.nombre}
+        ${j.uid ? '<span class="player-cuenta-badge" title="Jugador con cuenta vinculada">✓</span>' : ''}
         ${j.portero ? '<span class="player-portero-badge">🧤</span>' : ''}
         ${j.sancionado ? '<span style="font-size:0.7rem;color:var(--rojo);margin-left:4px;">SANCIONADO</span>' : ''}
       </div>
@@ -3202,32 +3225,22 @@ function confirmarBaja() {
 // ═══════════════════════════════════════════════
 //  ADMIN
 // ═══════════════════════════════════════════════
+// El acceso admin se basa exclusivamente en el UID del usuario autenticado
+// vs state.adminUid de la liga. Ya no hay contraseña de admin.
 function loginAdmin() {
-  // Si el usuario autenticado es el admin de la liga → acceso directo sin contraseña
   if (usuarioActual && state.adminUid && usuarioActual.uid === state.adminUid) {
     state.adminLoggedIn = true;
     document.getElementById('admin-login').style.display = 'none';
     document.getElementById('admin-panel').style.display = 'block';
     renderAdmin();
-    return;
   }
-  // Si no, validar contraseña
-  const pass = document.getElementById('adminPass').value;
-  if (pass === state.config.password) {
-    state.adminLoggedIn = true;
-    document.getElementById('admin-login').style.display = 'none';
-    document.getElementById('admin-panel').style.display = 'block';
-    renderAdmin();
-  } else {
-    notif('Contraseña incorrecta', 'error');
-  }
+  // Si no eres el admin, simplemente se queda mostrando el mensaje informativo.
 }
 
 function logoutAdmin() {
   state.adminLoggedIn = false;
   document.getElementById('admin-login').style.display = 'block';
   document.getElementById('admin-panel').style.display = 'none';
-  document.getElementById('adminPass').value = '';
 }
 
 async function renderAdmin() {
@@ -3274,6 +3287,14 @@ async function renderAdmin() {
   document.getElementById('configHora').value      = state.config.hora      || '';
   document.getElementById('configPrecio').value    = state.config.precio    || '';
   document.getElementById('configDiaSemana').value = state.config.diaSemana ?? 1;
+
+  // Mostrar código de invitación actual
+  const codigoEl = document.getElementById('admin-codigo-actual');
+  if (codigoEl) {
+    const ligas = await getLigasIndex();
+    const liga = ligas.find(l => l.id === ligaActual);
+    codigoEl.textContent = liga?.codigo || '······';
+  }
 
   // Lista apuntados con checkboxes
   const lista = document.getElementById('apuntados-lista');
@@ -3650,13 +3671,38 @@ function guardarConfig() {
   renderRanking();
 }
 
-function cambiarPassword() {
-  const np = document.getElementById('newPass').value;
-  if (!np || np.length < 4) { notif('Mínimo 4 caracteres', 'error'); return; }
-  state.config.password = np;
-  guardar();
-  notif('Contraseña cambiada');
-  document.getElementById('newPass').value = '';
+// Regenera el código de invitación de la liga actual.
+// Útil si el código antiguo se ha filtrado o entró alguien indeseado.
+async function regenerarCodigoLiga() {
+  if (!ligaActual) return;
+  if (!confirm('¿Regenerar el código? El código actual quedará invalidado y nadie podrá unirse con él.')) return;
+
+  const nuevoCodigo = generarCodigo();
+  const db = fbDb();
+
+  if (db) {
+    try {
+      await db.collection('ligas').doc(ligaActual).update({ codigo: nuevoCodigo });
+    } catch(e) {
+      console.warn('No se pudo regenerar código en Firestore', e);
+      notif('Error al regenerar el código', 'error');
+      return;
+    }
+  }
+
+  // Actualizar también el índice local (tarjetas en pantalla de inicio)
+  try {
+    const idx = JSON.parse(localStorage.getItem('foreros_ligas_index') || '[]');
+    const liga = idx.find(l => l.id === ligaActual);
+    if (liga) {
+      liga.codigo = nuevoCodigo;
+      localStorage.setItem('foreros_ligas_index', JSON.stringify(idx));
+    }
+  } catch(e) {}
+
+  registrarHistorial(`🔄 Código de invitación regenerado: ${nuevoCodigo}`);
+  document.getElementById('admin-codigo-actual').textContent = nuevoCodigo;
+  notif(`Código actualizado: ${nuevoCodigo}`);
 }
 
 function exportarDatos() {
