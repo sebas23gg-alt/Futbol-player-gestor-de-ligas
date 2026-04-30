@@ -306,6 +306,66 @@ window.addEventListener('error', function(e) {
     line-height: 1;
   }
 
+  /* ─── Switch (toggle on/off) ─── */
+  .switch input { opacity: 0; width: 0; height: 0; }
+  .switch .slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: #333;
+    transition: 0.25s;
+    border-radius: 24px;
+  }
+  .switch .slider:before {
+    content: "";
+    position: absolute;
+    height: 18px;
+    width: 18px;
+    left: 3px;
+    bottom: 3px;
+    background-color: #888;
+    transition: 0.25s;
+    border-radius: 50%;
+  }
+  .switch input:checked + .slider {
+    background-color: var(--verde);
+  }
+  .switch input:checked + .slider:before {
+    transform: translateX(20px);
+    background-color: #fff;
+  }
+
+  /* ─── Chips de días de la semana ─── */
+  .dia-chip {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 56px;
+    padding: 8px 10px;
+    border-radius: 8px;
+    background: #1a1a1a;
+    border: 1px solid #2a2a2a;
+    color: #777;
+    font-size: 0.8rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.15s;
+    user-select: none;
+  }
+  .dia-chip:hover { border-color: #444; color: #aaa; }
+  .dia-chip.activo {
+    background: rgba(46, 204, 113, 0.15);
+    border-color: var(--verde-neon);
+    color: var(--verde-neon);
+  }
+  .dia-chip.bloqueado {
+    background: rgba(231, 76, 60, 0.07);
+    border-color: rgba(231, 76, 60, 0.25);
+    color: rgba(231, 76, 60, 0.5);
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+
   .player-status {
     font-size: 0.7rem;
     padding: 3px 8px;
@@ -1479,7 +1539,8 @@ window.addEventListener('error', function(e) {
 
         <!-- FILA 3: Configuración -->
         <div class="card">
-          <div class="card-title">⚙️ Configuración</div>
+          <div class="card-title">⚙️ Configuración del partido</div>
+
           <div class="form-group">
             <label>Día del partido</label>
             <select id="configDiaSemana">
@@ -1492,14 +1553,29 @@ window.addEventListener('error', function(e) {
               <option value="0">Domingo</option>
             </select>
           </div>
+
+          <div class="form-group">
+            <label>Tipo de partido</label>
+            <select id="configTipoPartido">
+              <option value="5vs5">5 vs 5 (10 jugadores)</option>
+              <option value="6vs6">6 vs 6 (12 jugadores)</option>
+              <option value="7vs7">7 vs 7 (14 jugadores)</option>
+              <option value="8vs8">8 vs 8 (16 jugadores)</option>
+              <option value="11vs11">11 vs 11 (22 jugadores)</option>
+            </select>
+            <p style="font-size:0.7rem;color:#555;margin-top:4px;">Nº de jugadores titulares por defecto. Podrás cambiarlo puntualmente en cada partido.</p>
+          </div>
+
           <div class="form-group">
             <label>Partidos jugados (total histórico)</label>
             <input type="number" id="configPartidos" placeholder="528">
           </div>
+
           <div class="form-group">
             <label>Nombre del campo</label>
             <input type="text" id="configCampo" placeholder="Don Bosco">
           </div>
+
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
             <div class="form-group">
               <label>Hora del partido</label>
@@ -1510,7 +1586,67 @@ window.addEventListener('error', function(e) {
               <input type="number" id="configPrecio" placeholder="3.5" step="0.5" min="0">
             </div>
           </div>
+
+          <!-- Plazo de inscripción: días en los que SÍ está abierta -->
+          <div class="form-group">
+            <label>Días con plazo de inscripción abierto</label>
+            <p style="font-size:0.72rem;color:#666;margin-bottom:8px;">
+              Marca los días en los que los jugadores pueden apuntarse <em>dentro de plazo</em>.
+              El día del partido está bloqueado: nadie puede apuntarse ese día.
+              Apuntarse cualquier otro día (no marcado y distinto al del partido) → reserva.
+            </p>
+            <div id="configPlazoDias" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+            <p id="configPlazoAviso" style="display:none;font-size:0.72rem;color:var(--amarillo);margin-top:6px;">
+              ⚠️ No has marcado ningún día. Nadie podrá apuntarse en plazo.
+            </p>
+          </div>
+
           <button class="btn btn-azul btn-full" onclick="guardarConfig()">💾 Guardar configuración</button>
+        </div>
+
+        <!-- Sanciones automáticas -->
+        <div class="card">
+          <div class="card-title">⚖️ Sanciones automáticas</div>
+          <p style="font-size:0.72rem;color:#666;margin-bottom:14px;">
+            Penalizaciones que se aplican automáticamente cuando un titular se da de baja fuera de plazo.
+            Si las desactivas, podrás seguir sancionando manualmente desde gestión de jugadores.
+          </p>
+
+          <div class="form-group" style="display:flex;align-items:center;gap:10px;">
+            <label style="margin:0;flex:1;">Aplicar sanciones automáticas</label>
+            <label class="switch" style="position:relative;display:inline-block;width:44px;height:24px;">
+              <input type="checkbox" id="configSancionesActivas" onchange="toggleSancionesUI()">
+              <span class="slider"></span>
+            </label>
+          </div>
+
+          <div id="sanciones-detalles">
+            <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+              <div class="form-group">
+                <label>Mismo día</label>
+                <input type="number" id="configSancionMismoDia" max="0" step="1" placeholder="-3">
+              </div>
+              <div class="form-group">
+                <label>1 día antes</label>
+                <input type="number" id="configSancion1DiaAntes" max="0" step="1" placeholder="-2">
+              </div>
+              <div class="form-group">
+                <label>2 días antes</label>
+                <input type="number" id="configSancion2DiasAntes" max="0" step="1" placeholder="-1">
+              </div>
+            </div>
+            <p style="font-size:0.7rem;color:#555;margin:0 0 12px;">Solo valores ≤ 0 (los positivos se ignoran).</p>
+
+            <div class="form-group" style="display:flex;align-items:center;gap:10px;margin-top:6px;">
+              <label style="margin:0;flex:1;">Veto al siguiente partido si se da de baja el mismo día</label>
+              <label class="switch" style="position:relative;display:inline-block;width:44px;height:24px;">
+                <input type="checkbox" id="configVetoSiguiente">
+                <span class="slider"></span>
+              </label>
+            </div>
+          </div>
+
+          <button class="btn btn-azul btn-full" onclick="guardarSanciones()">💾 Guardar sanciones</button>
         </div>
 
         <!-- Código de invitación -->
@@ -2687,6 +2823,14 @@ function _migrarConfig() {
   if (state.config.hora      === undefined) state.config.hora      = '';
   if (state.config.precio    === undefined) state.config.precio    = '';
   if (state.config.diaSemana === undefined) state.config.diaSemana = 1;
+  // Bloque 3: nuevos campos de configuración del partido
+  if (state.config.tipoPartido === undefined) state.config.tipoPartido = '7vs7';
+  if (!Array.isArray(state.config.plazoDias)) state.config.plazoDias = [];
+  if (!state.config.sanciones || typeof state.config.sanciones !== 'object') {
+    state.config.sanciones = {
+      activas: true, mismoDia: -3, unDiaAntes: -2, dosDiasAntes: -1, vetoSiguiente: true
+    };
+  }
   // Migrar adminUid (singular) → adminUids[] (plural)
   migrarAdminUidsEnState();
 }
@@ -3498,6 +3642,30 @@ async function renderAdmin() {
   document.getElementById('configPrecio').value    = state.config.precio    || '';
   document.getElementById('configDiaSemana').value = state.config.diaSemana ?? 1;
 
+  // Tipo de partido
+  const selTipo = document.getElementById('configTipoPartido');
+  if (selTipo) {
+    const tipo = state.config.tipoPartido || '7vs7';
+    selTipo.value = TIPOS_PARTIDO_VALIDOS.includes(tipo) ? tipo : '7vs7';
+  }
+
+  // Plazo de inscripción (chips)
+  renderChipsDiasPlazo();
+
+  // Sanciones automáticas
+  const sc = getSancionesConfig();
+  const elActivas = document.getElementById('configSancionesActivas');
+  if (elActivas) elActivas.checked = sc.activas;
+  const elMismoDia = document.getElementById('configSancionMismoDia');
+  if (elMismoDia) elMismoDia.value = sc.mismoDia;
+  const el1Antes = document.getElementById('configSancion1DiaAntes');
+  if (el1Antes) el1Antes.value = sc.unDiaAntes;
+  const el2Antes = document.getElementById('configSancion2DiasAntes');
+  if (el2Antes) el2Antes.value = sc.dosDiasAntes;
+  const elVeto = document.getElementById('configVetoSiguiente');
+  if (elVeto) elVeto.checked = sc.vetoSiguiente;
+  toggleSancionesUI();
+
   // Mostrar código de invitación actual
   const codigoEl = document.getElementById('admin-codigo-actual');
   if (codigoEl) {
@@ -3948,15 +4116,133 @@ function resetTemporada() {
   document.getElementById('totalPartidos').textContent = '0';
 }
 
+// Constantes para tipos de partido y nº de titulares.
+// El "tipo" es un string canónico ("5vs5", etc.) que se guarda en config.
+const TIPOS_PARTIDO_VALIDOS = ['5vs5','6vs6','7vs7','8vs8','11vs11'];
+function titularesPorTipo(tipo) {
+  switch (tipo) {
+    case '5vs5': return 10;
+    case '6vs6': return 12;
+    case '7vs7': return 14;
+    case '8vs8': return 16;
+    case '11vs11': return 22;
+    default: return 14; // fallback razonable
+  }
+}
+
+// Devuelve los días "dentro de plazo" desde la config (array de ints 0..6,
+// donde 0=domingo y 6=sábado, igual que getDay() de JS).
+// Si no hay config aún, devuelve array vacío (= ningún día está en plazo).
+function getPlazoDias() {
+  if (!state?.config) return [];
+  const arr = state.config.plazoDias;
+  if (Array.isArray(arr)) return arr.map(n => parseInt(n)).filter(n => !isNaN(n) && n >= 0 && n <= 6);
+  return [];
+}
+
+// Render de los chips de días en el panel admin.
+// El día del partido (state.config.diaSemana) se muestra bloqueado.
+function renderChipsDiasPlazo() {
+  const cont = document.getElementById('configPlazoDias');
+  if (!cont) return;
+  const diasPlazo = getPlazoDias();
+  const diaPartido = parseInt(state?.config?.diaSemana ?? 1);
+  const labels = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']; // index = getDay()
+  cont.innerHTML = labels.map((etiqueta, i) => {
+    const bloqueado = i === diaPartido;
+    const activo = !bloqueado && diasPlazo.includes(i);
+    const cls = bloqueado ? 'dia-chip bloqueado' : (activo ? 'dia-chip activo' : 'dia-chip');
+    const onclick = bloqueado ? '' : `onclick="togglePlazoDia(${i})"`;
+    const tit = bloqueado ? 'title="Día del partido — no se puede apuntar nadie"' : '';
+    return `<span class="${cls}" ${onclick} ${tit} data-dia="${i}">${etiqueta}</span>`;
+  }).join('');
+  refrescarAvisoPlazo();
+}
+
+function togglePlazoDia(i) {
+  if (!state.config) state.config = {};
+  let actuales = getPlazoDias();
+  if (actuales.includes(i)) {
+    actuales = actuales.filter(x => x !== i);
+  } else {
+    actuales.push(i);
+  }
+  state.config.plazoDias = actuales;
+  renderChipsDiasPlazo();
+}
+
+function refrescarAvisoPlazo() {
+  const aviso = document.getElementById('configPlazoAviso');
+  if (!aviso) return;
+  const dias = getPlazoDias();
+  aviso.style.display = dias.length === 0 ? 'block' : 'none';
+}
+
 function guardarConfig() {
   state.config.partidos   = parseInt(document.getElementById('configPartidos').value) || 0;
   state.config.campo      = document.getElementById('configCampo').value.trim();
   state.config.hora       = document.getElementById('configHora').value.trim();
   state.config.precio     = document.getElementById('configPrecio').value.trim();
   state.config.diaSemana  = parseInt(document.getElementById('configDiaSemana').value);
+
+  // Tipo de partido
+  const tipoSel = document.getElementById('configTipoPartido')?.value;
+  if (tipoSel && TIPOS_PARTIDO_VALIDOS.includes(tipoSel)) {
+    state.config.tipoPartido = tipoSel;
+  }
+
+  // Plazo: si el día del partido estaba marcado, lo quitamos automáticamente
+  const plazo = getPlazoDias().filter(d => d !== state.config.diaSemana);
+  state.config.plazoDias = plazo;
+
   guardar();
   notif('Configuración guardada');
   renderRanking();
+  // Refrescar chips por si cambió el día del partido (que ahora está bloqueado)
+  renderChipsDiasPlazo();
+}
+
+// Activa/desactiva los inputs de sanciones según el toggle.
+function toggleSancionesUI() {
+  const activo = document.getElementById('configSancionesActivas')?.checked;
+  const det = document.getElementById('sanciones-detalles');
+  if (!det) return;
+  det.style.opacity = activo ? '1' : '0.4';
+  det.style.pointerEvents = activo ? 'auto' : 'none';
+}
+
+// Helpers de sanciones: parseo de inputs + valores por defecto.
+function parseSancion(idEl, defecto) {
+  const v = parseInt(document.getElementById(idEl)?.value);
+  if (isNaN(v)) return defecto;
+  // Solo permitimos valores ≤ 0; positivos se ignoran (se reemplazan por defecto)
+  return v <= 0 ? v : defecto;
+}
+
+function getSancionesConfig() {
+  const sc = state?.config?.sanciones || {};
+  return {
+    activas: sc.activas !== false, // default: activadas
+    mismoDia:    typeof sc.mismoDia    === 'number' ? sc.mismoDia    : -3,
+    unDiaAntes:  typeof sc.unDiaAntes  === 'number' ? sc.unDiaAntes  : -2,
+    dosDiasAntes:typeof sc.dosDiasAntes === 'number' ? sc.dosDiasAntes : -1,
+    vetoSiguiente: sc.vetoSiguiente !== false // default: activado
+  };
+}
+
+function guardarSanciones() {
+  const activas = !!document.getElementById('configSancionesActivas')?.checked;
+  const veto    = !!document.getElementById('configVetoSiguiente')?.checked;
+  const sc = {
+    activas,
+    mismoDia:     parseSancion('configSancionMismoDia', -3),
+    unDiaAntes:   parseSancion('configSancion1DiaAntes', -2),
+    dosDiasAntes: parseSancion('configSancion2DiasAntes', -1),
+    vetoSiguiente: veto
+  };
+  state.config.sanciones = sc;
+  guardar();
+  notif('Sanciones guardadas');
 }
 
 // Regenera el código de invitación de la liga actual.
