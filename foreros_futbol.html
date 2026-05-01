@@ -1137,7 +1137,84 @@ window.addEventListener('error', function(e) {
 
   <!-- ═══ PARTIDO ═══ -->
   <div id="page-partido" class="page">
-    <div id="no-partido-msg" class="card" style="text-align:center;padding:40px;">
+
+    <!-- ═══ BLOQUE 4: Sección de inscripción al próximo partido ═══ -->
+    <div id="proximo-partido-card" class="card" style="margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:14px;">
+        <div>
+          <div class="card-title" style="margin:0;">📅 Próximo partido</div>
+          <div id="pp-fecha" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;color:var(--verde-neon);margin-top:4px;">—</div>
+        </div>
+        <div style="text-align:right;">
+          <div id="pp-estado-tag" style="display:inline-block;padding:5px 11px;border-radius:6px;font-size:0.7rem;font-weight:700;letter-spacing:1px;text-transform:uppercase;background:rgba(46,204,113,0.15);color:var(--verde-neon);border:1px solid rgba(46,204,113,0.3);">INSCRIPCIÓN ABIERTA</div>
+        </div>
+      </div>
+
+      <!-- Info del partido (campo, hora, precio, tipo) -->
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;font-size:0.82rem;">
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Campo</div>
+          <div id="pp-campo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Hora</div>
+          <div id="pp-hora" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Precio</div>
+          <div id="pp-precio" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Tipo</div>
+          <div id="pp-tipo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Apuntados</div>
+          <div id="pp-apuntados" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Plazo</div>
+          <div id="pp-plazo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+      </div>
+
+      <!-- Aviso visual si faltan jugadores (todos lo ven) -->
+      <div id="pp-aviso-faltan" style="display:none;padding:10px 14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:8px;font-size:0.85rem;color:#e74c3c;margin-bottom:12px;">
+        ⚠️ <strong>Faltan jugadores</strong> — <span id="pp-aviso-faltan-texto"></span>
+      </div>
+
+      <!-- Botón apuntarse / cancelar (solo si tienes cuenta) -->
+      <div id="pp-acciones-jugador" style="display:none;">
+        <button id="pp-btn-apuntar" class="btn btn-verde btn-full" onclick="apuntarmePartido()">✅ Apuntarme al partido</button>
+        <button id="pp-btn-cancelar" class="btn btn-gris btn-full" style="display:none;" onclick="cancelarInscripcionPartido()">❌ Cancelar mi inscripción</button>
+        <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
+        <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
+      </div>
+
+      <!-- Listas de apuntados -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+        <div>
+          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">✅ Titulares (<span id="pp-cnt-titulares">0</span>)</div>
+          <div id="pp-lista-titulares" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">⏳ Reservas (<span id="pp-cnt-reservas">0</span>)</div>
+          <div id="pp-lista-reservas" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+      </div>
+
+      <!-- Acciones admin -->
+      <div id="pp-acciones-admin" style="display:none;border-top:1px solid #2a2a2a;margin-top:16px;padding-top:14px;">
+        <div style="font-size:0.7rem;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Acciones admin</div>
+        <div style="display:flex;flex-wrap:wrap;gap:8px;">
+          <button class="btn btn-azul" onclick="cerrarInscripcionAhora()" style="font-size:0.8rem;">🔒 Cerrar inscripción y generar alineación</button>
+          <button class="btn btn-gris" onclick="reabrirInscripcion()" style="font-size:0.8rem;">🔓 Reabrir inscripción</button>
+          <button class="btn btn-amarillo" onclick="cambiarTipoPartidoPuntual()" style="font-size:0.8rem;">⚙️ Cambiar tipo solo este partido</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="no-partido-msg" class="card" style="text-align:center;padding:40px;display:none;">
       <div style="font-size:3rem;margin-bottom:12px;">⚽</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:#555;margin-bottom:16px;">NO HAY PARTIDO ACTIVO</div>
       <p style="color:#555;font-size:0.9rem;">Ve al panel Admin para configurar el próximo partido</p>
@@ -1279,6 +1356,16 @@ window.addEventListener('error', function(e) {
       <div id="cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;"></div>
       <div id="cal-plazo" style="margin-top:14px;padding:10px 14px;background:rgba(26,122,60,0.1);border:1px solid #1a4a2a;border-radius:8px;font-size:0.82rem;color:#aaa;display:none;">
         📅 <strong style="color:var(--verde-neon);">Plazo de inscripción:</strong> <span id="cal-plazo-texto"></span>
+      </div>
+
+      <!-- Aviso "faltan jugadores" para todos -->
+      <div id="cal-aviso-faltan" style="display:none;margin-top:10px;padding:10px 14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.4);border-radius:8px;font-size:0.85rem;color:#e74c3c;">
+        ⚠️ <strong>Faltan jugadores</strong> para el próximo partido — <span id="cal-aviso-faltan-texto"></span>
+      </div>
+
+      <!-- Acción admin: cancelar partido -->
+      <div id="cal-acciones-admin" style="display:none;margin-top:12px;text-align:center;">
+        <button class="btn btn-gris" onclick="cancelarPartido()" style="font-size:0.82rem;">🚫 Cancelar próximo partido</button>
       </div>
     </div>
 
@@ -3429,10 +3516,458 @@ function formatPts(n) {
 // ═══════════════════════════════════════════════
 //  PARTIDO
 // ═══════════════════════════════════════════════
+// ═══════════════════════════════════════════════
+//  BLOQUE 4 — SISTEMA DE INSCRIPCIÓN AL PRÓXIMO PARTIDO
+// ═══════════════════════════════════════════════
+//
+// Modelo: state.proximoPartido (creado dinámicamente cuando se calcula).
+// Persiste en Firestore como parte del state.
+
+// Devuelve la fecha (YYYY-MM-DD) del próximo día configurado de partido.
+// Si la liga juega los lunes y hoy es martes → devuelve el lunes próximo.
+// Si hoy es lunes → devuelve hoy mismo (es el día del partido).
+function calcularFechaProximoPartido() {
+  const diaPartido = parseInt(state?.config?.diaSemana ?? 1); // 0=Dom, 6=Sáb
+  const hoy = new Date();
+  hoy.setHours(0,0,0,0);
+  const diff = (diaPartido - hoy.getDay() + 7) % 7;
+  const proxima = new Date(hoy);
+  proxima.setDate(hoy.getDate() + diff);
+  // Formato YYYY-MM-DD
+  const yyyy = proxima.getFullYear();
+  const mm = String(proxima.getMonth()+1).padStart(2,'0');
+  const dd = String(proxima.getDate()).padStart(2,'0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Asegura que existe state.proximoPartido. Si no existe, lo crea con valores
+// derivados de la config. Si la fecha ya quedó atrás, regenera uno nuevo.
+function asegurarProximoPartido() {
+  if (!state) return null;
+  const fechaCalc = calcularFechaProximoPartido();
+  const tipo = state.config?.tipoPartido || '7vs7';
+  let pp = state.proximoPartido;
+  // Si no existe, crear
+  if (!pp) {
+    pp = {
+      fecha: fechaCalc, hora: state.config?.hora || '',
+      campo: state.config?.campo || '', tipo,
+      estado: 'abierto', apuntados: [], resultado: null
+    };
+    state.proximoPartido = pp;
+    return pp;
+  }
+  // Si la fecha del actual ya quedó atrás: archivamos y creamos uno nuevo
+  const hoyStr = new Date().toISOString().slice(0,10);
+  if (pp.fecha < hoyStr && pp.estado !== 'jugado') {
+    // Lo dejamos como estaba (para que el admin pueda cerrarlo o cancelarlo)
+    // pero si está vacío y vencido, lo reseteamos directamente
+    if ((pp.apuntados || []).length === 0) {
+      state.proximoPartido = {
+        fecha: fechaCalc, hora: state.config?.hora || '',
+        campo: state.config?.campo || '', tipo,
+        estado: 'abierto', apuntados: [], resultado: null
+      };
+    }
+  }
+  // Mantener info refrescada de config
+  if (state.proximoPartido.estado === 'abierto') {
+    state.proximoPartido.hora = state.config?.hora || state.proximoPartido.hora || '';
+    state.proximoPartido.campo = state.config?.campo || state.proximoPartido.campo || '';
+  }
+  return state.proximoPartido;
+}
+
+// ¿La fecha "hoy" está dentro de plazo según config?
+function estoyEnPlazo() {
+  const diasPlazo = getPlazoDias();
+  const diaPartido = parseInt(state?.config?.diaSemana ?? 1);
+  const hoyDia = new Date().getDay();
+  // El día del partido nunca es "en plazo" (no se puede apuntar)
+  if (hoyDia === diaPartido) return false;
+  return diasPlazo.includes(hoyDia);
+}
+
+// Texto descriptivo para mostrar al usuario sobre el plazo
+function descripcionPlazo() {
+  const diasPlazo = getPlazoDias();
+  if (diasPlazo.length === 0) return 'Sin plazo configurado';
+  const labels = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  return diasPlazo.sort().map(d => labels[d]).join(', ');
+}
+
+// Número de titulares según tipo (5vs5=10, 7vs7=14, etc.)
+function titularesProximoPartido() {
+  return titularesPorTipo(state.proximoPartido?.tipo || state.config?.tipoPartido || '7vs7');
+}
+
+// Apuntar al usuario actual al próximo partido
+async function apuntarmePartido() {
+  if (!usuarioActual) { notif('Necesitas iniciar sesión para apuntarte', 'error'); return; }
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (pp.estado === 'cancelado') { notif('El partido fue cancelado', 'error'); return; }
+  if (pp.estado === 'jugado') { notif('El partido ya se jugó', 'error'); return; }
+
+  // ¿Ya estoy apuntado?
+  if ((pp.apuntados || []).find(a => a.uid === usuarioActual.uid)) {
+    notif('Ya estás apuntado', 'error'); return;
+  }
+
+  // Buscar mi nombre en state.jugadores
+  const jugador = state.jugadores.find(j => j.uid === usuarioActual.uid);
+  if (!jugador) { notif('No estás en la liga como jugador', 'error'); return; }
+
+  // ¿Estoy vetado?
+  const vetado = !!jugador._vetadoSiguiente;
+
+  // ¿Dentro de plazo?
+  const dentro = estoyEnPlazo();
+
+  // Determinar rol inicial:
+  // - Vetados van siempre al final como "vetado" (pasan a titular solo si no hay nadie más)
+  // - Si dentro de plazo y hay sitio en titulares, va a titular
+  // - Si fuera de plazo, va a reserva
+  let rol = 'reserva';
+  if (vetado) {
+    rol = 'vetado';
+  } else if (dentro) {
+    const titularesActuales = (pp.apuntados || []).filter(a => a.rol === 'titular' && !a.esInvitado).length;
+    rol = titularesActuales < titularesProximoPartido() ? 'titular' : 'reserva';
+  }
+
+  pp.apuntados = pp.apuntados || [];
+  pp.apuntados.push({
+    uid: usuarioActual.uid,
+    nombre: jugador.nombre,
+    esInvitado: false,
+    fechaApunte: new Date().toISOString(),
+    dentroPlazo: dentro,
+    vetado,
+    rol,
+    equipo: null
+  });
+
+  await guardar();
+  renderPartido();
+  notif(rol === 'titular' ? '✅ Te has apuntado como titular' : (rol === 'vetado' ? '🚫 Apuntado, pero estás vetado' : '⏳ Te has apuntado como reserva'));
+}
+
+// Cancelar mi inscripción al próximo partido
+async function cancelarInscripcionPartido() {
+  if (!usuarioActual) return;
+  const pp = state.proximoPartido;
+  if (!pp || !pp.apuntados) return;
+
+  const yo = pp.apuntados.find(a => a.uid === usuarioActual.uid);
+  if (!yo) return;
+
+  if (!confirm('¿Cancelar tu inscripción al partido?')) return;
+
+  // Calcular sanción si aplica
+  const sc = getSancionesConfig();
+  let mensajeSancion = '';
+  if (sc.activas && yo.rol === 'titular') {
+    const fechaPartido = new Date(pp.fecha + 'T12:00:00');
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const diasHasta = Math.round((fechaPartido - hoy) / (1000*60*60*24));
+    const jugador = state.jugadores.find(j => j.uid === usuarioActual.uid);
+    let pts = 0;
+    if (diasHasta === 0) pts = sc.mismoDia;
+    else if (diasHasta === 1) pts = sc.unDiaAntes;
+    else if (diasHasta === 2) pts = sc.dosDiasAntes;
+
+    if (pts < 0 && jugador) {
+      jugador.puntos = Math.round((jugador.puntos + pts) * 10) / 10;
+      mensajeSancion = ` Sanción aplicada: ${pts} pts.`;
+      registrarHistorial(`🟥 Baja titular: ${jugador.nombre} (${pts} pts)`, jugador.nombre);
+    }
+    // Veto al siguiente partido si baja el mismo día
+    if (diasHasta === 0 && sc.vetoSiguiente && jugador) {
+      jugador._vetadoSiguiente = true;
+      mensajeSancion += ' Vetado para el siguiente partido.';
+    }
+  }
+
+  // Quitarme del array de apuntados
+  pp.apuntados = pp.apuntados.filter(a => a.uid !== usuarioActual.uid);
+
+  // Si era titular y hay reservas, promover el primero adecuado
+  if (yo.rol === 'titular' && pp.estado !== 'abierto') {
+    promoverPrimerReserva();
+  }
+
+  await guardar();
+  renderPartido();
+  notif('Inscripción cancelada.' + mensajeSancion);
+}
+
+// Promueve el primer reserva adecuado a titular.
+// Prioridad: reservas dentro de plazo (mayor puntos primero), luego fuera de plazo (cronológico), luego vetados (cronológico).
+function promoverPrimerReserva() {
+  const pp = state.proximoPartido;
+  if (!pp || !pp.apuntados) return;
+  const reservas = pp.apuntados.filter(a => a.rol === 'reserva');
+  const vetados = pp.apuntados.filter(a => a.rol === 'vetado');
+
+  // Ordenar reservas: dentro de plazo primero (por puntos desc), luego fuera de plazo (orden de apunte)
+  const dentro = reservas.filter(r => r.dentroPlazo).sort((a,b) => {
+    const ja = state.jugadores.find(j => j.uid === a.uid);
+    const jb = state.jugadores.find(j => j.uid === b.uid);
+    return (jb?.puntos || 0) - (ja?.puntos || 0);
+  });
+  const fuera = reservas.filter(r => !r.dentroPlazo).sort((a,b) => a.fechaApunte.localeCompare(b.fechaApunte));
+  const orden = [...dentro, ...fuera, ...vetados.sort((a,b) => a.fechaApunte.localeCompare(b.fechaApunte))];
+
+  if (orden.length > 0) {
+    orden[0].rol = 'titular';
+  }
+}
+
+// Cierra inscripción y genera alineación equilibrada
+async function cerrarInscripcionAhora() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  if (!confirm('¿Cerrar inscripción y generar alineación? Después podrás editar la alineación manualmente.')) return;
+
+  pp.estado = 'alineacion-lista';
+
+  // Filtrar titulares y reservas según rol
+  const titularesNombres = pp.apuntados.filter(a => a.rol === 'titular').map(a => a.nombre);
+  const reservasNombres = pp.apuntados.filter(a => a.rol === 'reserva' || a.rol === 'vetado').map(a => a.nombre);
+
+  // Generar equipos equilibrados
+  const equipos = generarEquiposEquilibrados(titularesNombres);
+
+  // Crear/actualizar state.partido para que el canvas siga funcionando
+  state.partido = {
+    fecha: pp.fecha,
+    titulares: titularesNombres,
+    reservas: reservasNombres,
+    _equipoRojo: equipos.rojo,
+    _tipoPartido: parseInt(pp.tipo) || 7,
+    apuntados: titularesNombres.concat(reservasNombres)
+  };
+
+  registrarHistorial(`🔒 Inscripción cerrada — alineación generada (${titularesNombres.length} titulares, ${reservasNombres.length} reservas)`);
+  await guardar();
+  renderPartido();
+  notif('Alineación generada. Puedes editarla en el campo.');
+}
+
+// Reabre la inscripción (admin puede revertir el cierre)
+async function reabrirInscripcion() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  if (!confirm('¿Reabrir inscripción? Se descartará la alineación generada.')) return;
+  pp.estado = 'abierto';
+  state.partido = null;
+  await guardar();
+  renderPartido();
+  notif('Inscripción reabierta');
+}
+
+// Cambiar tipo de partido solo para este partido (no toca config liga)
+async function cambiarTipoPartidoPuntual() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  const opciones = TIPOS_PARTIDO_VALIDOS;
+  const actual = pp.tipo || '7vs7';
+  const elegido = prompt(`Tipo de partido para ESTE partido (${opciones.join(', ')}):`, actual);
+  if (!elegido || !opciones.includes(elegido)) return;
+  pp.tipo = elegido;
+  // Recalcular roles: si baja el límite, los últimos titulares pasan a reserva
+  const limite = titularesPorTipo(elegido);
+  let titulares = pp.apuntados.filter(a => a.rol === 'titular');
+  if (titulares.length > limite) {
+    // Los últimos en apuntarse bajan a reserva
+    titulares.sort((a,b) => a.fechaApunte.localeCompare(b.fechaApunte));
+    titulares.slice(limite).forEach(t => t.rol = 'reserva');
+  }
+  await guardar();
+  renderPartido();
+  notif(`Tipo de partido cambiado a ${elegido}`);
+}
+
+// Cancelar el partido (admin, desde calendario)
+async function cancelarPartido() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  if (!confirm('¿Cancelar este partido?\n\nNo se aplicará ninguna sanción ni puntos a los apuntados. El partido quedará marcado como cancelado.')) return;
+
+  pp.estado = 'cancelado';
+  // Mover a partidos_jugados con flag cancelado
+  state.partidos_jugados = state.partidos_jugados || [];
+  state.partidos_jugados.unshift({
+    fecha: pp.fecha, cancelado: true,
+    apuntados: pp.apuntados.map(a => a.nombre),
+    titulares: [], reservas: [], bajas: []
+  });
+  // Resetear próximo partido (se generará uno nuevo automáticamente)
+  state.proximoPartido = null;
+  state.partido = null;
+
+  registrarHistorial(`🚫 Partido cancelado (${pp.fecha})`);
+  await guardar();
+  renderPartido();
+  renderCalendario();
+  notif('Partido cancelado');
+}
+
+// Algoritmo de equilibrado de equipos.
+// Versión 1 (decente, no perfecto):
+// 1. Reparte porteros: máximo 1 por equipo. Si hay >2 porteros, los demás
+//    solo entran si tienen otra posición o son polivalentes.
+// 2. Si solo hay 1 portero, va al equipo con menos winrate total.
+// 3. Resto de jugadores en orden desc por puntos (proxy de winrate),
+//    asignando al equipo con menor suma actual (greedy).
+function generarEquiposEquilibrados(nombres) {
+  const jugadoresMap = {};
+  state.jugadores.forEach(j => { jugadoresMap[j.nombre] = j; });
+
+  const lista = nombres
+    .map(n => jugadoresMap[n])
+    .filter(Boolean);
+
+  // Separar porteros de jugadores de campo
+  const porteros = lista.filter(j => j.portero);
+  const campo    = lista.filter(j => !j.portero);
+
+  // Equipos
+  const blanco = { jugadores: [], suma: 0 };
+  const rojo   = { jugadores: [], suma: 0 };
+
+  // Regla porteros:
+  // - Máximo 1 por equipo.
+  // - Si solo 1 portero: va al equipo "más débil" (suma actual menor; al inicio cualquiera).
+  // - Si hay 2 o más: 1 al blanco, 1 al rojo. Los demás solo si tienen otra posición o polivalente; si no, se descartan (idealmente el admin los avisa, pero la v1 los pasa a campo).
+  if (porteros.length === 1) {
+    blanco.jugadores.push(porteros[0]);
+    blanco.suma += porteros[0].puntos || 0;
+  } else if (porteros.length >= 2) {
+    // Los 2 con más puntos a porteros (1 cada equipo)
+    porteros.sort((a,b) => (b.puntos||0) - (a.puntos||0));
+    blanco.jugadores.push(porteros[0]); blanco.suma += porteros[0].puntos || 0;
+    rojo.jugadores.push(porteros[1]);   rojo.suma   += porteros[1].puntos || 0;
+    // Resto de porteros: añadir a campo solo si tienen otra posición (polivalente o cualquier otra)
+    porteros.slice(2).forEach(p => {
+      const tieneOtra = (p.posiciones || []).some(pos => pos && pos !== 'portero');
+      if (tieneOtra) campo.push(p);
+      // Si no tiene otra posición, no juega (registramos)
+    });
+  }
+
+  // Repartir campo: orden desc por puntos, asignar al equipo con menos suma
+  const ordenado = [...campo].sort((a,b) => (b.puntos||0) - (a.puntos||0));
+  ordenado.forEach(j => {
+    if (blanco.suma <= rojo.suma) {
+      blanco.jugadores.push(j); blanco.suma += j.puntos || 0;
+    } else {
+      rojo.jugadores.push(j); rojo.suma += j.puntos || 0;
+    }
+  });
+
+  return {
+    blanco: blanco.jugadores.map(j => j.nombre),
+    rojo:   rojo.jugadores.map(j => j.nombre)
+  };
+}
+
+// Render principal del bloque "Próximo partido" en pestaña Partido
+function renderProximoPartido() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+
+  // Fecha
+  try {
+    const d = new Date(pp.fecha + 'T12:00:00');
+    document.getElementById('pp-fecha').textContent = d.toLocaleDateString('es-ES',
+      { weekday:'long', day:'numeric', month:'long' }).toUpperCase();
+  } catch { document.getElementById('pp-fecha').textContent = pp.fecha; }
+
+  // Estado tag
+  const tag = document.getElementById('pp-estado-tag');
+  if (pp.estado === 'abierto') { tag.textContent = 'INSCRIPCIÓN ABIERTA'; tag.style.background='rgba(46,204,113,0.15)'; tag.style.color='var(--verde-neon)'; tag.style.border='1px solid rgba(46,204,113,0.3)'; }
+  else if (pp.estado === 'alineacion-lista') { tag.textContent = 'ALINEACIÓN LISTA'; tag.style.background='rgba(245,166,35,0.15)'; tag.style.color='#f5a623'; tag.style.border='1px solid rgba(245,166,35,0.3)'; }
+  else if (pp.estado === 'cancelado') { tag.textContent = 'CANCELADO'; tag.style.background='rgba(231,76,60,0.15)'; tag.style.color='#e74c3c'; tag.style.border='1px solid rgba(231,76,60,0.3)'; }
+  else { tag.textContent = pp.estado.toUpperCase(); }
+
+  // Info
+  document.getElementById('pp-campo').textContent = pp.campo || '—';
+  document.getElementById('pp-hora').textContent = pp.hora || '—';
+  document.getElementById('pp-precio').textContent = state.config?.precio ? state.config.precio + '€' : '—';
+  document.getElementById('pp-tipo').textContent = pp.tipo || '7vs7';
+  const limite = titularesProximoPartido();
+  const titularesCount = (pp.apuntados || []).filter(a => a.rol === 'titular').length;
+  const reservasCount = (pp.apuntados || []).filter(a => a.rol === 'reserva' || a.rol === 'vetado').length;
+  document.getElementById('pp-apuntados').textContent = `${titularesCount}/${limite} titulares · ${reservasCount} reservas`;
+  document.getElementById('pp-plazo').textContent = descripcionPlazo();
+
+  // Aviso "faltan jugadores"
+  const avisoEl = document.getElementById('pp-aviso-faltan');
+  if (titularesCount < limite && pp.estado !== 'cancelado' && pp.estado !== 'jugado') {
+    avisoEl.style.display = 'block';
+    document.getElementById('pp-aviso-faltan-texto').textContent = `${titularesCount} de ${limite} apuntados como titulares`;
+  } else {
+    avisoEl.style.display = 'none';
+  }
+
+  // Acciones jugador (botón apuntarse/cancelar)
+  const yo = usuarioActual ? (pp.apuntados || []).find(a => a.uid === usuarioActual.uid) : null;
+  const accJug = document.getElementById('pp-acciones-jugador');
+  const btnApu = document.getElementById('pp-btn-apuntar');
+  const btnCan = document.getElementById('pp-btn-cancelar');
+  const avFP = document.getElementById('pp-aviso-fuera-plazo');
+  const avVet = document.getElementById('pp-aviso-vetado');
+  if (usuarioActual && pp.estado !== 'cancelado' && pp.estado !== 'jugado') {
+    accJug.style.display = 'block';
+    if (yo) {
+      btnApu.style.display = 'none';
+      btnCan.style.display = 'block';
+      avFP.style.display = 'none';
+      avVet.style.display = yo.rol === 'vetado' ? 'block' : 'none';
+    } else {
+      btnApu.style.display = 'block';
+      btnCan.style.display = 'none';
+      const dentro = estoyEnPlazo();
+      avFP.style.display = !dentro ? 'block' : 'none';
+      const jugador = state.jugadores.find(j => j.uid === usuarioActual.uid);
+      avVet.style.display = jugador?._vetadoSiguiente ? 'block' : 'none';
+    }
+  } else {
+    accJug.style.display = 'none';
+  }
+
+  // Listas de apuntados
+  const titsEl = document.getElementById('pp-lista-titulares');
+  const resEl = document.getElementById('pp-lista-reservas');
+  document.getElementById('pp-cnt-titulares').textContent = titularesCount;
+  document.getElementById('pp-cnt-reservas').textContent = reservasCount;
+
+  const renderItem = (a) => {
+    const inv = a.esInvitado ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.6rem;padding:1px 5px;border-radius:3px;margin-left:6px;">INV</span>' : '';
+    const vet = a.rol === 'vetado' ? '<span style="color:#e74c3c;font-size:0.7rem;margin-left:6px;">🚫</span>' : '';
+    return `<div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:6px 10px;font-size:0.85rem;color:#ccc;">${a.nombre}${inv}${vet}</div>`;
+  };
+  titsEl.innerHTML = (pp.apuntados || []).filter(a => a.rol === 'titular').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Aún sin titulares</p>';
+  resEl.innerHTML  = (pp.apuntados || []).filter(a => a.rol === 'reserva' || a.rol === 'vetado').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Sin reservas</p>';
+
+  // Acciones admin
+  document.getElementById('pp-acciones-admin').style.display = state.adminLoggedIn ? 'block' : 'none';
+}
+
 function renderPartido() {
+  // Bloque 4: render del nuevo bloque "próximo partido"
+  renderProximoPartido();
+
   const p = state.partido;
   if (!p) {
-    document.getElementById('no-partido-msg').style.display = 'block';
+    document.getElementById('no-partido-msg').style.display = 'none'; // ya no hace falta el mensaje viejo
     document.getElementById('partido-activo').style.display = 'none';
     return;
   }
@@ -4589,6 +5124,26 @@ function renderCalendario() {
   document.getElementById('cal-plazo-texto').textContent =
     ` Del martes ${martes.toLocaleDateString('es-ES',opts)} al viernes ${viernes.toLocaleDateString('es-ES',opts)} a las 12:00h`;
   document.getElementById('cal-plazo').style.display = 'block';
+
+  // Bloque 4: aviso "faltan jugadores" + botón cancelar admin
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  const avisoFaltan = document.getElementById('cal-aviso-faltan');
+  const accAdmin = document.getElementById('cal-acciones-admin');
+  if (pp && pp.estado !== 'cancelado' && pp.estado !== 'jugado') {
+    const limite = titularesProximoPartido();
+    const titsCount = (pp.apuntados || []).filter(a => a.rol === 'titular').length;
+    if (titsCount < limite) {
+      avisoFaltan.style.display = 'block';
+      document.getElementById('cal-aviso-faltan-texto').textContent = `${titsCount} de ${limite} apuntados como titulares`;
+    } else {
+      avisoFaltan.style.display = 'none';
+    }
+    accAdmin.style.display = state.adminLoggedIn ? 'block' : 'none';
+  } else {
+    avisoFaltan.style.display = 'none';
+    accAdmin.style.display = 'none';
+  }
 }
 
 function proximoLunesDesdeHoy() {
