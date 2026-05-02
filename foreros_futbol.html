@@ -1207,10 +1207,12 @@ window.addEventListener('error', function(e) {
       <div id="pp-acciones-admin" style="display:none;border-top:1px solid #2a2a2a;margin-top:16px;padding-top:14px;">
         <div style="font-size:0.7rem;color:#777;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;">Acciones admin</div>
         <div style="display:flex;flex-wrap:wrap;gap:8px;">
-          <button class="btn btn-azul" onclick="cerrarInscripcionAhora()" style="font-size:0.8rem;">🔒 Cerrar inscripción y generar alineación</button>
+          <button id="pp-btn-cerrar-inscripcion" class="btn btn-azul" onclick="cerrarInscripcionAhora()" style="font-size:0.8rem;">🔒 Cerrar inscripción y generar alineación</button>
           <button class="btn btn-gris" onclick="reabrirInscripcion()" style="font-size:0.8rem;">🔓 Reabrir inscripción</button>
           <button class="btn btn-amarillo" onclick="cambiarTipoPartidoPuntual()" style="font-size:0.8rem;">⚙️ Cambiar tipo solo este partido</button>
+          <button class="btn btn-gris" onclick="copiarListaWhatsApp()" style="font-size:0.8rem;">📋 Copiar lista para WhatsApp</button>
         </div>
+        <p id="pp-aviso-cerrar-inscripcion" style="display:none;font-size:0.78rem;color:#f5a623;margin-top:8px;"></p>
       </div>
     </div>
 
@@ -1538,7 +1540,7 @@ window.addEventListener('error', function(e) {
             <p style="color:#777;font-size:0.83rem;margin-bottom:14px;">Los <span style="color:var(--verde-neon);">verdes</span> están en el ranking, los <span style="color:var(--amarillo);">amarillos</span> son invitados. Marca los que juegan.</p>
             <div id="wa-jugadores-lista"></div>
             <div style="margin-top:14px;display:flex;gap:10px;flex-wrap:wrap;">
-              <button class="btn btn-verde" onclick="confirmarListaWA()">⚽ Confirmar y generar alineación</button>
+              <button class="btn btn-verde" onclick="añadirListaAlPartido()">➕ Añadir al próximo partido</button>
               <button class="btn btn-gris" onclick="volverImport()">← Volver</button>
             </div>
           </div>
@@ -3397,13 +3399,14 @@ function showTab(name, el) {
   if (name === 'partido') renderPartido();
   if (name === 'calendario') renderCalendario();
   if (name === 'admin') {
-    // Auto-login si el usuario autenticado es admin de la liga
-    if (esAdminActual(state) && !state.adminLoggedIn) {
-      state.adminLoggedIn = true;
-      document.getElementById('admin-login').style.display = 'none';
-      document.getElementById('admin-panel').style.display = 'block';
-    }
-    renderAdmin();
+    // Re-validar SIEMPRE el rol al entrar a la pestaña admin.
+    // No es suficiente con state.adminLoggedIn (ese flag puede quedar
+    // pegajoso al cambiar de cuenta o de liga).
+    const eresAdmin = esAdminActual(state);
+    state.adminLoggedIn = eresAdmin;
+    document.getElementById('admin-login').style.display = eresAdmin ? 'none' : 'block';
+    document.getElementById('admin-panel').style.display = eresAdmin ? 'block' : 'none';
+    if (eresAdmin) renderAdmin();
   }
   if (name === 'historial') renderHistorial();
   if (name === 'perfil')    renderPerfil();
@@ -3959,15 +3962,84 @@ function renderProximoPartido() {
 
   // Acciones admin
   document.getElementById('pp-acciones-admin').style.display = state.adminLoggedIn ? 'block' : 'none';
+
+  // Deshabilitar "Cerrar inscripción" si no hay mínimo de titulares
+  const btnCerrar = document.getElementById('pp-btn-cerrar-inscripcion');
+  const avisoCerrar = document.getElementById('pp-aviso-cerrar-inscripcion');
+  if (btnCerrar && avisoCerrar) {
+    if (titularesCount < limite) {
+      btnCerrar.disabled = true;
+      btnCerrar.style.opacity = '0.5';
+      btnCerrar.style.cursor = 'not-allowed';
+      avisoCerrar.style.display = 'block';
+      avisoCerrar.textContent = `⚠️ Faltan ${limite - titularesCount} jugadores para poder cerrar la inscripción.`;
+    } else {
+      btnCerrar.disabled = false;
+      btnCerrar.style.opacity = '1';
+      btnCerrar.style.cursor = 'pointer';
+      avisoCerrar.style.display = 'none';
+    }
+  }
+}
+
+// Copia al portapapeles la lista de apuntados con formato WhatsApp.
+async function copiarListaWhatsApp() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp || !(pp.apuntados || []).length) {
+    notif('No hay apuntados para copiar', 'error');
+    return;
+  }
+  const titulares = pp.apuntados.filter(a => a.rol === 'titular');
+  const reservas  = pp.apuntados.filter(a => a.rol === 'reserva' || a.rol === 'vetado');
+
+  let texto = `⚽ PRÓXIMO PARTIDO\n`;
+  try {
+    const d = new Date(pp.fecha + 'T12:00:00');
+    texto += `📅 ${d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })}\n`;
+  } catch {}
+  if (pp.hora)  texto += `🕒 ${pp.hora}\n`;
+  if (pp.campo) texto += `📍 ${pp.campo}\n`;
+  if (state.config?.precio) texto += `💰 ${state.config.precio}€/persona\n`;
+  texto += `\n✅ TITULARES (${titulares.length}/${titularesProximoPartido()}):\n`;
+  titulares.forEach((a, i) => {
+    texto += `${i+1}. ${a.nombre}${a.esInvitado ? ' (INV)' : ''}\n`;
+  });
+  if (reservas.length) {
+    texto += `\n⏳ RESERVAS:\n`;
+    reservas.forEach((a, i) => {
+      texto += `${i+1}. ${a.nombre}${a.esInvitado ? ' (INV)' : ''}${a.rol === 'vetado' ? ' 🚫' : ''}\n`;
+    });
+  }
+
+  try {
+    await navigator.clipboard.writeText(texto);
+    notif('📋 Lista copiada al portapapeles');
+  } catch(e) {
+    // Fallback si no hay permiso de portapapeles
+    prompt('Copia el texto manualmente:', texto);
+  }
 }
 
 function renderPartido() {
   // Bloque 4: render del nuevo bloque "próximo partido"
   renderProximoPartido();
 
+  // Solo mostramos el bloque viejo (canvas con campo) si la inscripción
+  // está cerrada y hay alineación generada. Si no, lo escondemos para
+  // evitar que aparezcan dos secciones de partido duplicadas.
+  const ppEstado = state.proximoPartido?.estado;
+  const debeMostrarse = ppEstado === 'alineacion-lista' || ppEstado === 'jugado';
+
+  if (!debeMostrarse) {
+    document.getElementById('no-partido-msg').style.display = 'none';
+    document.getElementById('partido-activo').style.display = 'none';
+    return;
+  }
+
   const p = state.partido;
   if (!p) {
-    document.getElementById('no-partido-msg').style.display = 'none'; // ya no hace falta el mensaje viejo
+    document.getElementById('no-partido-msg').style.display = 'none';
     document.getElementById('partido-activo').style.display = 'none';
     return;
   }
@@ -5837,6 +5909,85 @@ function renderRevision() {
       </select>
     </div>
   `).join('');
+}
+
+// ── BLOQUE 4: Añadir lista WhatsApp al próximo partido ──
+// Reemplaza al viejo confirmarListaWA. Procesa cada jugador detectado:
+//  - Si es jugador de la liga (con o sin cuenta) → apuntado normal.
+//  - Si NO es jugador de la liga → invitado (esInvitado: true).
+// Avisa de duplicados (ya apuntados) sin error.
+async function añadirListaAlPartido() {
+  const seleccionados = waDetectados.filter(d => d.incluir);
+  if (seleccionados.length === 0) { notif('Selecciona al menos un jugador', 'error'); return; }
+
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (pp.estado === 'cancelado' || pp.estado === 'jugado') {
+    notif('El próximo partido ya está cerrado/cancelado', 'error');
+    return;
+  }
+  pp.apuntados = pp.apuntados || [];
+
+  let nuevos = 0, invitadosAdded = 0, duplicados = 0;
+  const limite = titularesProximoPartido();
+
+  for (const d of seleccionados) {
+    const nombre = (d.nombreMostrar || d.jugador?.nombre || '').trim();
+    if (!nombre) continue;
+
+    // ¿Ya está apuntado? (case-insensitive)
+    const yaApuntado = pp.apuntados.find(a => a.nombre.toLowerCase() === nombre.toLowerCase());
+    if (yaApuntado) { duplicados++; continue; }
+
+    // Decidir rol según huecos disponibles
+    const titularesActuales = pp.apuntados.filter(a => a.rol === 'titular').length;
+    const rol = titularesActuales < limite ? 'titular' : 'reserva';
+
+    if (d.jugador) {
+      // Jugador de la liga
+      pp.apuntados.push({
+        uid: d.jugador.uid || null,
+        nombre,
+        esInvitado: false,
+        fechaApunte: new Date().toISOString(),
+        dentroPlazo: true, // admin lo añade → vale como en plazo
+        vetado: !!d.jugador._vetadoSiguiente,
+        rol,
+        equipo: null
+      });
+      nuevos++;
+    } else {
+      // Invitado
+      pp.apuntados.push({
+        uid: null,
+        nombre,
+        esInvitado: true,
+        fechaApunte: new Date().toISOString(),
+        dentroPlazo: true,
+        vetado: false,
+        rol,
+        equipo: null
+      });
+      invitadosAdded++;
+    }
+  }
+
+  await guardar();
+
+  // Volver a la pantalla principal del admin (cerrar la revisión WA)
+  document.getElementById('wa-revision').style.display = 'none';
+  // Limpiar el textarea para que se pueda pegar otra lista si hace falta
+  const ta = document.getElementById('wa-input');
+  if (ta) ta.value = '';
+
+  // Refrescar pestaña Partido si está activa
+  if (typeof renderPartido === 'function') renderPartido();
+
+  // Mensaje resumen
+  let msg = `✅ Añadidos al próximo partido: ${nuevos} jugadores`;
+  if (invitadosAdded) msg += `, ${invitadosAdded} invitados`;
+  if (duplicados) msg += ` · ${duplicados} ya estaban apuntados`;
+  notif(msg);
 }
 
 function confirmarListaWA() {
