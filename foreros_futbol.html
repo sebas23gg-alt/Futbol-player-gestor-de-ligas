@@ -1150,8 +1150,8 @@ window.addEventListener('error', function(e) {
         </div>
       </div>
 
-      <!-- Info del partido (campo, hora, precio, tipo) - se oculta cuando ya hay alineación -->
-      <div id="pp-bloque-info-listas">
+      <!-- INFO + acciones jugador (siempre visible) -->
+      <div id="pp-bloque-info">
         <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;font-size:0.82rem;">
           <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
             <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Campo</div>
@@ -1191,17 +1191,17 @@ window.addEventListener('error', function(e) {
           <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
           <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
         </div>
+      </div>
 
-        <!-- Listas de apuntados -->
-        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
-          <div>
-            <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">✅ Titulares (<span id="pp-cnt-titulares">0</span>)</div>
-            <div id="pp-lista-titulares" style="display:flex;flex-direction:column;gap:4px;"></div>
-          </div>
-          <div>
-            <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">⏳ Reservas (<span id="pp-cnt-reservas">0</span>)</div>
-            <div id="pp-lista-reservas" style="display:flex;flex-direction:column;gap:4px;"></div>
-          </div>
+      <!-- LISTAS de apuntados (oculta cuando hay alineación: redundante con el campo) -->
+      <div id="pp-bloque-listas-pre" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+        <div>
+          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">✅ Titulares (<span id="pp-cnt-titulares">0</span>)</div>
+          <div id="pp-lista-titulares" style="display:flex;flex-direction:column;gap:4px;"></div>
+        </div>
+        <div>
+          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">⏳ Reservas (<span id="pp-cnt-reservas">0</span>)</div>
+          <div id="pp-lista-reservas" style="display:flex;flex-direction:column;gap:4px;"></div>
         </div>
       </div>
 
@@ -4048,12 +4048,12 @@ function renderProximoPartido() {
   // Acciones admin
   document.getElementById('pp-acciones-admin').style.display = state.adminLoggedIn ? 'block' : 'none';
 
-  // Si hay alineación generada, ocultamos info y listas (la info ya se ve en
-  // el campo de fútbol). Solo dejamos visible el header (fecha + tag estado)
-  // y las acciones admin (reabrir, etc.) para no perder funcionalidad.
-  const bloqueInfoListas = document.getElementById('pp-bloque-info-listas');
-  if (bloqueInfoListas) {
-    bloqueInfoListas.style.display = conAlineacion ? 'none' : 'block';
+  // Cuando hay alineación generada, ocultamos solo las listas pre-alineación
+  // (titulares/reservas en formato lista) porque ya se ven en el campo + panel.
+  // El resto (info, acciones jugador, acciones admin) sigue visible.
+  const bloqueListasPre = document.getElementById('pp-bloque-listas-pre');
+  if (bloqueListasPre) {
+    bloqueListasPre.style.display = conAlineacion ? 'none' : 'grid';
   }
 
   // Deshabilitar "Cerrar inscripción" si no hay mínimo de titulares
