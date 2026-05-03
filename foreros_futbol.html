@@ -4045,8 +4045,10 @@ function renderProximoPartido() {
   titsEl.innerHTML = (pp.apuntados || []).filter(a => a.rol === 'titular').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Aún sin titulares</p>';
   resEl.innerHTML  = (pp.apuntados || []).filter(a => a.rol === 'reserva' || a.rol === 'vetado').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Sin reservas</p>';
 
-  // Acciones admin
-  document.getElementById('pp-acciones-admin').style.display = state.adminLoggedIn ? 'block' : 'none';
+  // Acciones admin: visibles si el usuario es admin de la liga (no hace
+  // falta haber pulsado la pestaña Admin previamente).
+  const eresAdminAqui = esAdminActual(state);
+  document.getElementById('pp-acciones-admin').style.display = eresAdminAqui ? 'block' : 'none';
 
   // Cuando hay alineación generada, ocultamos solo las listas pre-alineación
   // (titulares/reservas en formato lista) porque ya se ven en el campo + panel.
@@ -4162,7 +4164,7 @@ function renderPartido() {
       <span class="num">${i+1}</span>
       <span style="width:10px;height:10px;border-radius:2px;background:${j?.portero ? '#27ae60' : esRojo ? '#c0392b' : '#ecf0f1'};border:1px solid #555;flex-shrink:0;display:inline-block;"></span>
       <span class="pname">${nombre} ${j?.portero ? '🧤' : ''}</span>
-      ${state.adminLoggedIn ? `<span class="pbaja" onclick="abrirModalBaja('${nombre.replace(/'/g,"\\'")}')">Baja</span>` : ''}
+      ${esAdminActual(state) ? `<span class="pbaja" onclick="abrirModalBaja('${nombre.replace(/'/g,"\\'")}')">Baja</span>` : ''}
     `;
     listaTit.appendChild(div);
   });
@@ -5304,7 +5306,7 @@ function renderCalendario() {
     } else {
       avisoFaltan.style.display = 'none';
     }
-    accAdmin.style.display = state.adminLoggedIn ? 'block' : 'none';
+    accAdmin.style.display = esAdminActual(state) ? 'block' : 'none';
   } else {
     avisoFaltan.style.display = 'none';
     accAdmin.style.display = 'none';
@@ -6598,7 +6600,7 @@ function renderCanvasPartido() {
 function renderPanelEquipos(titulares, equipoRojo) {
   const blancos = titulares.filter(j => !equipoRojo.includes(j.nombre));
   const rojos   = titulares.filter(j =>  equipoRojo.includes(j.nombre));
-  const esAdmin = state.adminLoggedIn;
+  const esAdmin = esAdminActual(state);
 
   const tipo = state.partido?._tipoPartido || 8;
   document.getElementById('cnt-blanco').textContent = `${blancos.length}/${tipo}`;
@@ -6727,7 +6729,7 @@ function toggleEquipo(nombre) {
 // ── Mover titular a reserva (solo admin) ──
 function moverAReserva(nombre, event) {
   event.stopPropagation(); // evitar que dispare toggleEquipo
-  if (!state.adminLoggedIn) return;
+  if (!esAdminActual(state)) return;
   const p = state.partido;
   if (!p) return;
   p.titulares = p.titulares.filter(n => n !== nombre);
@@ -6741,7 +6743,7 @@ function moverAReserva(nombre, event) {
 // ── Mover reserva a titular (solo admin) ──
 function moverATitular(nombre, event, equipoDestino) {
   event.stopPropagation();
-  if (!state.adminLoggedIn) return;
+  if (!esAdminActual(state)) return;
   const p = state.partido;
   if (!p) return;
   p.reservas = p.reservas.filter(n => n !== nombre);
@@ -6762,7 +6764,7 @@ function moverATitular(nombre, event, equipoDestino) {
 // Usado por las flechas de cambio de equipo en el panel lateral.
 function moverAEquipo(nombre, equipoDestino, event) {
   if (event) event.stopPropagation();
-  if (!state.adminLoggedIn) return;
+  if (!esAdminActual(state)) return;
   const p = state.partido;
   if (!p) return;
   const j = state.jugadores.find(x => x.nombre === nombre);
