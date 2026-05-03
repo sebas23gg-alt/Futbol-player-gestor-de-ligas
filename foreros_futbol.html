@@ -1150,56 +1150,58 @@ window.addEventListener('error', function(e) {
         </div>
       </div>
 
-      <!-- Info del partido (campo, hora, precio, tipo) -->
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;font-size:0.82rem;">
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Campo</div>
-          <div id="pp-campo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+      <!-- Info del partido (campo, hora, precio, tipo) - se oculta cuando ya hay alineación -->
+      <div id="pp-bloque-info-listas">
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:14px;font-size:0.82rem;">
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Campo</div>
+            <div id="pp-campo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Hora</div>
+            <div id="pp-hora" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Precio</div>
+            <div id="pp-precio" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Tipo</div>
+            <div id="pp-tipo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Apuntados</div>
+            <div id="pp-apuntados" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
+          <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+            <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Plazo</div>
+            <div id="pp-plazo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+          </div>
         </div>
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Hora</div>
-          <div id="pp-hora" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Precio</div>
-          <div id="pp-precio" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Tipo</div>
-          <div id="pp-tipo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Apuntados</div>
-          <div id="pp-apuntados" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
-        </div>
-        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
-          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Plazo</div>
-          <div id="pp-plazo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
-        </div>
-      </div>
 
-      <!-- Aviso visual si faltan jugadores (todos lo ven) -->
-      <div id="pp-aviso-faltan" style="display:none;padding:10px 14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:8px;font-size:0.85rem;color:#e74c3c;margin-bottom:12px;">
-        ⚠️ <strong>Faltan jugadores</strong> — <span id="pp-aviso-faltan-texto"></span>
-      </div>
-
-      <!-- Botón apuntarse / cancelar (solo si tienes cuenta) -->
-      <div id="pp-acciones-jugador" style="display:none;">
-        <button id="pp-btn-apuntar" class="btn btn-verde btn-full" onclick="apuntarmePartido()">✅ Apuntarme al partido</button>
-        <button id="pp-btn-cancelar" class="btn btn-gris btn-full" style="display:none;" onclick="cancelarInscripcionPartido()">❌ Cancelar mi inscripción</button>
-        <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
-        <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
-      </div>
-
-      <!-- Listas de apuntados -->
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
-        <div>
-          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">✅ Titulares (<span id="pp-cnt-titulares">0</span>)</div>
-          <div id="pp-lista-titulares" style="display:flex;flex-direction:column;gap:4px;"></div>
+        <!-- Aviso visual si faltan jugadores (todos lo ven) -->
+        <div id="pp-aviso-faltan" style="display:none;padding:10px 14px;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.3);border-radius:8px;font-size:0.85rem;color:#e74c3c;margin-bottom:12px;">
+          ⚠️ <strong>Faltan jugadores</strong> — <span id="pp-aviso-faltan-texto"></span>
         </div>
-        <div>
-          <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">⏳ Reservas (<span id="pp-cnt-reservas">0</span>)</div>
-          <div id="pp-lista-reservas" style="display:flex;flex-direction:column;gap:4px;"></div>
+
+        <!-- Botón apuntarse / cancelar (solo si tienes cuenta) -->
+        <div id="pp-acciones-jugador" style="display:none;">
+          <button id="pp-btn-apuntar" class="btn btn-verde btn-full" onclick="apuntarmePartido()">✅ Apuntarme al partido</button>
+          <button id="pp-btn-cancelar" class="btn btn-gris btn-full" style="display:none;" onclick="cancelarInscripcionPartido()">❌ Cancelar mi inscripción</button>
+          <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
+          <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
+        </div>
+
+        <!-- Listas de apuntados -->
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px;">
+          <div>
+            <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">✅ Titulares (<span id="pp-cnt-titulares">0</span>)</div>
+            <div id="pp-lista-titulares" style="display:flex;flex-direction:column;gap:4px;"></div>
+          </div>
+          <div>
+            <div style="font-size:0.75rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:6px;">⏳ Reservas (<span id="pp-cnt-reservas">0</span>)</div>
+            <div id="pp-lista-reservas" style="display:flex;flex-direction:column;gap:4px;"></div>
+          </div>
         </div>
       </div>
 
@@ -1211,6 +1213,8 @@ window.addEventListener('error', function(e) {
           <button class="btn btn-gris" onclick="reabrirInscripcion()" style="font-size:0.8rem;">🔓 Reabrir inscripción</button>
           <button class="btn btn-amarillo" onclick="cambiarTipoPartidoPuntual()" style="font-size:0.8rem;">⚙️ Cambiar tipo solo este partido</button>
           <button class="btn btn-gris" onclick="copiarListaWhatsApp()" style="font-size:0.8rem;">📋 Copiar lista para WhatsApp</button>
+          <button class="btn btn-gris" onclick="suspenderPartido()" style="font-size:0.8rem;color:#f5a623;">🌧️ Suspender partido</button>
+          <button class="btn btn-gris" onclick="cerrarSinResultado()" style="font-size:0.8rem;color:#aaa;">⚠️ Cerrar sin resultado</button>
         </div>
         <p id="pp-aviso-cerrar-inscripcion" style="display:none;font-size:0.78rem;color:#f5a623;margin-top:8px;"></p>
       </div>
@@ -1222,7 +1226,9 @@ window.addEventListener('error', function(e) {
       <p style="color:#555;font-size:0.9rem;">Ve al panel Admin para configurar el próximo partido</p>
     </div>
     <div id="partido-activo" style="display:none;">
-      <div class="partido-activo-banner">
+      <!-- Banner viejo y listas duplicadas: ocultos. Toda la info está
+           en la card "📅 Próximo partido" y en el campo de abajo. -->
+      <div class="partido-activo-banner" style="display:none;">
         <div>
           <div class="pab-text">PRÓXIMO PARTIDO</div>
           <div class="pab-text"><strong id="partido-fecha-display">-</strong></div>
@@ -1232,7 +1238,7 @@ window.addEventListener('error', function(e) {
           <div class="pab-text" style="font-size:0.75rem;">Precio: <span id="partido-precio-display">—</span></div>
         </div>
       </div>
-      <div class="partido-section">
+      <div class="partido-section" style="display:none;">
         <div class="partido-lista titulares">
           <h3>✅ TITULARES (16)</h3>
           <div id="lista-titulares"></div>
@@ -3795,6 +3801,80 @@ async function cambiarTipoPartidoPuntual() {
   notif(`Tipo de partido cambiado a ${elegido}`);
 }
 
+// Suspender partido (clima, campo cerrado, etc.). Como cancelado pero
+// con motivo distinto. No se aplican sanciones ni puntos.
+async function suspenderPartido() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  if (!confirm('¿Suspender el partido?\n\nMotivo: imprevisto externo (clima, campo cerrado, etc.).\nNo se aplicarán puntos ni sanciones a nadie.')) return;
+
+  pp.estado = 'suspendido';
+  state.partidos_jugados = state.partidos_jugados || [];
+  state.partidos_jugados.unshift({
+    fecha: pp.fecha, suspendido: true,
+    apuntados: pp.apuntados.map(a => a.nombre),
+    titulares: [], reservas: [], bajas: []
+  });
+  state.proximoPartido = null;
+  state.partido = null;
+
+  registrarHistorial(`🌧️ Partido suspendido (${pp.fecha})`);
+  await guardar();
+  renderPartido();
+  if (typeof renderCalendario === 'function') renderCalendario();
+  notif('Partido suspendido');
+}
+
+// Cerrar partido sin resultado válido. Se suma +1 a los titulares (asistencia)
+// y +0.5 a reservas que aparecieron, pero NO se actualiza
+// estadística de victoria/derrota/empate. Útil cuando el partido se descompensó
+// (lesiones, gente que se fue antes, etc.) y el resultado no refleja la realidad.
+async function cerrarSinResultado() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  if (!pp) return;
+  if (pp.estado !== 'alineacion-lista' && pp.estado !== 'jugado') {
+    notif('Primero hay que cerrar la inscripción y tener alineación', 'error');
+    return;
+  }
+  if (!confirm('¿Cerrar partido sin resultado válido?\n\nSe sumarán +1 a titulares y +0.5 a reservas (asistencia).\nNO se actualizarán estadísticas de victorias.')) return;
+
+  // Sumar puntos de asistencia
+  const pTit = state.partido?.titulares || [];
+  const pRes = state.partido?.reservas || [];
+  pTit.forEach(n => {
+    const j = state.jugadores.find(x => x.nombre === n);
+    if (j) { j.puntos = Math.round((j.puntos + 1) * 10) / 10; j.totales = Math.round((j.totales + 1) * 10) / 10; }
+  });
+  pRes.forEach(n => {
+    const j = state.jugadores.find(x => x.nombre === n);
+    if (j) { j.puntos = Math.round((j.puntos + 0.5) * 10) / 10; j.totales = Math.round((j.totales + 0.5) * 10) / 10; }
+  });
+
+  // Marcar como jugado pero sin resultado
+  pp.estado = 'jugado';
+  pp.resultado = { sinResultado: true };
+
+  state.partidos_jugados = state.partidos_jugados || [];
+  state.partidos_jugados.unshift({
+    fecha: pp.fecha, sinResultado: true,
+    titulares: pTit, reservas: pRes,
+    apuntados: (pp.apuntados || []).map(a => a.nombre),
+    bajas: []
+  });
+  state.config.partidos = (state.config.partidos || 0) + 1;
+  state.proximoPartido = null;
+  state.partido = null;
+
+  registrarHistorial(`⚠️ Partido cerrado sin resultado válido (${pp.fecha})`);
+  await guardar();
+  renderPartido();
+  renderRanking();
+  if (typeof renderCalendario === 'function') renderCalendario();
+  notif('Partido cerrado sin resultado. Puntos de asistencia aplicados.');
+}
+
 // Cancelar el partido (admin, desde calendario)
 async function cancelarPartido() {
   asegurarProximoPartido();
@@ -3886,6 +3966,11 @@ function renderProximoPartido() {
   const pp = state.proximoPartido;
   if (!pp) return;
 
+  // Si la inscripción está cerrada (alineación lista), reducimos la card a
+  // sólo lo esencial (acciones admin para reabrir/cancelar). El resto se
+  // ve abajo en el campo y panel lateral.
+  const conAlineacion = pp.estado === 'alineacion-lista' || pp.estado === 'jugado';
+
   // Fecha
   try {
     const d = new Date(pp.fecha + 'T12:00:00');
@@ -3962,6 +4047,14 @@ function renderProximoPartido() {
 
   // Acciones admin
   document.getElementById('pp-acciones-admin').style.display = state.adminLoggedIn ? 'block' : 'none';
+
+  // Si hay alineación generada, ocultamos info y listas (la info ya se ve en
+  // el campo de fútbol). Solo dejamos visible el header (fecha + tag estado)
+  // y las acciones admin (reabrir, etc.) para no perder funcionalidad.
+  const bloqueInfoListas = document.getElementById('pp-bloque-info-listas');
+  if (bloqueInfoListas) {
+    bloqueInfoListas.style.display = conAlineacion ? 'none' : 'block';
+  }
 
   // Deshabilitar "Cerrar inscripción" si no hay mínimo de titulares
   const btnCerrar = document.getElementById('pp-btn-cerrar-inscripcion');
@@ -5307,7 +5400,13 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
     }
 
   } else {
-    // Futuro
+    // Futuro — solo accesible para admins.
+    // Si no eres admin, no se muestra el panel para evitar que cualquiera
+    // pegue listas WhatsApp desde aquí. Esa función solo está en pestaña Admin.
+    if (!esAdminActual(state)) {
+      panel.style.display = 'none';
+      return;
+    }
     panelPasado.style.display = 'none';
     panelFuturo.style.display = 'block';
     document.getElementById('cal-panel-fecha-futuro').textContent = `📅 ${fechaLabel}`;
@@ -6523,20 +6622,28 @@ function renderPanelEquipos(titulares, equipoRojo) {
     cont.innerHTML = jugadores.map(j => {
       const { bg, borde, icono } = estiloJugador(j.nombre, esRojoEquipo);
       const shortNombre = j.nombre.length > 13 ? j.nombre.substring(0,12)+'…' : j.nombre;
-      const btnMover = esAdmin
-        ? `<button onclick="moverAReserva('${j.nombre.replace(/'/g,"\\'")}',event)"
-            style="background:none;border:none;color:#444;cursor:pointer;font-size:0.7rem;padding:0 2px;"
-            title="Mover a reserva">↓</button>`
-        : '';
+      // Sistema de 3 flechas de colores (solo admin):
+      //   - Equipo blanco → flecha amarilla (a reserva) + flecha roja (cambiar a rojo)
+      //   - Equipo rojo   → flecha amarilla (a reserva) + flecha blanca (cambiar a blanco)
+      const nombreEsc = j.nombre.replace(/'/g,"\\'");
+      const flechaReserva = `<button onclick="moverAReserva('${nombreEsc}',event)"
+        style="background:none;border:none;color:#f1c40f;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
+        title="Mover a reservas">↓</button>`;
+      const flechaCambioColor = esRojoEquipo
+        ? `<button onclick="moverAEquipo('${nombreEsc}','blanco',event)"
+            style="background:none;border:none;color:#f0f0f0;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
+            title="Mover al equipo blanco">⇆</button>`
+        : `<button onclick="moverAEquipo('${nombreEsc}','rojo',event)"
+            style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
+            title="Mover al equipo rojo">⇆</button>`;
+      const acciones = esAdmin ? `${flechaReserva}${flechaCambioColor}` : '';
       return `
-        <div onclick="toggleEquipo('${j.nombre.replace(/'/g,"\\'")}')"
-          style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:${bg};
-          border:1px solid ${borde};border-radius:7px;margin-bottom:4px;cursor:pointer;
-          transition:all 0.15s;" title="Clic para cambiar de equipo"
-          onmouseenter="this.style.opacity='0.75'" onmouseleave="this.style.opacity='1'">
+        <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:${bg};
+          border:1px solid ${borde};border-radius:7px;margin-bottom:4px;
+          transition:all 0.15s;">
           <span style="font-size:0.75rem;">${icono}</span>
           <span style="font-size:0.8rem;flex:1;color:var(--blanco);">${shortNombre}</span>
-          ${btnMover}
+          ${acciones}
         </div>`;
     }).join('');
   };
@@ -6552,17 +6659,22 @@ function renderPanelEquipos(titulares, equipoRojo) {
     reservasLista.innerHTML = state.partido.reservas.map(nombre => {
       const j = state.jugadores.find(x => x.nombre === nombre);
       const short = nombre.length > 13 ? nombre.substring(0,12)+'…' : nombre;
-      const btnSubir = esAdmin
-        ? `<button onclick="moverATitular('${nombre.replace(/'/g,"\\'")}',event)"
-            style="background:none;border:none;color:#555;cursor:pointer;font-size:0.7rem;padding:0 2px;"
-            title="Subir a titular">↑</button>`
+      const nombreEsc = nombre.replace(/'/g,"\\'");
+      // Para reservas: flecha blanca y flecha roja para subir a un equipo concreto
+      const flechas = esAdmin
+        ? `<button onclick="moverATitular('${nombreEsc}',event,'blanco')"
+            style="background:none;border:none;color:#f0f0f0;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
+            title="Subir como titular del equipo blanco">↑</button>
+           <button onclick="moverATitular('${nombreEsc}',event,'rojo')"
+            style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
+            title="Subir como titular del equipo rojo">↑</button>`
         : '';
       return `
         <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:rgba(241,196,15,0.08);
           border:1px solid #444;border-radius:7px;margin-bottom:4px;">
           <span style="font-size:0.75rem;">⏳</span>
           <span style="font-size:0.8rem;flex:1;color:#aaa;">${short}${j?.portero ? ' 🧤' : ''}</span>
-          ${btnSubir}
+          ${flechas}
         </div>`;
     }).join('');
   } else {
@@ -6627,16 +6739,43 @@ function moverAReserva(nombre, event) {
 }
 
 // ── Mover reserva a titular (solo admin) ──
-function moverATitular(nombre, event) {
+function moverATitular(nombre, event, equipoDestino) {
   event.stopPropagation();
   if (!state.adminLoggedIn) return;
   const p = state.partido;
   if (!p) return;
   p.reservas = p.reservas.filter(n => n !== nombre);
   if (!p.titulares.includes(nombre)) p.titulares.push(nombre);
+  // Si especificaron equipo destino, asignarlo. Si no, queda en blanco por defecto.
+  if (equipoDestino === 'rojo') {
+    p._equipoRojo = p._equipoRojo || [];
+    if (!p._equipoRojo.includes(nombre)) p._equipoRojo.push(nombre);
+  } else if (equipoDestino === 'blanco') {
+    p._equipoRojo = (p._equipoRojo || []).filter(n => n !== nombre);
+  }
   guardar();
   renderPartido();
-  notif(`${nombre} → titular`);
+  notif(`${nombre} → titular ${equipoDestino === 'rojo' ? '🔴' : equipoDestino === 'blanco' ? '⚪' : ''}`);
+}
+
+// Mover un titular de un equipo a otro (blanco ↔ rojo).
+// Usado por las flechas de cambio de equipo en el panel lateral.
+function moverAEquipo(nombre, equipoDestino, event) {
+  if (event) event.stopPropagation();
+  if (!state.adminLoggedIn) return;
+  const p = state.partido;
+  if (!p) return;
+  const j = state.jugadores.find(x => x.nombre === nombre);
+  if (j?.portero) { notif('Los porteros no cambian de equipo', 'error'); return; }
+  p._equipoRojo = p._equipoRojo || [];
+  if (equipoDestino === 'rojo') {
+    if (!p._equipoRojo.includes(nombre)) p._equipoRojo.push(nombre);
+  } else {
+    p._equipoRojo = p._equipoRojo.filter(n => n !== nombre);
+  }
+  guardar();
+  renderPartido();
+  notif(`${nombre} → ${equipoDestino === 'rojo' ? '🔴 rojo' : '⚪ blanco'}`);
 }
 
 function abrirModalResultado(numPartido) {
