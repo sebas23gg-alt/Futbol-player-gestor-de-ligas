@@ -1390,6 +1390,68 @@ window.addEventListener('error', function(e) {
     <!-- Panel partido seleccionado -->
     <div id="cal-panel" style="display:none;">
 
+      <!-- ── AÑADIR MANUAL: día libre, admin puede meter un partido ── -->
+      <div id="cal-panel-manual" style="display:none;">
+        <div class="card">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" id="cal-panel-fecha-manual" style="margin:0;"></div>
+            <button onclick="cerrarCalPanel()" style="background:none;border:none;color:#555;font-size:1.1rem;cursor:pointer;">✕</button>
+          </div>
+          <p style="color:#888;font-size:0.85rem;margin-bottom:14px;line-height:1.4;">
+            ✏️ <strong>Añadir partido manualmente.</strong> Útil para registrar partidos antiguos o si has borrado uno por error.
+            Los nombres que no coincidan con jugadores de la liga se guardarán como invitados.
+          </p>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">⚪ Equipo Blanco (nombres separados por comas)</label>
+            <textarea id="cal-manual-blanco" rows="2" placeholder="Sebas, José, Adri, ..." style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:9px 12px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom:12px;">
+            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">🔴 Equipo Rojo (nombres separados por comas)</label>
+            <textarea id="cal-manual-rojo" rows="2" placeholder="Manu, Iván, Hugo, ..." style="width:100%;background:var(--gris-oscuro);border:1px solid #5a1010;border-radius:8px;padding:9px 12px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">⏳ Reservas (opcional, separadas por comas)</label>
+            <textarea id="cal-manual-reservas" rows="1" placeholder="Sanz, Sbreik, ..." style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:9px 12px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;"></textarea>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:8px;">🏆 Resultado</label>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
+                <input type="radio" name="cal-manual-resultado" value="blanco" checked style="margin:0;">
+                <span style="width:12px;height:12px;background:#f0f0f0;border:1px solid #999;border-radius:2px;"></span>Gana blanco
+              </label>
+              <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
+                <input type="radio" name="cal-manual-resultado" value="rojo" style="margin:0;">
+                <span style="width:12px;height:12px;background:#c0392b;border-radius:2px;"></span>Gana rojo
+              </label>
+              <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
+                <input type="radio" name="cal-manual-resultado" value="empate" style="margin:0;">🤝 Empate
+              </label>
+              <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;color:#888;">
+                <input type="radio" name="cal-manual-resultado" value="sinResultado" style="margin:0;">⚠️ Sin resultado válido
+              </label>
+            </div>
+          </div>
+
+          <div class="form-group" style="margin-bottom:14px;">
+            <label style="cursor:pointer;display:flex;align-items:center;gap:8px;font-size:0.85rem;color:#ccc;">
+              <input type="checkbox" id="cal-manual-sumar-puntos" checked style="margin:0;width:16px;height:16px;cursor:pointer;">
+              ✅ Sumar puntos a los jugadores (+1 titulares, +0.5 reservas)
+            </label>
+            <p style="font-size:0.74rem;color:#666;margin-top:4px;margin-left:24px;">Desactívalo si solo quieres registrar el partido sin afectar al ranking.</p>
+          </div>
+
+          <div style="display:flex;gap:8px;flex-wrap:wrap;">
+            <button class="btn btn-verde" onclick="guardarPartidoManual()" style="font-size:0.85rem;">💾 Guardar partido</button>
+            <button class="btn btn-gris" onclick="cerrarCalPanel()" style="font-size:0.85rem;">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
       <!-- ── PASADO: jugadores que jugaron + bajas ── -->
       <div id="cal-panel-pasado" style="display:none;">
         <div class="card">
@@ -5518,8 +5580,16 @@ function renderCalendario() {
     else if (esDiaPartido) { bg = 'rgba(46,204,113,0.08)'; color = 'var(--verde-neon)'; }
 
     const cell = document.createElement('div');
-    // Cualquier día CON registro es clickable (jugado/cancelado/suspendido) o el día del próximo partido
-    const clickable = jugado || cancelado || suspendido || pendiente || esDiaPartido;
+    // Cualquier día CON registro es clickable (jugado/cancelado/suspendido) o el día del próximo partido.
+    // ADEMÁS, los admins pueden clicar en cualquier día pasado o de hoy que esté libre,
+    // para añadir un partido manualmente.
+    const eresAdmin = esAdminActual(state);
+    const diaLibreEditable = !partidoReg && !pendiente && (esPasado || esHoy) && eresAdmin;
+    const clickable = jugado || cancelado || suspendido || pendiente || esDiaPartido || diaLibreEditable;
+
+    // Para días libres editables que no tengan otro estilo, subir un poco el color
+    // para que el admin vea que son clicables (sin cambiar el fondo, para no saturar).
+    if (diaLibreEditable && color === '#444') color = '#666';
     cell.style.cssText = `
       height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center;
       font-size:0.88rem; font-weight:${clickable ? '700' : '400'};
@@ -5613,10 +5683,38 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
   const fechaObj = new Date(fechaStr + 'T12:00:00');
   const fechaLabel = fechaObj.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' }).toUpperCase();
 
+  // Helper: ocultar todos los sub-paneles antes de mostrar el correcto
+  const panelManual = document.getElementById('cal-panel-manual');
+  panelPasado.style.display = 'none';
+  if (panelManual) panelManual.style.display = 'none';
+
   // Si hay registro en partidos_jugados (jugado, cancelado o suspendido) →
   // mostrar el panel "pasado" con sus controles, sea fecha pasada o futura.
   // Esto permite restaurar/borrar partidos cancelados de fechas futuras.
   const tieneRegistro = (state.partidos_jugados || []).some(p => p.fecha === fechaStr);
+
+  // Si es admin, no hay registro y la fecha es pasada o de hoy y NO es el próximo
+  // partido pendiente → mostrar el panel de añadir manual.
+  const eresAdmin = esAdminActual(state);
+  const esProximoPendiente = state.proximoPartido?.fecha === fechaStr
+                              && state.proximoPartido?.estado !== 'jugado'
+                              && state.proximoPartido?.estado !== 'cancelado';
+  if (!tieneRegistro && (esPasado || fechaStr === new Date().toISOString().slice(0,10)) && !esProximoPendiente && eresAdmin) {
+    if (panelManual) {
+      panelManual.style.display = 'block';
+      document.getElementById('cal-panel-fecha-manual').textContent = `📅 ${fechaLabel}`;
+      // Limpiar campos por si se llenaron antes
+      document.getElementById('cal-manual-blanco').value = '';
+      document.getElementById('cal-manual-rojo').value = '';
+      document.getElementById('cal-manual-reservas').value = '';
+      document.getElementById('cal-manual-sumar-puntos').checked = true;
+      document.querySelector('input[name="cal-manual-resultado"][value="blanco"]').checked = true;
+      // Guardar fecha en dataset para guardar luego
+      panelManual.dataset.fecha = fechaStr;
+      panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+    }
+    return;
+  }
 
   if (esPasado || jugado || tieneRegistro) {
     panelPasado.style.display = 'block';
@@ -7384,6 +7482,113 @@ async function borrarPartidoIdx(idx) {
   renderRanking();
   if (typeof renderPartido === 'function') renderPartido();
   notif(`Partido del ${fechaTxt} borrado.`);
+}
+
+// Añadir un partido manualmente desde el calendario. Pensado para registrar
+// partidos antiguos o reconstruir uno borrado por error. Crea la entrada en
+// partidos_jugados[] con titulares, reservas, equipoRojo y resultado, y
+// opcionalmente suma puntos según el toggle de la UI.
+async function guardarPartidoManual() {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden añadir partidos manualmente', 'error'); return; }
+  const panelManual = document.getElementById('cal-panel-manual');
+  const fechaStr = panelManual?.dataset?.fecha;
+  if (!fechaStr) { notif('Sin fecha seleccionada', 'error'); return; }
+
+  // Verificar que no haya ya un registro en esa fecha (por seguridad)
+  const yaExiste = (state.partidos_jugados || []).some(p => p.fecha === fechaStr);
+  if (yaExiste) { notif('Ya existe un partido registrado para esa fecha', 'error'); return; }
+
+  // Parsear los inputs
+  const parsearLista = (raw) => (raw || '').split(',').map(s => s.trim()).filter(Boolean);
+  const blancos  = parsearLista(document.getElementById('cal-manual-blanco').value);
+  const rojos    = parsearLista(document.getElementById('cal-manual-rojo').value);
+  const reservas = parsearLista(document.getElementById('cal-manual-reservas').value);
+
+  if (blancos.length === 0 || rojos.length === 0) {
+    notif('Hay que rellenar al menos un jugador en cada equipo', 'error');
+    return;
+  }
+
+  // Detectar duplicados entre listas (un mismo nombre en blanco y rojo, etc.)
+  const titulares = [...blancos, ...rojos];
+  const setTit = new Set(titulares.map(n => n.toLowerCase()));
+  if (setTit.size !== titulares.length) {
+    notif('Hay nombres duplicados entre los equipos. Revisa las listas.', 'error');
+    return;
+  }
+  const setReservas = new Set(reservas.map(n => n.toLowerCase()));
+  const colision = reservas.some(r => setTit.has(r.toLowerCase()));
+  if (colision) {
+    notif('Hay nombres que están a la vez en titulares y reservas. Revisa las listas.', 'error');
+    return;
+  }
+
+  // Resultado
+  const radioRes = document.querySelector('input[name="cal-manual-resultado"]:checked');
+  const valorRes = radioRes?.value || 'blanco'; // blanco/rojo/empate/sinResultado
+  const sumarPuntos = document.getElementById('cal-manual-sumar-puntos').checked;
+
+  // Confirmación
+  const fechaTxt = new Date(fechaStr + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'});
+  const labelRes = valorRes === 'blanco' ? '⚪ Gana blanco' :
+                   valorRes === 'rojo'   ? '🔴 Gana rojo' :
+                   valorRes === 'empate' ? '🤝 Empate' :
+                                           '⚠️ Sin resultado válido';
+  const conPuntos = sumarPuntos ? `\n\n✅ Se sumarán +1 a ${titulares.length} titulares y +0.5 a ${reservas.length} reservas.` : '\n\n⚠️ NO se sumarán puntos a los jugadores.';
+  if (!confirm(`Guardar partido manual del ${fechaTxt}\n\nResultado: ${labelRes}\nTitulares: ${titulares.length} (B:${blancos.length} / R:${rojos.length})\nReservas: ${reservas.length}${conPuntos}\n\n¿Confirmar?`)) return;
+
+  // Sumar puntos si el toggle está activo
+  if (sumarPuntos) {
+    const sumarA = (lista, ptos) => {
+      lista.forEach(nombre => {
+        const j = state.jugadores.find(x => x.nombre === nombre);
+        if (j) {
+          j.puntos = Math.round((j.puntos + ptos) * 10) / 10;
+          j.totales = Math.round((j.totales + ptos) * 10) / 10;
+          registrarHistorial(`✅ Partido manual ${fechaTxt} +${ptos} pt → ${formatPts(j.puntos)} pts`, nombre);
+        }
+        // Si el nombre no está en state.jugadores se trata como invitado (no se le suma)
+      });
+    };
+    sumarA(titulares, 1);
+    sumarA(reservas, 0.5);
+  }
+
+  // Crear el registro
+  if (!state.partidos_jugados) state.partidos_jugados = [];
+  const nuevoPartido = {
+    fecha: fechaStr,
+    titulares,
+    reservas,
+    apuntados: [...titulares, ...reservas],
+    equipoRojo: [...rojos],
+    manual: true  // flag para identificar que se añadió manualmente
+  };
+  if (valorRes === 'sinResultado') {
+    nuevoPartido.sinResultado = true;
+  } else {
+    nuevoPartido.resultado = valorRes;
+  }
+
+  // Insertar ordenado por fecha desc (los más recientes primero, igual que unshift hace)
+  state.partidos_jugados.push(nuevoPartido);
+  state.partidos_jugados.sort((a, b) => (b.fecha || '').localeCompare(a.fecha || ''));
+
+  // Incrementar contador total si suma puntos
+  if (sumarPuntos) {
+    state.config.partidos = (state.config.partidos || 0) + 1;
+    const totEl = document.getElementById('totalPartidos');
+    if (totEl) totEl.textContent = state.config.partidos;
+  }
+
+  _statsCache = null;
+  registrarHistorial(`✏️ Partido del ${fechaTxt} añadido manualmente. ${labelRes}.${sumarPuntos ? ' Puntos sumados.' : ' Sin puntos.'}`);
+  await guardar();
+  cerrarCalPanel();
+  renderCalendario();
+  renderRanking();
+  if (typeof renderPartido === 'function') renderPartido();
+  notif(`Partido del ${fechaTxt} añadido manualmente.`);
 }
 
 
