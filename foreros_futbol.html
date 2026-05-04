@@ -1400,7 +1400,7 @@ window.addEventListener('error', function(e) {
 
           <!-- Resultado -->
           <div id="cal-resultado-bloque" style="margin-bottom:18px;">
-            <div id="cal-resultado-display" style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--gris-oscuro);border-radius:10px;"></div>
+            <div id="cal-resultado-display" style="padding:12px;background:var(--gris-oscuro);border-radius:10px;"></div>
           </div>
 
           <!-- Titulares -->
@@ -5622,34 +5622,79 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
 
     // Bloque resultado: muestra ganador/empate, "sin resultado", "cancelado",
     // "suspendido", o un botón para anotar si eres admin y falta.
+    // Incluye también acciones admin: editar resultado, restaurar (cancel/susp),
+    // o borrar (cualquier partido).
     const resultadoBloque = document.getElementById('cal-resultado-bloque');
     const resultadoDisplay = document.getElementById('cal-resultado-display');
     if (registro) {
       resultadoBloque.style.display = 'block';
-      let html = '';
+      let estadoHtml = '';
+      let botonAnotar = '';
+      const sePuedeRestaurar = registro.cancelado || registro.suspendido;
+      const tieneResultadoAnotado = !registro.cancelado && !registro.suspendido && (registro.resultado || registro.sinResultado);
+      const esJugadoSinResultado = !registro.cancelado && !registro.suspendido && !registro.resultado && !registro.sinResultado;
+
       if (registro.cancelado) {
-        html = `<span style="font-size:1.3rem;">🚫</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;">PARTIDO CANCELADO</span>`;
+        estadoHtml = `<span style="font-size:1.3rem;">🚫</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;flex:1;">PARTIDO CANCELADO</span>`;
       } else if (registro.suspendido) {
-        html = `<span style="font-size:1.3rem;">🌧️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f5a623;">PARTIDO SUSPENDIDO</span>`;
+        estadoHtml = `<span style="font-size:1.3rem;">🌧️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f5a623;flex:1;">PARTIDO SUSPENDIDO</span>`;
       } else if (registro.sinResultado) {
-        html = `<span style="font-size:1.3rem;">⚠️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;">SIN RESULTADO VÁLIDO</span>`;
+        estadoHtml = `<span style="font-size:1.3rem;">⚠️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;flex:1;">SIN RESULTADO VÁLIDO</span>`;
       } else if (registro.resultado === 'blanco') {
-        html = `<span style="width:18px;height:18px;background:#f0f0f0;border:1px solid #999;border-radius:3px;flex-shrink:0;"></span>
-                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f0f0f0;">GANÓ EQUIPO BLANCO</span>`;
+        estadoHtml = `<span style="width:18px;height:18px;background:#f0f0f0;border:1px solid #999;border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f0f0f0;flex:1;">GANÓ EQUIPO BLANCO</span>`;
       } else if (registro.resultado === 'rojo') {
-        html = `<span style="width:18px;height:18px;background:#c0392b;border-radius:3px;flex-shrink:0;"></span>
-                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#e74c3c;">GANÓ EQUIPO ROJO</span>`;
+        estadoHtml = `<span style="width:18px;height:18px;background:#c0392b;border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#e74c3c;flex:1;">GANÓ EQUIPO ROJO</span>`;
       } else if (registro.resultado === 'empate') {
-        html = `<span style="font-size:1.3rem;">🤝</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f1c40f;">EMPATE</span>`;
+        estadoHtml = `<span style="font-size:1.3rem;">🤝</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f1c40f;flex:1;">EMPATE</span>`;
       } else {
         // Sin resultado anotado todavía
-        html = `<span style="font-size:1.3rem;">🏆</span>
+        estadoHtml = `<span style="font-size:1.3rem;">🏆</span>
                 <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1.5px;color:#888;flex:1;">SIN RESULTADO</span>`;
         if (esAdminActual(state) && idxPartido >= 0) {
-          html += `<button onclick="abrirModalResultadoIdx(${idxPartido})" class="btn btn-amarillo" style="font-size:0.8rem;padding:6px 12px;">Anotar</button>`;
+          botonAnotar = `<button onclick="abrirModalResultadoIdx(${idxPartido})" class="btn btn-amarillo" style="font-size:0.8rem;padding:6px 12px;">Anotar</button>`;
         }
       }
-      resultadoDisplay.innerHTML = html;
+
+      // Acciones admin (editar/restaurar/borrar) en una segunda fila
+      let accionesAdmin = '';
+      if (esAdminActual(state) && idxPartido >= 0) {
+        const accs = [];
+        // Editar resultado: solo para partidos jugados con resultado anotado
+        // (los "sin resultado" y "esJugadoSinResultado" usan el botón "Anotar"
+        // que ya aparece en la fila de arriba; aquí no lo duplicamos).
+        if (tieneResultadoAnotado && !registro.sinResultado) {
+          accs.push(`<button onclick="abrirModalResultadoIdx(${idxPartido})"
+            style="background:rgba(241,196,15,0.12);border:1px solid rgba(241,196,15,0.4);color:#f1c40f;cursor:pointer;font-size:0.75rem;padding:5px 10px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;"
+            title="Cambiar el resultado anotado">✏️ Editar resultado</button>`);
+        }
+        // Restaurar: solo cancelados o suspendidos
+        if (sePuedeRestaurar) {
+          accs.push(`<button onclick="restaurarPartidoIdx(${idxPartido})"
+            style="background:rgba(46,204,113,0.12);border:1px solid rgba(46,204,113,0.4);color:var(--verde-neon);cursor:pointer;font-size:0.75rem;padding:5px 10px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;"
+            title="Restaurar partido y reabrir inscripción">🔄 Restaurar</button>`);
+        }
+        // Borrar: siempre disponible para cualquier partido en histórico
+        accs.push(`<button onclick="borrarPartidoIdx(${idxPartido})"
+          style="background:rgba(231,76,60,0.12);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.75rem;padding:5px 10px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;margin-left:auto;"
+          title="Borrar el partido del histórico">🗑 Borrar</button>`);
+
+        if (accs.length) {
+          accionesAdmin = `<div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-top:10px;padding-top:10px;border-top:1px dashed #333;">${accs.join('')}</div>`;
+        }
+      }
+
+      resultadoDisplay.innerHTML = `
+        <div style="display:flex;align-items:center;gap:10px;">
+          ${estadoHtml}
+          ${botonAnotar}
+        </div>
+        ${accionesAdmin}
+      `;
+      // Quitamos el padding interno del contenedor padre para que la sección
+      // de acciones tenga su propio borde superior limpio.
+      resultadoDisplay.style.padding = '12px';
     } else {
       resultadoBloque.style.display = 'none';
     }
@@ -5732,12 +5777,14 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
       const colorEstado = faltan ? '#e74c3c' : (pp.estado === 'alineacion-lista' ? '#7fb3e0' : 'var(--verde-neon)');
       resultadoBloque.style.display = 'block';
       resultadoDisplay.innerHTML = `
-        <span style="font-size:1.3rem;">📅</span>
-        <div style="flex:1;">
-          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1.5px;color:${colorEstado};">${labelEstado}</div>
-          <div style="font-size:0.8rem;color:#aaa;margin-top:2px;">${tits}/${limite} titulares · ${reservas} reservas${faltan ? ' · <span style="color:#e74c3c;font-weight:700;">faltan jugadores</span>' : ''}</div>
+        <div style="display:flex;align-items:center;gap:10px;">
+          <span style="font-size:1.3rem;">📅</span>
+          <div style="flex:1;">
+            <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1.5px;color:${colorEstado};">${labelEstado}</div>
+            <div style="font-size:0.8rem;color:#aaa;margin-top:2px;">${tits}/${limite} titulares · ${reservas} reservas${faltan ? ' · <span style="color:#e74c3c;font-weight:700;">faltan jugadores</span>' : ''}</div>
+          </div>
+          <button onclick="irAPartido()" class="btn btn-azul" style="font-size:0.8rem;padding:6px 12px;">Ir →</button>
         </div>
-        <button onclick="irAPartido()" class="btn btn-azul" style="font-size:0.8rem;padding:6px 12px;">Ir →</button>
       `;
 
       // Vaciar los demás bloques (no tienen info útil para el futuro)
@@ -7218,12 +7265,120 @@ function guardarResultado(resultado) {
   partido.resultado = resultado;
   const labels = { blanco: '⚪ Gana blanco', rojo: '🔴 Gana rojo', empate: '🤝 Empate' };
   registrarHistorial(`🏆 Resultado partido #${idx + 1}: ${labels[resultado]}`);
+  _statsCache = null; // el resultado afecta a victorias/derrotas
   guardar();
   notif(labels[resultado]);
   cerrarModalResultado();
   renderRanking();
+  // Refrescar el panel del calendario si está abierto
+  if (typeof renderCalendario === 'function' && document.getElementById('page-calendario').classList.contains('active')) {
+    renderCalendario();
+  }
   // Si estamos en admin, refrescar el aviso de pendientes
   if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
+}
+
+// Restaurar un partido cancelado o suspendido. Lo elimina de partidos_jugados[]
+// y libera la fecha para que asegurarProximoPartido genere uno nuevo apuntando
+// a esa fecha (si todavía es la próxima en el calendario).
+async function restaurarPartidoIdx(idx) {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden restaurar partidos', 'error'); return; }
+  if (!state.partidos_jugados || !state.partidos_jugados[idx]) return;
+  const p = state.partidos_jugados[idx];
+
+  // Solo cancelados o suspendidos
+  if (!p.cancelado && !p.suspendido) {
+    notif('Solo se pueden restaurar partidos cancelados o suspendidos', 'error');
+    return;
+  }
+
+  const tipoTxt = p.cancelado ? 'cancelado' : 'suspendido';
+  const fechaTxt = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}) : '—';
+  if (!confirm(`¿Restaurar el partido ${tipoTxt} del ${fechaTxt}?\n\nEl registro se eliminará y la fecha quedará libre para volver a abrir inscripción.`)) return;
+
+  // Quitar del histórico
+  state.partidos_jugados.splice(idx, 1);
+
+  // Si la fecha restaurada es futura o de hoy, forzar que el proximoPartido la
+  // reocupe (en caso de que ahora apunte a una fecha posterior).
+  const hoyStr = new Date().toISOString().slice(0,10);
+  if (p.fecha >= hoyStr) {
+    state.proximoPartido = {
+      fecha: p.fecha,
+      hora: state.config?.hora || '',
+      campo: state.config?.campo || '',
+      tipo: state.config?.tipoPartido || '7vs7',
+      estado: 'abierto',
+      apuntados: [],
+      resultado: null
+    };
+  }
+
+  registrarHistorial(`🔄 Partido del ${fechaTxt} restaurado (era ${tipoTxt}). Inscripción reabierta.`);
+  await guardar();
+  cerrarCalPanel();
+  renderCalendario();
+  if (typeof renderPartido === 'function') renderPartido();
+  notif(`Partido restaurado. Inscripción abierta para el ${fechaTxt}.`);
+}
+
+// Borrar un partido del histórico. Si tenía puntos sumados (jugado normal o sin
+// resultado), los revierte. Si era cancelado/suspendido, no había puntos.
+// Decrementa el contador total de partidos.
+async function borrarPartidoIdx(idx) {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden borrar partidos', 'error'); return; }
+  if (!state.partidos_jugados || !state.partidos_jugados[idx]) return;
+  const p = state.partidos_jugados[idx];
+
+  const fechaTxt = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}) : '—';
+  const tipoSumaPuntos = !p.cancelado && !p.suspendido; // jugados normales y "sinResultado" sí sumaron puntos
+  const titsCount = (p.titulares || []).length;
+  const resCount  = (p.reservas  || []).length;
+
+  let mensajeBase = `¿Borrar definitivamente el partido del ${fechaTxt}?\n\n`;
+  if (tipoSumaPuntos) {
+    mensajeBase += `Se devolverán -1 punto a ${titsCount} titulares y -0.5 a ${resCount} reservas.\nEl contador total bajará en 1.\nEsta acción no se puede deshacer.`;
+  } else {
+    mensajeBase += `Era un partido ${p.cancelado ? 'cancelado' : 'suspendido'} (no se habían sumado puntos).\nSolo se eliminará el registro.\nEsta acción no se puede deshacer.`;
+  }
+  if (!confirm(mensajeBase)) return;
+  // Doble confirmación para reforzar
+  if (!confirm('CONFIRMACIÓN FINAL: borrar este partido y revertir cambios. ¿Seguro?')) return;
+
+  // Revertir puntos si aplica
+  if (tipoSumaPuntos) {
+    (p.titulares || []).forEach(nombre => {
+      const j = state.jugadores.find(x => x.nombre === nombre);
+      if (j) {
+        j.puntos = Math.round((j.puntos - 1) * 10) / 10;
+        j.totales = Math.round((j.totales - 1) * 10) / 10;
+        registrarHistorial(`⏪ Borrado partido ${fechaTxt}: -1 pt → ${formatPts(j.puntos)} pts`, nombre);
+      }
+    });
+    (p.reservas || []).forEach(nombre => {
+      const j = state.jugadores.find(x => x.nombre === nombre);
+      if (j) {
+        j.puntos = Math.round((j.puntos - 0.5) * 10) / 10;
+        j.totales = Math.round((j.totales - 0.5) * 10) / 10;
+        registrarHistorial(`⏪ Borrado partido ${fechaTxt}: -0.5 pt → ${formatPts(j.puntos)} pts`, nombre);
+      }
+    });
+    state.config.partidos = Math.max(0, (state.config.partidos || 1) - 1);
+    const totEl = document.getElementById('totalPartidos');
+    if (totEl) totEl.textContent = state.config.partidos;
+  }
+
+  // Quitar del histórico
+  state.partidos_jugados.splice(idx, 1);
+  _statsCache = null; // las stats cambian
+
+  registrarHistorial(`🗑 Partido del ${fechaTxt} borrado del histórico${tipoSumaPuntos ? ' (puntos revertidos)' : ''}.`);
+  await guardar();
+  cerrarCalPanel();
+  renderCalendario();
+  renderRanking();
+  if (typeof renderPartido === 'function') renderPartido();
+  notif(`Partido del ${fechaTxt} borrado.`);
 }
 
 
