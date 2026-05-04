@@ -1213,6 +1213,7 @@ window.addEventListener('error', function(e) {
           <button class="btn btn-gris" onclick="reabrirInscripcion()" style="font-size:0.8rem;">🔓 Reabrir inscripción</button>
           <button class="btn btn-amarillo" onclick="cambiarTipoPartidoPuntual()" style="font-size:0.8rem;">⚙️ Cambiar tipo solo este partido</button>
           <button class="btn btn-gris" onclick="copiarListaWhatsApp()" style="font-size:0.8rem;">📋 Copiar lista para WhatsApp</button>
+          <button class="btn btn-verde" onclick="cerrarPartido()" style="font-size:0.8rem;">✅ Partido jugado — anotar resultado</button>
           <button class="btn btn-gris" onclick="suspenderPartido()" style="font-size:0.8rem;color:#f5a623;">🌧️ Suspender partido</button>
           <button class="btn btn-gris" onclick="cerrarSinResultado()" style="font-size:0.8rem;color:#aaa;">⚠️ Cerrar sin resultado</button>
         </div>
@@ -1450,13 +1451,10 @@ window.addEventListener('error', function(e) {
           </div>
         </div>
 
-        <!-- Cerrar partido + Sanción -->
+        <!-- Aplicar Sanción manual -->
         <div class="card">
-          <div class="card-title">✅ Cerrar Partido</div>
-          <p style="color:#777;font-size:0.85rem;margin-bottom:16px;">Suma +1 punto a los 16 titulares y +0.5 a los reservas que no jugaron. No se puede deshacer.</p>
-          <button class="btn btn-verde btn-full" onclick="cerrarPartido()" style="margin-bottom:12px;">✅ Confirmar Partido Jugado</button>
-          <div class="divider"></div>
-          <div class="card-title" style="margin-top:8px;">⚠️ Aplicar Sanción</div>
+          <div class="card-title">⚠️ Aplicar Sanción</div>
+          <p style="color:#777;font-size:0.82rem;margin-bottom:14px;">Sanciones manuales (las automáticas se aplican solas según la config de la liga).<br><span style="color:#555;font-size:0.78rem;">El cierre del partido y el resultado se gestionan desde la pestaña <strong>Partido</strong>.</span></p>
           <div class="form-group">
             <label>Jugador</label>
             <select id="sancionJugador"></select>
@@ -4444,10 +4442,28 @@ function limpiarPartido() {
   renderAdmin();
 }
 
-function cerrarPartido() {
-  const p = state.partido;
-  if (!p) { notif('No hay partido activo', 'error'); return; }
-  if (!confirm('¿Confirmas que el partido se jugó? Se sumarán puntos a todos los jugadores. Esta acción no se puede deshacer.')) return;
+// Cierra el partido como JUGADO (con resultado válido). Suma puntos a
+// titulares (+1) y reservas (+0.5), guarda el partido en partidos_jugados[]
+// con resultado:null y abre el modal para anotar quién ganó.
+// Funciona con el modelo nuevo de proximoPartido — limpia ambos estados.
+async function cerrarPartido() {
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  const p  = state.partido;
+
+  if (!pp) { notif('No hay partido activo', 'error'); return; }
+  if (!p || !p.titulares || !p.titulares.length) {
+    notif('Primero hay que cerrar la inscripción y generar alineación', 'error');
+    return;
+  }
+  if (pp.estado !== 'alineacion-lista' && pp.estado !== 'jugado') {
+    notif('La alineación tiene que estar generada antes de cerrar el partido', 'error');
+    return;
+  }
+
+  const totalTit = p.titulares.length;
+  const totalRes = p.reservas.length;
+  if (!confirm(`¿Confirmas que el partido se jugó?\n\nSe sumarán +1 punto a los ${totalTit} titulares y +0.5 a los ${totalRes} reservas.\nDespués se te pedirá el resultado (gana blanco / gana rojo / empate).\n\nEsta acción no se puede deshacer.`)) return;
 
   // +1 a titulares
   p.titulares.forEach(nombre => {
@@ -4464,9 +4480,9 @@ function cerrarPartido() {
   // Levantar sanciones de 1 semana
   state.jugadores.forEach(j => { if (j.sancionado) j.sancionado = false; });
 
-  // Guardar en historial de partidos (para el calendario)
+  // Guardar en historial de partidos (para el calendario y para stats)
   if (!state.partidos_jugados) state.partidos_jugados = [];
-  state.partidos_jugados.push({
+  state.partidos_jugados.unshift({
     fecha: p.fecha,
     titulares: [...p.titulares],
     reservas: [...p.reservas],
@@ -4476,18 +4492,29 @@ function cerrarPartido() {
   });
 
   // Incrementar contador total
-  state.config.partidos += 1;
-  document.getElementById('totalPartidos').textContent = state.config.partidos;
+  state.config.partidos = (state.config.partidos || 0) + 1;
+  const totEl = document.getElementById('totalPartidos');
+  if (totEl) totEl.textContent = state.config.partidos;
+
+  // Marcar el proximoPartido como jugado y limpiar AMBOS estados
+  pp.estado = 'jugado';
+  state.proximoPartido = null;
+  state.partido = null;
+
+  // Invalidar cache de stats — el partido nuevo afecta a victorias/derrotas
+  _statsCache = null;
 
   registrarHistorial(`✅ Partido #${state.config.partidos} cerrado (${p.fecha}). Titulares: ${p.titulares.join(', ')}.`);
-  state.partido = null;
-  guardar();
+  await guardar();
   notif(`Partido #${state.config.partidos} cerrado. ¡Puntos sumados!`);
+  renderPartido();
   renderAdmin();
   renderRanking();
+  if (typeof renderCalendario === 'function') renderCalendario();
 
-  // Pedir resultado
-  abrirModalResultado(state.config.partidos);
+  // Pedir resultado — el partido se acaba de añadir al inicio (unshift),
+  // así que su índice es 0
+  abrirModalResultadoIdx(0);
 }
 
 function aplicarSancion() {
