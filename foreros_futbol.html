@@ -170,11 +170,14 @@ window.addEventListener('error', function(e) {
     border-bottom: 1px solid #222;
     max-width: 1100px;
     margin: 0 auto;
-    padding: 0 8px;
+    padding: 0 4px;
     gap: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
     scrollbar-width: none;
+    position: sticky;
+    top: 0;
+    z-index: 90;
   }
   .tabs::-webkit-scrollbar { display: none; }
 
@@ -189,6 +192,42 @@ window.addEventListener('error', function(e) {
     user-select: none;
     white-space: nowrap;
     flex-shrink: 0;
+  }
+  .tab .tab-emoji { margin-right: 4px; }
+
+  /* ── Móvil: tabs tipo bottom nav (emoji arriba, texto debajo) ── */
+  @media (max-width: 600px) {
+    .tabs { padding: 0; }
+    .tab {
+      padding: 6px 0 4px;
+      flex: 1 1 0;
+      text-align: center;
+      flex-shrink: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 1px;
+      border-bottom-width: 2px;
+      font-size: 0.72rem;
+    }
+    .tab .tab-emoji {
+      display: block;
+      font-size: 1.15rem;
+      margin-right: 0;
+      line-height: 1.2;
+    }
+    .tab .tab-text {
+      display: block;
+      font-size: 0.55rem;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      line-height: 1;
+    }
+    /* Panel lateral de equipos: colapsar debajo del campo */
+    .panel-editor-equipos {
+      width: 100% !important;
+      flex-shrink: 1 !important;
+    }
   }
 
   .tab:hover { color: #aaa; }
@@ -728,7 +767,20 @@ window.addEventListener('error', function(e) {
     [style*="grid-template-columns:1.8fr"] { font-size: 0.7rem !important; }
     input[type="number"] { font-size: 0.88rem; }
     .btn { font-size: 0.82rem; padding: 8px 14px; }
-    .tab { padding: 10px 11px; font-size: 0.78rem; }
+    /* tabs: reglas de layout están arriba en el bloque .tabs @media */
+    .header-inner {
+      padding: 6px 10px;
+    }
+    .header-inner > div:first-child > div:first-child span {
+      font-size: 1rem !important;
+    }
+    .partidos-badge {
+      padding: 4px 8px !important;
+      font-size: 0.7rem !important;
+    }
+    .partidos-badge strong {
+      font-size: 1.1rem !important;
+    }
   }
 
 </style>
@@ -1112,12 +1164,12 @@ window.addEventListener('error', function(e) {
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" data-i18n="tab.ranking" onclick="showTab('ranking', this)">🏆 Ranking</div>
-    <div class="tab" data-i18n="tab.partido" onclick="showTab('partido', this)">⚽ Partido</div>
-    <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)">📅 Calendario</div>
-    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)">🔧 Admin</div>
-    <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)">📋 Historial</div>
-    <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)">👤 Perfil</div>
+    <div class="tab active" data-i18n="tab.ranking" onclick="showTab('ranking', this)"><span class="tab-emoji">🏆</span><span class="tab-text">Ranking</span></div>
+    <div class="tab" data-i18n="tab.partido" onclick="showTab('partido', this)"><span class="tab-emoji">⚽</span><span class="tab-text">Partido</span></div>
+    <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)"><span class="tab-emoji">📅</span><span class="tab-text">Calendario</span></div>
+    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span></div>
+    <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)"><span class="tab-emoji">📋</span><span class="tab-text">Historial</span></div>
+    <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)"><span class="tab-emoji">👤</span><span class="tab-text">Perfil</span></div>
   </div>
 </header>
 
@@ -1297,7 +1349,7 @@ window.addEventListener('error', function(e) {
             </div>
 
             <!-- Panel editor equipos -->
-            <div style="width:250px;flex-shrink:0;">
+            <div class="panel-editor-equipos" style="width:250px;flex-shrink:0;">
               <div style="background:var(--gris-oscuro);border:1px solid #2a2a2a;border-radius:10px;padding:14px;">
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:2px;color:#aaa;margin-bottom:12px;">EQUIPOS</div>
 
