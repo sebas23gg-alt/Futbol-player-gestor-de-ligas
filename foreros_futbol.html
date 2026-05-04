@@ -1354,9 +1354,13 @@ window.addEventListener('error', function(e) {
         <div id="cal-titulo" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:3px;color:var(--verde-neon);"></div>
         <button onclick="cambiarMes(1)" class="btn btn-gris" style="padding:8px 14px;">›</button>
       </div>
-      <div style="display:flex;gap:16px;flex-wrap:wrap;margin-bottom:14px;font-size:0.78rem;color:#888;">
-        <span><span style="display:inline-block;width:10px;height:10px;background:var(--verde);border-radius:2px;margin-right:4px;"></span>Partido jugado</span>
-        <span><span style="display:inline-block;width:10px;height:10px;background:#1a4a7a;border-radius:2px;margin-right:4px;"></span>Partido pendiente</span>
+      <div style="display:flex;gap:14px;flex-wrap:wrap;margin-bottom:14px;font-size:0.74rem;color:#888;">
+        <span><span style="display:inline-block;width:10px;height:10px;background:var(--verde);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Jugado</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:#1a4a7a;border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Pendiente</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:rgba(120,120,120,0.4);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Cancelado</span>
+        <span><span style="display:inline-block;width:10px;height:10px;background:rgba(245,166,35,0.45);border-radius:2px;margin-right:4px;vertical-align:middle;"></span>Suspendido</span>
+        <span><span style="display:inline-block;width:6px;height:6px;background:#e74c3c;border-radius:50%;margin-right:4px;vertical-align:middle;"></span>Faltan jugadores</span>
+        <span><span style="display:inline-block;width:6px;height:6px;background:#f1c40f;border-radius:50%;margin-right:4px;vertical-align:middle;"></span>Sin resultado</span>
       </div>
       <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:4px;">
         <div style="text-align:center;font-size:0.72rem;color:#555;font-weight:700;padding:4px 0;">L</div>
@@ -1392,6 +1396,11 @@ window.addEventListener('error', function(e) {
           <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
             <div class="card-title" id="cal-panel-fecha-pasado" style="margin:0;"></div>
             <button onclick="cerrarCalPanel()" style="background:none;border:none;color:#555;font-size:1.1rem;cursor:pointer;">✕</button>
+          </div>
+
+          <!-- Resultado -->
+          <div id="cal-resultado-bloque" style="margin-bottom:18px;">
+            <div id="cal-resultado-display" style="display:flex;align-items:center;gap:10px;padding:12px;background:var(--gris-oscuro);border-radius:10px;"></div>
           </div>
 
           <!-- Titulares -->
@@ -1954,16 +1963,22 @@ window.addEventListener('error', function(e) {
 <div class="modal-overlay" id="modalBaja">
   <div class="modal">
     <h2>🟥 Dar de Baja</h2>
-    <p style="color:#aaa;margin-bottom:16px;font-size:0.9rem;">¿Qué día se da de baja <strong id="baja-nombre" style="color:white;"></strong>?</p>
+    <p style="color:#aaa;margin-bottom:8px;font-size:0.9rem;">Jugador: <strong id="baja-nombre" style="color:white;"></strong> <span id="baja-tipo-jugador" style="font-size:0.78rem;color:#888;margin-left:6px;"></span></p>
+    <p id="baja-info" style="color:#888;font-size:0.82rem;margin-bottom:14px;line-height:1.4;"></p>
+
     <div class="form-group">
-      <label>Día de baja</label>
-      <select id="baja-tipo">
-        <option value="1">Sábado (-1 punto)</option>
-        <option value="2">Domingo (-2 puntos)</option>
-        <option value="3">Lunes (-3 puntos + sanción 1 semana)</option>
+      <label>Sanción a aplicar</label>
+      <select id="baja-tipo" style="width:100%;">
+        <!-- Opciones rellenadas dinámicamente desde abrirModalBaja -->
       </select>
     </div>
-    <p style="color:#777;font-size:0.82rem;margin-top:8px;">Si entra un reserva, automáticamente pasa a +1 punto en lugar de +0.5</p>
+
+    <div id="baja-veto-info" style="display:none;background:rgba(231,76,60,0.1);border:1px solid rgba(231,76,60,0.4);border-radius:8px;padding:10px;margin:10px 0;font-size:0.82rem;color:#e74c3c;">
+      ⚠️ Además: el jugador quedará <strong>vetado para el siguiente partido</strong> según la config de la liga. Aún así podrá apuntarse, pero entrará el último.
+    </div>
+
+    <p style="color:#777;font-size:0.78rem;margin-top:8px;">Si entra un reserva al hueco, automáticamente sumará +1 punto en lugar de +0.5 cuando se cierre el partido.</p>
+
     <div class="modal-btns">
       <button class="btn btn-gris" onclick="cerrarModal()">Cancelar</button>
       <button class="btn btn-rojo" onclick="confirmarBaja()">Confirmar Baja</button>
@@ -4225,9 +4240,101 @@ function descargarPartidoCanvas() {
   notif('¡Imagen descargada!');
 }
 
+// Abre el modal de baja con info auto-detectada según fecha del partido y
+// la config de sanciones de la liga. Permite forzar manualmente desde el
+// dropdown. Funciona para titulares, reservas, jugadores con cuenta o invitados.
 function abrirModalBaja(nombre) {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden dar de baja', 'error'); return; }
   bajaTemp = nombre;
+
+  const pp = state.proximoPartido;
+  const apt = pp?.apuntados?.find(a => a.nombre === nombre);
+  const esInvitado = !!(apt?.esInvitado);
+  const eraTitular = apt ? apt.rol === 'titular' :
+                     state.partido?.titulares?.includes(nombre) || false;
+
+  // Calcular días de antelación desde hoy hasta la fecha del partido
+  let diasHasta = null;
+  if (pp?.fecha) {
+    const fechaPartido = new Date(pp.fecha + 'T12:00:00');
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    diasHasta = Math.round((fechaPartido - hoy) / (1000*60*60*24));
+  }
+
+  // Leer config de sanciones (por si la baja es manual y el admin la aplica
+  // como excepción aunque el toggle global esté off, no dependemos de sc.activas
+  // para mostrar opciones — mostramos las opciones siempre)
+  const sc = getSancionesConfig();
+
+  // Auto-detectar sanción sugerida según días de antelación.
+  // Las bajas de RESERVAS no se sancionan por defecto (el reglamento
+  // estándar es que las sanciones solo aplican a titulares).
+  let sancionAuto = 0;
+  let labelAuto = 'Sin sanción';
+  if (eraTitular) {
+    if (diasHasta === 0) { sancionAuto = sc.mismoDia; labelAuto = 'Mismo día'; }
+    else if (diasHasta === 1) { sancionAuto = sc.unDiaAntes; labelAuto = '1 día antes'; }
+    else if (diasHasta === 2) { sancionAuto = sc.dosDiasAntes; labelAuto = '2 días antes'; }
+    else if (diasHasta !== null && diasHasta >= 3) { sancionAuto = 0; labelAuto = '3+ días antes'; }
+  } else {
+    labelAuto = 'Reserva — sin sanción';
+  }
+
+  // Si las sanciones globales están desactivadas, el auto pasa a 0 pero el
+  // admin puede forzar manualmente cualquier valor desde el dropdown.
+  if (!sc.activas) {
+    sancionAuto = 0;
+    labelAuto = 'Sanciones desactivadas en config';
+  }
+
+  // Para invitados no aplica sanción de puntos (no están en state.jugadores)
+  // pero sí lo dejamos pasar porque puede que el admin quiera salir con "0".
+  const puedeSancion = !esInvitado;
+
+  // Construir el dropdown
+  const sel = document.getElementById('baja-tipo');
+  const opts = [];
+  // Opción auto (la más relevante)
+  if (puedeSancion) {
+    opts.push(`<option value="${sancionAuto}|auto" selected>🎯 Auto (${labelAuto}: ${sancionAuto === 0 ? 'sin sanción' : sancionAuto + ' pts'})</option>`);
+    // Opciones manuales independientes
+    [
+      { v: sc.mismoDia,    txt: `Mismo día (${sc.mismoDia} pts)` },
+      { v: sc.unDiaAntes,  txt: `1 día antes (${sc.unDiaAntes} pts)` },
+      { v: sc.dosDiasAntes,txt: `2 días antes (${sc.dosDiasAntes} pts)` },
+      { v: 0,              txt: 'Sin sanción (excepción)' }
+    ].forEach(o => {
+      opts.push(`<option value="${o.v}|manual">${o.txt}</option>`);
+    });
+  } else {
+    opts.push(`<option value="0|invitado" selected>Sin sanción (jugador invitado)</option>`);
+  }
+  sel.innerHTML = opts.join('');
+
+  // Rellenar info contextual
   document.getElementById('baja-nombre').textContent = nombre;
+  document.getElementById('baja-tipo-jugador').textContent =
+    esInvitado ? '(Invitado)' : (eraTitular ? '(Titular)' : '(Reserva)');
+
+  let info = '';
+  if (diasHasta !== null) {
+    if (diasHasta === 0) info = '⏰ El partido es <strong>hoy</strong>.';
+    else if (diasHasta === 1) info = '📅 El partido es <strong>mañana</strong>.';
+    else if (diasHasta < 0) info = `📅 El partido fue hace ${Math.abs(diasHasta)} día(s).`;
+    else info = `📅 El partido es en <strong>${diasHasta} días</strong>.`;
+  }
+  if (esInvitado) info += ' Los invitados no se sancionan en puntos (no tienen cuenta).';
+  if (!eraTitular && !esInvitado) info += ' Las bajas de reservas no se sancionan por defecto.';
+  document.getElementById('baja-info').innerHTML = info;
+
+  // Veto siguiente partido (solo si misma día + config lo activa + jugador con cuenta + era titular)
+  const aplicaVeto = puedeSancion && eraTitular && diasHasta === 0 && sc.activas && sc.vetoSiguiente;
+  document.getElementById('baja-veto-info').style.display = aplicaVeto ? 'block' : 'none';
+  // Guardar contexto para confirmarBaja
+  document.getElementById('modalBaja').dataset.aplicaVeto = aplicaVeto ? '1' : '0';
+  document.getElementById('modalBaja').dataset.eraTitular = eraTitular ? '1' : '0';
+  document.getElementById('modalBaja').dataset.esInvitado = esInvitado ? '1' : '0';
+
   document.getElementById('modalBaja').classList.add('show');
 }
 
@@ -4237,27 +4344,81 @@ function cerrarModal() {
 }
 
 function confirmarBaja() {
-  if (!bajaTemp || !state.partido) return;
-  const tipo = parseInt(document.getElementById('baja-tipo').value);
-  const j = state.jugadores.find(x => x.nombre === bajaTemp);
-  if (!j) return;
+  if (!bajaTemp) return;
+  if (!esAdminActual(state)) { notif('Solo los admins pueden dar de baja', 'error'); return; }
 
-  // Aplicar sanción
-  j.puntos -= tipo;
-  if (tipo === 3) j.sancionado = true;
+  const modal = document.getElementById('modalBaja');
+  const valorRaw = document.getElementById('baja-tipo').value; // "X|auto"|"X|manual"|"0|invitado"
+  const [pStr] = valorRaw.split('|');
+  const pts = parseInt(pStr) || 0;
 
-  // Sacar de titulares
-  state.partido.titulares = state.partido.titulares.filter(n => n !== bajaTemp);
+  const eraTitular = modal.dataset.eraTitular === '1';
+  const aplicaVeto = modal.dataset.aplicaVeto === '1';
+  const esInvitado = modal.dataset.esInvitado === '1';
+  const nombre = bajaTemp;
 
-  // Si hay reserva, entra el primero
-  if (state.partido.reservas.length > 0) {
-    const entrante = state.partido.reservas.shift();
-    state.partido.titulares.push(entrante);
-    registrarHistorial(`🔄 ${bajaTemp} dio de baja (${tipo===1?'Sábado':tipo===2?'Domingo':'Lunes'}). Entra ${entrante} desde reservas.`, bajaTemp);
+  // Aplicar sanción de puntos al jugador (solo si tiene cuenta)
+  let mensajePts = '';
+  if (!esInvitado && pts < 0) {
+    const j = state.jugadores.find(x => x.nombre === nombre);
+    if (j) {
+      j.puntos = Math.round((j.puntos + pts) * 10) / 10;
+      mensajePts = ` ${pts} pts.`;
+    }
+  }
+
+  // Aplicar veto al siguiente partido
+  let mensajeVeto = '';
+  if (aplicaVeto) {
+    const j = state.jugadores.find(x => x.nombre === nombre);
+    if (j) {
+      j._vetadoSiguiente = true;
+      mensajeVeto = ' Vetado al siguiente partido.';
+    }
+  }
+
+  // Sacar al jugador del partido. Hay 3 estados posibles:
+  //  A) Hay state.proximoPartido con apuntados[] → sistema nuevo
+  //  B) Hay state.partido (alineación generada) → titulares/reservas legacy
+  //  C) Ambos a la vez (caso normal cuando hay alineación lista)
+  // Sincronizamos AMBOS por seguridad.
+
+  const pp = state.proximoPartido;
+  if (pp && Array.isArray(pp.apuntados)) {
+    pp.apuntados = pp.apuntados.filter(a => a.nombre !== nombre);
+  }
+
+  let entrante = null;
+  if (state.partido) {
+    const erataTit = state.partido.titulares?.includes(nombre);
+    state.partido.titulares = (state.partido.titulares || []).filter(n => n !== nombre);
+    state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== nombre);
+    state.partido._equipoRojo = (state.partido._equipoRojo || []).filter(n => n !== nombre);
+
+    // Si era titular, intentar promover el primer reserva adecuado
+    if (erataTit && state.partido.reservas.length > 0) {
+      entrante = state.partido.reservas.shift();
+      state.partido.titulares.push(entrante);
+
+      // Sincronizar también en proximoPartido (cambiar rol del entrante a titular)
+      if (pp && Array.isArray(pp.apuntados)) {
+        const e = pp.apuntados.find(a => a.nombre === entrante);
+        if (e) e.rol = 'titular';
+      }
+    }
+  } else if (eraTitular && pp) {
+    // No hay state.partido pero sí proximoPartido → promover en el modelo nuevo
+    promoverPrimerReserva();
+  }
+
+  // Historial
+  const motivoTxt = esInvitado ? '(invitado)' : (eraTitular ? '(titular)' : '(reserva)');
+  if (entrante) {
+    registrarHistorial(`🔄 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto} Entra ${entrante} desde reservas.`, esInvitado ? null : nombre);
     notif(`${entrante} entra desde reservas`);
   } else {
-    registrarHistorial(`🟥 ${bajaTemp} dio de baja (${tipo===1?'Sábado':tipo===2?'Domingo':'Lunes'}). Sin reservas disponibles.`, bajaTemp);
-    notif(`Baja aplicada a ${bajaTemp}`, 'error');
+    registrarHistorial(`🟥 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto}`, esInvitado ? null : nombre);
+    notif(`Baja aplicada a ${nombre}.${mensajePts}${mensajeVeto}`, mensajePts || mensajeVeto ? 'ok' : 'error');
   }
 
   guardar();
@@ -5287,8 +5448,17 @@ function renderCalendario() {
   const grid = document.getElementById('cal-grid');
   grid.innerHTML = '';
 
-  const pjFechas = (state.partidos_jugados || []).map(p => p.fecha);
-  const fechaActiva = state.partido?.fecha || null;
+  // Mapa de partidos jugados/cancelados/suspendidos por fecha (para colores)
+  const pjMap = {};
+  (state.partidos_jugados || []).forEach(p => { pjMap[p.fecha] = p; });
+
+  // Próximo partido pendiente
+  asegurarProximoPartido();
+  const pp = state.proximoPartido;
+  const fechaProximo = (pp && pp.estado !== 'jugado' && pp.estado !== 'cancelado') ? pp.fecha : null;
+  const limiteProximo = titularesProximoPartido();
+  const titsProximo = (pp?.apuntados || []).filter(a => a.rol === 'titular').length;
+  const faltanProximo = fechaProximo && titsProximo < limiteProximo;
 
   for (let i = 0; i < startDow; i++) {
     const empty = document.createElement('div'); empty.style.height = '44px';
@@ -5299,32 +5469,58 @@ function renderCalendario() {
     const fecha = new Date(calAnio, calMes, dia); fecha.setHours(0,0,0,0);
     const fechaStr = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
     const diaPart = state.config.diaSemana ?? 1; // día de partido de esta liga
-    const esLunes = fecha.getDay() === diaPart;
+    const esDiaPartido = fecha.getDay() === diaPart;
     const esHoy = fecha.getTime() === hoy.getTime();
     const esPasado = fecha < hoy;
-    const jugado = pjFechas.includes(fechaStr);
-    const pendiente = fechaStr === fechaActiva;
+    const partidoReg = pjMap[fechaStr] || null;
+    const jugado = !!partidoReg && !partidoReg.cancelado && !partidoReg.suspendido;
+    const cancelado = !!partidoReg?.cancelado;
+    const suspendido = !!partidoReg?.suspendido;
+    const sinResultado = jugado && !partidoReg.resultado && !partidoReg.sinResultado;
+    const pendiente = fechaStr === fechaProximo;
+
+    // Colores de fondo: jugado verde, pendiente azul, cancelado/suspendido grisáceo
+    let bg = 'transparent';
+    let color = '#444';
+    if (jugado)            { bg = 'rgba(26,122,60,0.5)';  color = 'var(--verde-neon)'; }
+    else if (cancelado)    { bg = 'rgba(120,120,120,0.18)'; color = '#777'; }
+    else if (suspendido)   { bg = 'rgba(245,166,35,0.18)';  color = '#f5a623'; }
+    else if (pendiente)    { bg = 'rgba(26,74,122,0.6)';   color = '#7fb3e0'; }
+    else if (esDiaPartido) { bg = 'rgba(46,204,113,0.08)'; color = 'var(--verde-neon)'; }
 
     const cell = document.createElement('div');
+    // Cualquier día CON registro es clickable (jugado/cancelado/suspendido) o el día del próximo partido
+    const clickable = jugado || cancelado || suspendido || pendiente || esDiaPartido;
     cell.style.cssText = `
       height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center;
-      font-size:0.88rem; font-weight:${esLunes ? '700' : '400'};
-      cursor:${esLunes ? 'pointer' : 'default'};
+      font-size:0.88rem; font-weight:${clickable ? '700' : '400'};
+      cursor:${clickable ? 'pointer' : 'default'};
       transition: transform 0.12s;
       position:relative;
       ${esHoy ? 'outline:2px solid var(--verde-neon);' : ''}
-      background:${jugado ? 'rgba(26,122,60,0.5)' : pendiente ? 'rgba(26,74,122,0.6)' : esLunes ? 'rgba(46,204,113,0.08)' : 'transparent'};
-      color:${jugado ? 'var(--verde-neon)' : pendiente ? '#7fb3e0' : esLunes ? 'var(--verde-neon)' : '#444'};
+      background:${bg};
+      color:${color};
     `;
     cell.textContent = dia;
 
-    if (jugado) {
+    // Indicador visual debajo del número:
+    // - Verde: partido jugado con resultado
+    // - Amarillo: jugado sin resultado (admin debería anotarlo)
+    // - Rojo: faltan jugadores en el próximo partido (alerta)
+    // - Gris: cancelado/suspendido
+    let dotColor = null;
+    if (pendiente && faltanProximo) dotColor = '#e74c3c';
+    else if (sinResultado)          dotColor = '#f1c40f';
+    else if (jugado)                dotColor = 'var(--verde-neon)';
+    else if (cancelado || suspendido) dotColor = '#777';
+
+    if (dotColor) {
       const dot = document.createElement('span');
-      dot.style.cssText = 'position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:4px;height:4px;background:var(--verde-neon);border-radius:50%;';
+      dot.style.cssText = `position:absolute;bottom:4px;left:50%;transform:translateX(-50%);width:5px;height:5px;background:${dotColor};border-radius:50%;`;
       cell.appendChild(dot);
     }
 
-    if (esLunes) {
+    if (clickable) {
       cell.onmouseenter = () => cell.style.transform = 'scale(1.1)';
       cell.onmouseleave = () => cell.style.transform = 'scale(1)';
       cell.onclick = () => seleccionarLunes(fechaStr, esPasado, jugado, pendiente);
@@ -5332,26 +5528,32 @@ function renderCalendario() {
     grid.appendChild(cell);
   }
 
-  // Plazo próximo lunes
-  const proxLunes = proximoLunesDesdeHoy();
-  const martes = new Date(proxLunes); martes.setDate(proxLunes.getDate() - 6);
-  const viernes = new Date(proxLunes); viernes.setDate(proxLunes.getDate() - 3);
-  const opts = { day:'numeric', month:'long' };
-  document.getElementById('cal-plazo-texto').textContent =
-    ` Del martes ${martes.toLocaleDateString('es-ES',opts)} al viernes ${viernes.toLocaleDateString('es-ES',opts)} a las 12:00h`;
-  document.getElementById('cal-plazo').style.display = 'block';
+  // Texto del plazo dinámico según la config de la liga
+  const plazoEl = document.getElementById('cal-plazo');
+  const plazoTextoEl = document.getElementById('cal-plazo-texto');
+  if (plazoEl && plazoTextoEl) {
+    const sc = getSancionesConfig();
+    const dias = state.config?.plazoDias;
+    if (Array.isArray(dias) && dias.length > 0) {
+      const NOMBRES_DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+      const diasTxt = dias.map(d => NOMBRES_DIAS[d]).join(', ');
+      plazoTextoEl.textContent = ` Apuntarse en plazo: ${diasTxt}.`;
+      plazoEl.style.display = 'block';
+    } else if (sc.activas) {
+      plazoTextoEl.textContent = ' Sanciones automáticas activas si te bajas el día del partido o cerca.';
+      plazoEl.style.display = 'block';
+    } else {
+      plazoEl.style.display = 'none';
+    }
+  }
 
-  // Bloque 4: aviso "faltan jugadores" + botón cancelar admin
-  asegurarProximoPartido();
-  const pp = state.proximoPartido;
+  // Aviso "faltan jugadores" + botón cancelar admin
   const avisoFaltan = document.getElementById('cal-aviso-faltan');
   const accAdmin = document.getElementById('cal-acciones-admin');
   if (pp && pp.estado !== 'cancelado' && pp.estado !== 'jugado') {
-    const limite = titularesProximoPartido();
-    const titsCount = (pp.apuntados || []).filter(a => a.rol === 'titular').length;
-    if (titsCount < limite) {
+    if (faltanProximo) {
       avisoFaltan.style.display = 'block';
-      document.getElementById('cal-aviso-faltan-texto').textContent = `${titsCount} de ${limite} apuntados como titulares`;
+      document.getElementById('cal-aviso-faltan-texto').textContent = `${titsProximo} de ${limiteProximo} apuntados como titulares`;
     } else {
       avisoFaltan.style.display = 'none';
     }
@@ -5387,6 +5589,41 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
     document.getElementById('cal-panel-fecha-pasado').textContent = `⚽ ${fechaLabel}`;
 
     const registro = (state.partidos_jugados || []).find(p => p.fecha === fechaStr);
+    const idxPartido = (state.partidos_jugados || []).findIndex(p => p.fecha === fechaStr);
+
+    // Bloque resultado: muestra ganador/empate, "sin resultado", "cancelado",
+    // "suspendido", o un botón para anotar si eres admin y falta.
+    const resultadoBloque = document.getElementById('cal-resultado-bloque');
+    const resultadoDisplay = document.getElementById('cal-resultado-display');
+    if (registro) {
+      resultadoBloque.style.display = 'block';
+      let html = '';
+      if (registro.cancelado) {
+        html = `<span style="font-size:1.3rem;">🚫</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;">PARTIDO CANCELADO</span>`;
+      } else if (registro.suspendido) {
+        html = `<span style="font-size:1.3rem;">🌧️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f5a623;">PARTIDO SUSPENDIDO</span>`;
+      } else if (registro.sinResultado) {
+        html = `<span style="font-size:1.3rem;">⚠️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;">SIN RESULTADO VÁLIDO</span>`;
+      } else if (registro.resultado === 'blanco') {
+        html = `<span style="width:18px;height:18px;background:#f0f0f0;border:1px solid #999;border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f0f0f0;">GANÓ EQUIPO BLANCO</span>`;
+      } else if (registro.resultado === 'rojo') {
+        html = `<span style="width:18px;height:18px;background:#c0392b;border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#e74c3c;">GANÓ EQUIPO ROJO</span>`;
+      } else if (registro.resultado === 'empate') {
+        html = `<span style="font-size:1.3rem;">🤝</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f1c40f;">EMPATE</span>`;
+      } else {
+        // Sin resultado anotado todavía
+        html = `<span style="font-size:1.3rem;">🏆</span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1.5px;color:#888;flex:1;">SIN RESULTADO</span>`;
+        if (esAdminActual(state) && idxPartido >= 0) {
+          html += `<button onclick="abrirModalResultadoIdx(${idxPartido})" class="btn btn-amarillo" style="font-size:0.8rem;padding:6px 12px;">Anotar</button>`;
+        }
+      }
+      resultadoDisplay.innerHTML = html;
+    } else {
+      resultadoBloque.style.display = 'none';
+    }
 
     // Jugaron
     const jugaron = document.getElementById('cal-jugaron');
@@ -5449,8 +5686,40 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
     }
 
   } else {
-    // Futuro — la gestión del próximo partido se hace desde la pestaña Admin.
-    // Aquí solo informamos visualmente, sin opción de pegar lista.
+    // Futuro — si es el día del próximo partido, mostrar info y link a la pestaña Partido.
+    const pp = state.proximoPartido;
+    if (pp && pp.fecha === fechaStr && pp.estado !== 'jugado' && pp.estado !== 'cancelado') {
+      panelPasado.style.display = 'block';
+      document.getElementById('cal-panel-fecha-pasado').textContent = `⚽ ${fechaLabel}`;
+
+      // Bloque resultado: aquí lo usamos como "estado del próximo partido"
+      const resultadoBloque = document.getElementById('cal-resultado-bloque');
+      const resultadoDisplay = document.getElementById('cal-resultado-display');
+      const limite = titularesProximoPartido();
+      const tits = (pp.apuntados || []).filter(a => a.rol === 'titular').length;
+      const reservas = (pp.apuntados || []).filter(a => a.rol === 'reserva').length;
+      const faltan = tits < limite;
+      const labelEstado = pp.estado === 'alineacion-lista' ? 'ALINEACIÓN GENERADA' : 'INSCRIPCIÓN ABIERTA';
+      const colorEstado = faltan ? '#e74c3c' : (pp.estado === 'alineacion-lista' ? '#7fb3e0' : 'var(--verde-neon)');
+      resultadoBloque.style.display = 'block';
+      resultadoDisplay.innerHTML = `
+        <span style="font-size:1.3rem;">📅</span>
+        <div style="flex:1;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:1.5px;color:${colorEstado};">${labelEstado}</div>
+          <div style="font-size:0.8rem;color:#aaa;margin-top:2px;">${tits}/${limite} titulares · ${reservas} reservas${faltan ? ' · <span style="color:#e74c3c;font-weight:700;">faltan jugadores</span>' : ''}</div>
+        </div>
+        <button onclick="irAPartido()" class="btn btn-azul" style="font-size:0.8rem;padding:6px 12px;">Ir →</button>
+      `;
+
+      // Vaciar los demás bloques (no tienen info útil para el futuro)
+      document.getElementById('cal-jugaron').innerHTML = '<span style="color:#555;font-size:0.85rem;">Aún no se ha jugado</span>';
+      document.getElementById('cal-reservas-bloque').style.display = 'none';
+      document.getElementById('cal-bajas-bloque').style.display = 'none';
+
+      panel.scrollIntoView({ behavior:'smooth', block:'nearest' });
+      return;
+    }
+    // Día futuro sin partido programado: solo cerramos
     panel.style.display = 'none';
     return;
   }
@@ -5473,6 +5742,18 @@ function irAFicha(nombre) {
   sel.value = j.id;
   renderFicha();
   document.getElementById('ficha-contenido')?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+
+// ── Navegar a la pestaña Partido desde el calendario ──
+function irAPartido() {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById('page-partido').classList.add('active');
+  document.querySelectorAll('.tab').forEach(t => { if (t.textContent.includes('Partido')) t.classList.add('active'); });
+  renderPartido();
+  // Cerrar el panel del calendario por si quedó abierto
+  const panel = document.getElementById('cal-panel');
+  if (panel) panel.style.display = 'none';
 }
 
 // ── Procesar WA desde el calendario ──
@@ -6712,7 +6993,10 @@ function renderPanelEquipos(titulares, equipoRojo) {
         : `<button onclick="moverAEquipo('${nombreEsc}','rojo',event)"
             style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
             title="Mover al equipo rojo">⇆</button>`;
-      const acciones = esAdmin ? `${flechaReserva}${flechaCambioColor}` : '';
+      const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+          style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.7rem;padding:1px 5px;line-height:1;border-radius:4px;font-weight:700;letter-spacing:.3px;"
+          title="Dar de baja con sanción">BAJA</button>`;
+      const acciones = esAdmin ? `${flechaReserva}${flechaCambioColor}${botonBaja}` : '';
       return `
         <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:${bg};
           border:1px solid ${borde};border-radius:7px;margin-bottom:4px;
@@ -6740,14 +7024,17 @@ function renderPanelEquipos(titulares, equipoRojo) {
       const inv = esInvitadoNombre(nombre)
         ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.55rem;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.5px;">INV</span>'
         : '';
-      // Para reservas: flecha blanca y flecha roja para subir a un equipo concreto
+      // Para reservas: flecha blanca y flecha roja para subir a un equipo concreto + baja
       const flechas = esAdmin
         ? `<button onclick="moverATitular('${nombreEsc}',event,'blanco')"
             style="background:none;border:none;color:#f0f0f0;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
             title="Subir como titular del equipo blanco">↑</button>
            <button onclick="moverATitular('${nombreEsc}',event,'rojo')"
             style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-            title="Subir como titular del equipo rojo">↑</button>`
+            title="Subir como titular del equipo rojo">↑</button>
+           <button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+            style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.7rem;padding:1px 5px;line-height:1;border-radius:4px;font-weight:700;letter-spacing:.3px;"
+            title="Dar de baja del partido">BAJA</button>`
         : '';
       return `
         <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:rgba(241,196,15,0.08);
