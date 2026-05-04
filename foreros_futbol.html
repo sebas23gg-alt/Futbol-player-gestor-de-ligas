@@ -1297,7 +1297,7 @@ window.addEventListener('error', function(e) {
             </div>
 
             <!-- Panel editor equipos -->
-            <div style="width:210px;flex-shrink:0;">
+            <div style="width:250px;flex-shrink:0;">
               <div style="background:var(--gris-oscuro);border:1px solid #2a2a2a;border-radius:10px;padding:14px;">
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:2px;color:#aaa;margin-bottom:12px;">EQUIPOS</div>
 
@@ -3509,6 +3509,9 @@ function formatPts(n) {
 // Devuelve la fecha (YYYY-MM-DD) del próximo día configurado de partido.
 // Si la liga juega los lunes y hoy es martes → devuelve el lunes próximo.
 // Si hoy es lunes → devuelve hoy mismo (es el día del partido).
+// EXCEPCIÓN: si hoy es el día del partido pero ya se jugó (existe en
+// partidos_jugados con resultado/cerrado), avanza una semana para apuntar
+// al siguiente partido en lugar de quedarse atascado en el día de hoy.
 function calcularFechaProximoPartido() {
   const diaPartido = parseInt(state?.config?.diaSemana ?? 1); // 0=Dom, 6=Sáb
   const hoy = new Date();
@@ -3516,20 +3519,34 @@ function calcularFechaProximoPartido() {
   const diff = (diaPartido - hoy.getDay() + 7) % 7;
   const proxima = new Date(hoy);
   proxima.setDate(hoy.getDate() + diff);
-  // Formato YYYY-MM-DD
-  const yyyy = proxima.getFullYear();
-  const mm = String(proxima.getMonth()+1).padStart(2,'0');
-  const dd = String(proxima.getDate()).padStart(2,'0');
-  return `${yyyy}-${mm}-${dd}`;
+
+  // Formatear a YYYY-MM-DD
+  const fmt = (d) => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let candidata = fmt(proxima);
+
+  // Si ese día ya está en partidos_jugados (jugado, cancelado o suspendido),
+  // saltar a la semana siguiente. Repetir hasta encontrar una fecha libre
+  // (con tope de 53 semanas para evitar bucles si la BD se corrompe).
+  const jugadas = new Set((state?.partidos_jugados || []).map(p => p.fecha));
+  let intentos = 0;
+  while (jugadas.has(candidata) && intentos < 53) {
+    proxima.setDate(proxima.getDate() + 7);
+    candidata = fmt(proxima);
+    intentos++;
+  }
+  return candidata;
 }
 
 // Asegura que existe state.proximoPartido. Si no existe, lo crea con valores
-// derivados de la config. Si la fecha ya quedó atrás, regenera uno nuevo.
+// derivados de la config. Si la fecha ya quedó atrás o ya está en partidos_jugados,
+// regenera uno nuevo apuntando a la siguiente fecha libre.
 function asegurarProximoPartido() {
   if (!state) return null;
   const fechaCalc = calcularFechaProximoPartido();
   const tipo = state.config?.tipoPartido || '7vs7';
   let pp = state.proximoPartido;
+  const jugadas = new Set((state.partidos_jugados || []).map(p => p.fecha));
+
   // Si no existe, crear
   if (!pp) {
     pp = {
@@ -3539,6 +3556,18 @@ function asegurarProximoPartido() {
     };
     state.proximoPartido = pp;
     return pp;
+  }
+  // Si la fecha del actual está en partidos_jugados (ya se jugó/canceló/suspendió),
+  // hay que regenerar apuntando a la siguiente fecha libre que da calcularFechaProximoPartido.
+  // Esto cubre el caso de que se haya jugado el partido del día y se vuelva al calendario
+  // antes de que cambie la fecha del sistema.
+  if (jugadas.has(pp.fecha)) {
+    state.proximoPartido = {
+      fecha: fechaCalc, hora: state.config?.hora || '',
+      campo: state.config?.campo || '', tipo,
+      estado: 'abierto', apuntados: [], resultado: null
+    };
+    return state.proximoPartido;
   }
   // Si la fecha del actual ya quedó atrás: archivamos y creamos uno nuevo
   const hoyStr = new Date().toISOString().slice(0,10);
@@ -6975,36 +7004,44 @@ function renderPanelEquipos(titulares, equipoRojo) {
     const cont = document.getElementById(contenedorId);
     cont.innerHTML = jugadores.map(j => {
       const { bg, borde, icono } = estiloJugador(j.nombre, esRojoEquipo);
-      const shortNombre = j.nombre.length > 13 ? j.nombre.substring(0,12)+'…' : j.nombre;
+      const shortNombre = j.nombre.length > 16 ? j.nombre.substring(0,15)+'…' : j.nombre;
       const inv = esInvitadoNombre(j.nombre)
-        ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.55rem;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.5px;">INV</span>'
+        ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.5px;flex-shrink:0;">INV</span>'
         : '';
-      // Sistema de 3 flechas de colores (solo admin):
-      //   - Equipo blanco → flecha amarilla (a reserva) + flecha roja (cambiar a rojo)
-      //   - Equipo rojo   → flecha amarilla (a reserva) + flecha blanca (cambiar a blanco)
       const nombreEsc = j.nombre.replace(/'/g,"\\'");
-      const flechaReserva = `<button onclick="moverAReserva('${nombreEsc}',event)"
-        style="background:none;border:none;color:#f1c40f;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-        title="Mover a reservas">↓</button>`;
-      const flechaCambioColor = esRojoEquipo
-        ? `<button onclick="moverAEquipo('${nombreEsc}','blanco',event)"
-            style="background:none;border:none;color:#f0f0f0;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-            title="Mover al equipo blanco">⇆</button>`
-        : `<button onclick="moverAEquipo('${nombreEsc}','rojo',event)"
-            style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-            title="Mover al equipo rojo">⇆</button>`;
-      const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
-          style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.7rem;padding:1px 5px;line-height:1;border-radius:4px;font-weight:700;letter-spacing:.3px;"
+
+      // Controles admin (en segunda fila para que respiren):
+      // - ↓ amarilla: a reservas
+      // - ⇆ blanca/roja: cambiar de equipo
+      // - BAJA: rojo, abrir modal de baja
+      let controlesAdmin = '';
+      if (esAdmin) {
+        const flechaReserva = `<button onclick="moverAReserva('${nombreEsc}',event)"
+          style="background:rgba(241,196,15,0.12);border:1px solid rgba(241,196,15,0.35);color:#f1c40f;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
+          title="Mover a reservas">↓</button>`;
+        const flechaCambio = esRojoEquipo
+          ? `<button onclick="moverAEquipo('${nombreEsc}','blanco',event)"
+              style="background:rgba(240,240,240,0.08);border:1px solid rgba(240,240,240,0.3);color:#f0f0f0;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
+              title="Mover al equipo blanco">⇆</button>`
+          : `<button onclick="moverAEquipo('${nombreEsc}','rojo',event)"
+              style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.4);color:#e74c3c;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
+              title="Mover al equipo rojo">⇆</button>`;
+        const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+          style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.65rem;padding:2px 7px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;margin-left:auto;"
           title="Dar de baja con sanción">BAJA</button>`;
-      const acciones = esAdmin ? `${flechaReserva}${flechaCambioColor}${botonBaja}` : '';
+        controlesAdmin = `<div style="display:flex;gap:4px;align-items:center;margin-top:5px;">${flechaReserva}${flechaCambio}${botonBaja}</div>`;
+      }
+
       return `
-        <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:${bg};
+        <div style="padding:6px 8px;background:${bg};
           border:1px solid ${borde};border-radius:7px;margin-bottom:4px;
           transition:all 0.15s;">
-          <span style="font-size:0.75rem;">${icono}</span>
-          <span style="font-size:0.8rem;flex:1;color:var(--blanco);">${shortNombre}</span>
-          ${inv}
-          ${acciones}
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.75rem;flex-shrink:0;">${icono}</span>
+            <span style="font-size:0.82rem;color:var(--blanco);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${shortNombre}</span>
+            ${inv}
+          </div>
+          ${controlesAdmin}
         </div>`;
     }).join('');
   };
@@ -7012,37 +7049,42 @@ function renderPanelEquipos(titulares, equipoRojo) {
   renderLista(blancos, false, 'panel-blanco');
   renderLista(rojos,   true,  'panel-rojo');
 
-  // Reservas — visibles para todos, botón subir solo admin
+  // Reservas — visibles para todos, controles solo admin
   const reservasBloque = document.getElementById('panel-reservas-bloque');
   const reservasLista  = document.getElementById('panel-reservas-lista');
   if (state.partido?.reservas?.length > 0) {
     reservasBloque.style.display = 'block';
     reservasLista.innerHTML = state.partido.reservas.map(nombre => {
       const j = state.jugadores.find(x => x.nombre === nombre);
-      const short = nombre.length > 13 ? nombre.substring(0,12)+'…' : nombre;
+      const short = nombre.length > 16 ? nombre.substring(0,15)+'…' : nombre;
       const nombreEsc = nombre.replace(/'/g,"\\'");
       const inv = esInvitadoNombre(nombre)
-        ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.55rem;font-weight:700;padding:1px 4px;border-radius:3px;letter-spacing:.5px;">INV</span>'
+        ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.5px;flex-shrink:0;">INV</span>'
         : '';
-      // Para reservas: flecha blanca y flecha roja para subir a un equipo concreto + baja
-      const flechas = esAdmin
-        ? `<button onclick="moverATitular('${nombreEsc}',event,'blanco')"
-            style="background:none;border:none;color:#f0f0f0;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-            title="Subir como titular del equipo blanco">↑</button>
-           <button onclick="moverATitular('${nombreEsc}',event,'rojo')"
-            style="background:none;border:none;color:#e74c3c;cursor:pointer;font-size:0.95rem;padding:0 3px;line-height:1;"
-            title="Subir como titular del equipo rojo">↑</button>
-           <button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
-            style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.7rem;padding:1px 5px;line-height:1;border-radius:4px;font-weight:700;letter-spacing:.3px;"
-            title="Dar de baja del partido">BAJA</button>`
-        : '';
+
+      let controlesAdmin = '';
+      if (esAdmin) {
+        const subirBlanco = `<button onclick="moverATitular('${nombreEsc}',event,'blanco')"
+          style="background:rgba(240,240,240,0.08);border:1px solid rgba(240,240,240,0.3);color:#f0f0f0;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
+          title="Subir como titular del equipo blanco">↑⚪</button>`;
+        const subirRojo = `<button onclick="moverATitular('${nombreEsc}',event,'rojo')"
+          style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.4);color:#e74c3c;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
+          title="Subir como titular del equipo rojo">↑🔴</button>`;
+        const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+          style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.65rem;padding:2px 7px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;margin-left:auto;"
+          title="Dar de baja del partido">BAJA</button>`;
+        controlesAdmin = `<div style="display:flex;gap:4px;align-items:center;margin-top:5px;">${subirBlanco}${subirRojo}${botonBaja}</div>`;
+      }
+
       return `
-        <div style="display:flex;align-items:center;gap:6px;padding:5px 7px;background:rgba(241,196,15,0.08);
+        <div style="padding:6px 8px;background:rgba(241,196,15,0.08);
           border:1px solid #444;border-radius:7px;margin-bottom:4px;">
-          <span style="font-size:0.75rem;">⏳</span>
-          <span style="font-size:0.8rem;flex:1;color:#aaa;">${short}${j?.portero ? ' 🧤' : ''}</span>
-          ${inv}
-          ${flechas}
+          <div style="display:flex;align-items:center;gap:6px;">
+            <span style="font-size:0.75rem;flex-shrink:0;">⏳</span>
+            <span style="font-size:0.82rem;color:#aaa;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${short}${j?.portero ? ' 🧤' : ''}</span>
+            ${inv}
+          </div>
+          ${controlesAdmin}
         </div>`;
     }).join('');
   } else {
