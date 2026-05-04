@@ -1255,7 +1255,7 @@ window.addEventListener('error', function(e) {
         <div class="card" style="padding:14px;">
 
           <!-- Controles: tipo partido + formaciones + acciones -->
-          <div style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
+          <div id="partido-controles-admin" style="display:flex;flex-wrap:wrap;gap:10px;align-items:flex-end;margin-bottom:14px;">
             <div>
               <label style="display:block;font-size:0.72rem;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Tipo de partido</label>
               <div style="display:flex;gap:6px;">
@@ -1279,6 +1279,11 @@ window.addEventListener('error', function(e) {
               <button class="btn btn-gris" onclick="resortearEquipos()" style="font-size:0.78rem;padding:6px 12px;">🔀 Sorteo</button>
               <button class="btn btn-azul" onclick="descargarPartidoCanvas()" style="font-size:0.78rem;padding:6px 12px;">📸 Descargar</button>
             </div>
+          </div>
+
+          <!-- Botón Descargar para no-admins (la versión admin ya lo incluye arriba) -->
+          <div id="partido-controles-publico" style="display:none;justify-content:flex-end;margin-bottom:14px;">
+            <button class="btn btn-azul" onclick="descargarPartidoCanvas()" style="font-size:0.78rem;padding:6px 12px;">📸 Descargar</button>
           </div>
 
           <div class="card-title" style="margin:0 0 12px 0;">⚽ Alineación del partido</div>
@@ -3890,19 +3895,38 @@ async function cancelarPartido() {
 }
 
 // Algoritmo de equilibrado de equipos.
-// Versión 1 (decente, no perfecto):
-// 1. Reparte porteros: máximo 1 por equipo. Si hay >2 porteros, los demás
-//    solo entran si tienen otra posición o son polivalentes.
-// 2. Si solo hay 1 portero, va al equipo con menos winrate total.
-// 3. Resto de jugadores en orden desc por puntos (proxy de winrate),
-//    asignando al equipo con menor suma actual (greedy).
+// Versión 2 (Bloque 6.3):
+// - Usa el winrate real de cada jugador (% de victorias en partidos_jugados[]).
+// - Si un jugador tiene menos de 3 partidos jugados, no hay datos fiables:
+//   se cae al proxy de "puntos" (asistencia + ajustes manuales). Los jugadores
+//   nuevos arrancan con 50% como pivote neutro.
+// - Reparte porteros: máximo 1 por equipo. Los demás solo entran si tienen otra posición.
+// - Resto de jugadores: orden desc por "fuerza", asignando al equipo con menor suma (greedy).
+//
+// La métrica `_fuerza` se construye en una escala 0–100 para que jugadores con
+// y sin datos sean comparables sin que el greedy se descompense.
+function _calcularFuerza(j) {
+  const stats = calcularStatsJugador(j.nombre);
+  // Si tiene 3+ partidos jugados con resultado válido, usamos winrate real
+  if (stats.jugados >= 3 && stats.pct !== null) {
+    return stats.pct; // 0–100
+  }
+  // Fallback: derivar fuerza de puntos. Asumimos que la mayoría de jugadores
+  // tienen entre 0 y 30 puntos; mapeamos a 0–100 con clamp para que no se
+  // disparen los outliers.
+  const pts = j.puntos || 0;
+  const fuerza = Math.max(0, Math.min(100, 50 + pts * 1.5));
+  return fuerza;
+}
+
 function generarEquiposEquilibrados(nombres) {
   const jugadoresMap = {};
   state.jugadores.forEach(j => { jugadoresMap[j.nombre] = j; });
 
   const lista = nombres
     .map(n => jugadoresMap[n])
-    .filter(Boolean);
+    .filter(Boolean)
+    .map(j => ({ ...j, _fuerza: _calcularFuerza(j) }));
 
   // Separar porteros de jugadores de campo
   const porteros = lista.filter(j => j.portero);
@@ -3914,31 +3938,38 @@ function generarEquiposEquilibrados(nombres) {
 
   // Regla porteros:
   // - Máximo 1 por equipo.
-  // - Si solo 1 portero: va al equipo "más débil" (suma actual menor; al inicio cualquiera).
-  // - Si hay 2 o más: 1 al blanco, 1 al rojo. Los demás solo si tienen otra posición o polivalente; si no, se descartan (idealmente el admin los avisa, pero la v1 los pasa a campo).
+  // - Si solo 1 portero: va al equipo con menor suma actual (al inicio cualquiera).
+  // - Si hay 2+: 1 al blanco, 1 al rojo. Los demás solo si tienen otra posición.
   if (porteros.length === 1) {
     blanco.jugadores.push(porteros[0]);
-    blanco.suma += porteros[0].puntos || 0;
+    blanco.suma += porteros[0]._fuerza;
   } else if (porteros.length >= 2) {
-    // Los 2 con más puntos a porteros (1 cada equipo)
-    porteros.sort((a,b) => (b.puntos||0) - (a.puntos||0));
-    blanco.jugadores.push(porteros[0]); blanco.suma += porteros[0].puntos || 0;
-    rojo.jugadores.push(porteros[1]);   rojo.suma   += porteros[1].puntos || 0;
-    // Resto de porteros: añadir a campo solo si tienen otra posición (polivalente o cualquier otra)
+    // Los 2 con más fuerza a porteros (1 cada equipo) — el más fuerte al equipo
+    // que ahora mismo está vacío (=blanco), el segundo al rojo. Tras la fase de
+    // campo, el greedy compensa.
+    porteros.sort((a,b) => b._fuerza - a._fuerza);
+    blanco.jugadores.push(porteros[0]); blanco.suma += porteros[0]._fuerza;
+    rojo.jugadores.push(porteros[1]);   rojo.suma   += porteros[1]._fuerza;
+    // Resto de porteros: añadir a campo solo si tienen otra posición
     porteros.slice(2).forEach(p => {
       const tieneOtra = (p.posiciones || []).some(pos => pos && pos !== 'portero');
       if (tieneOtra) campo.push(p);
-      // Si no tiene otra posición, no juega (registramos)
     });
   }
 
-  // Repartir campo: orden desc por puntos, asignar al equipo con menos suma
-  const ordenado = [...campo].sort((a,b) => (b.puntos||0) - (a.puntos||0));
+  // Repartir campo: orden desc por fuerza, asignar al equipo con menor suma.
+  // Para evitar reparto idéntico cada vez con datos parecidos, mezclamos los
+  // empates con un pequeño desempate aleatorio.
+  const ordenado = [...campo].sort((a,b) => {
+    const diff = b._fuerza - a._fuerza;
+    if (Math.abs(diff) < 0.01) return Math.random() - 0.5;
+    return diff;
+  });
   ordenado.forEach(j => {
     if (blanco.suma <= rojo.suma) {
-      blanco.jugadores.push(j); blanco.suma += j.puntos || 0;
+      blanco.jugadores.push(j); blanco.suma += j._fuerza;
     } else {
-      rojo.jugadores.push(j); rojo.suma += j.puntos || 0;
+      rojo.jugadores.push(j); rojo.suma += j._fuerza;
     }
   });
 
@@ -4176,6 +4207,7 @@ function renderPartido() {
 }
 
 function resortearEquipos() {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden re-sortear los equipos', 'error'); return; }
   if (!state.partido) return;
   state.partido._equipoRojo = null;
   guardar();
@@ -6520,6 +6552,7 @@ const FORMACIONES_POR_TIPO = {
 };
 
 function setTipoPartido(tipo) {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden cambiar el tipo de partido', 'error'); return; }
   if (!state.partido) return;
   state.partido._tipoPartido = tipo;
   state.partido._formacionBlanco = null;
@@ -6553,6 +6586,7 @@ function actualizarSelectFormacion(tipo) {
 }
 
 function aplicarFormacion() {
+  if (!esAdminActual(state)) { notif('Solo los admins pueden cambiar la formación', 'error'); return; }
   if (!state.partido) return;
   const selB = document.getElementById('partido-formacion-blanco');
   const selR = document.getElementById('partido-formacion-rojo');
@@ -6581,6 +6615,14 @@ function renderCanvasPartido() {
     return;
   }
   wrap.style.display = 'block';
+
+  // Mostrar controles de admin (tipo, formaciones, sorteo) solo a admins.
+  // No-admins ven solo el botón de descargar.
+  const eresAdminAqui = esAdminActual(state);
+  const ctrlAdmin   = document.getElementById('partido-controles-admin');
+  const ctrlPublico = document.getElementById('partido-controles-publico');
+  if (ctrlAdmin)   ctrlAdmin.style.display   = eresAdminAqui ? 'flex' : 'none';
+  if (ctrlPublico) ctrlPublico.style.display = eresAdminAqui ? 'none' : 'flex';
 
   if (!p._tipoPartido) p._tipoPartido = 8;
   const tipo = p._tipoPartido;
