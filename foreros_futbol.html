@@ -5613,7 +5613,12 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
   const fechaObj = new Date(fechaStr + 'T12:00:00');
   const fechaLabel = fechaObj.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' }).toUpperCase();
 
-  if (esPasado || jugado) {
+  // Si hay registro en partidos_jugados (jugado, cancelado o suspendido) →
+  // mostrar el panel "pasado" con sus controles, sea fecha pasada o futura.
+  // Esto permite restaurar/borrar partidos cancelados de fechas futuras.
+  const tieneRegistro = (state.partidos_jugados || []).some(p => p.fecha === fechaStr);
+
+  if (esPasado || jugado || tieneRegistro) {
     panelPasado.style.display = 'block';
     document.getElementById('cal-panel-fecha-pasado').textContent = `⚽ ${fechaLabel}`;
 
