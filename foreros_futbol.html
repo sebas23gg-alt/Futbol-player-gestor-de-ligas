@@ -3469,7 +3469,7 @@ async function borrarCuenta() {
   if (!user) return;
 
   // Primera confirmación
-  if (!confirm('¿Seguro que quieres borrar tu cuenta?\n\nSe eliminarán todos tus datos. Esta acción no se puede deshacer.')) return;
+  if (!confirm('¿Seguro que quieres borrar tu cuenta?\n\nSe eliminarán todos tus datos y tu jugador será eliminado de TODAS las ligas en las que estés. Esta acción no se puede deshacer.')) return;
 
   // Segunda confirmación con el email
   const emailConfirm = prompt(`Para confirmar, escribe tu correo electrónico:\n${user.email}`);
@@ -3482,10 +3482,36 @@ async function borrarCuenta() {
   const auth = fbAuth();
 
   try {
-    // 1. Borrar documento de usuario en Firestore (perfil + ligas del usuario)
     if (db) {
       try {
+        // 1. Obtener todas las ligas del usuario
         const ligasSnap = await db.collection('usuarios').doc(user.uid).collection('ligas').get();
+        const ligaIds = ligasSnap.docs.map(d => d.id);
+
+        // 2. En cada liga, eliminar al jugador con este uid del state
+        for (const lid of ligaIds) {
+          try {
+            const stateSnap = await db.collection('ligas').doc(lid).collection('data').doc('state').get();
+            if (stateSnap.exists) {
+              const ligaState = stateSnap.data();
+              const jugadores = ligaState.jugadores || [];
+              const filtrado = jugadores.filter(j => j.uid !== user.uid);
+              if (filtrado.length !== jugadores.length) {
+                // También quitar de adminUids si era admin
+                let adminUids = ligaState.adminUids || [];
+                adminUids = adminUids.filter(u => u !== user.uid);
+                await db.collection('ligas').doc(lid).collection('data').doc('state').update({
+                  jugadores: filtrado,
+                  adminUids
+                });
+              }
+            }
+            // Quitar de la colección miembros de la liga si existe
+            try { await db.collection('ligas').doc(lid).collection('miembros').doc(user.uid).delete(); } catch(_){}
+          } catch(e) { console.warn('borrarCuenta: error limpiando liga ' + lid, e); }
+        }
+
+        // 3. Borrar documento de usuario en Firestore (perfil + subcolección ligas)
         const batch = db.batch();
         ligasSnap.docs.forEach(d => batch.delete(d.ref));
         batch.delete(db.collection('usuarios').doc(user.uid));
@@ -3493,23 +3519,23 @@ async function borrarCuenta() {
       } catch(e) { console.warn('borrarCuenta Firestore error', e); }
     }
 
-    // 2. Limpiar localStorage
+    // 4. Limpiar localStorage
     localStorage.removeItem('fp_nick');
     localStorage.removeItem('fp_posiciones');
     localStorage.removeItem('foreros_ligas_ids');
     localStorage.removeItem('foreros_ligas_index');
 
-    // 3. Borrar cuenta de Firebase Auth (debe ser la última operación)
+    // 5. Borrar cuenta de Firebase Auth (debe ser la última operación)
     if (auth) await user.delete();
 
-    // 4. Resetear estado y volver al login
+    // 6. Resetear estado y volver al login
     usuarioActual = null;
     ligaActual = null;
     if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
     document.getElementById('app-principal').style.display   = 'none';
     document.getElementById('pantalla-inicio').style.display = 'flex';
     mostrarVista('login');
-    notifInicio('Cuenta eliminada correctamente');
+    notifInicio('Cuenta eliminada correctamente. Tu jugador ha sido eliminado de todas las ligas.');
 
   } catch(e) {
     if (e.code === 'auth/requires-recent-login') {
