@@ -748,6 +748,69 @@ window.addEventListener('error', function(e) {
   }
 
   .pab-text { font-size: 0.9rem; color: #aaa; }
+
+  /* ── Gestión jugadores: tarjeta ── */
+  .gj-card {
+    background: var(--gris-oscuro);
+    border: 1px solid #222;
+    border-radius: 8px;
+    padding: 8px 10px;
+    margin-bottom: 4px;
+  }
+  .gj-main {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: nowrap;
+  }
+  .gj-nombre {
+    display: flex;
+    align-items: center;
+    gap: 5px;
+    min-width: 0;
+    flex: 1 1 0;
+  }
+  .gj-pts {
+    display: flex;
+    align-items: center;
+    gap: 3px;
+    flex-shrink: 0;
+  }
+  .gj-total {
+    font-size: 0.78rem;
+    color: #666;
+    margin-left: 4px;
+    min-width: 28px;
+  }
+  .gj-acciones {
+    display: flex;
+    gap: 4px;
+    flex-shrink: 0;
+  }
+  .gj-bottom {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-top: 6px;
+    padding-top: 6px;
+    border-top: 1px solid rgba(255,255,255,0.04);
+  }
+  .gj-posiciones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 3px;
+    flex: 1;
+  }
+  .gj-rol {
+    background: var(--gris);
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 3px 5px;
+    color: var(--blanco);
+    font-size: 0.72rem;
+    flex-shrink: 0;
+  }
+
   /* ── RESPONSIVE MÓVIL ── */
   @media (max-width: 600px) {
     .header-inner { padding: 8px 14px; }
@@ -763,8 +826,11 @@ window.addEventListener('error', function(e) {
     #partido-canvas-wrap > .card > div:first-child { flex-direction: column; }
     .player-row { padding: 8px 10px; gap: 8px; }
     .player-puntos { font-size: 1.1rem; }
-    .gestion-tabla-header,
-    [style*="grid-template-columns:1.8fr"] { font-size: 0.7rem !important; }
+    .gestion-tabla-header { font-size: 0.7rem !important; }
+    .gj-main { flex-wrap: wrap; gap: 6px; }
+    .gj-nombre { flex: 1 1 100%; order: 1; }
+    .gj-pts { order: 2; flex: 1; }
+    .gj-acciones { order: 3; }
     input[type="number"] { font-size: 0.88rem; }
     .btn { font-size: 0.82rem; padding: 8px 14px; }
     /* tabs: reglas de layout están arriba en el bloque .tabs @media */
@@ -4909,15 +4975,6 @@ function renderGestionJugadores() {
   const lista = document.getElementById('gestion-lista');
   if (!lista) return;
 
-  const posOpts = `
-    <option value="">—</option>
-    <option value="portero">🧤 Portero</option>
-    <option value="defensa">🛡 Defensa</option>
-    <option value="lateral">↔️ Lateral</option>
-    <option value="mediocentro">⚙️ Medio</option>
-    <option value="delantero">⚡ Delantero</option>
-  `;
-
   const sorted = [...state.jugadores]
     .sort((a,b) => b.puntos - a.puntos)
     .filter(j => !query || j.nombre.toLowerCase().includes(query));
@@ -4927,73 +4984,66 @@ function renderGestionJugadores() {
     return;
   }
 
-  lista.innerHTML = `
-    <div style="display:grid;grid-template-columns:1.8fr 0.8fr 0.8fr 0.7fr 1.6fr auto;gap:6px;padding:6px 10px;font-size:0.72rem;color:#555;text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid #222;margin-bottom:4px;">
-      <span>Jugador</span><span>Pts</span><span>Total</span><span>Rol</span><span>Posiciones</span><span></span>
-    </div>
-    ${sorted.map(j => `
-    <div style="display:grid;grid-template-columns:1.8fr 0.8fr 0.8fr 0.7fr 1.6fr auto;gap:6px;align-items:center;padding:7px 10px;background:var(--gris-oscuro);border-radius:8px;margin-bottom:4px;border:1px solid #222;" id="gj_row_${j.id}">
+  lista.innerHTML = sorted.map(j => {
+    const posiciones = j.posiciones || (j.posicion ? [j.posicion] : []);
+    const posChips = ['portero','defensa','lateral','mediocentro','delantero','polivalente'].map(pos => {
+      const posLabel = {portero:'POR',defensa:'DEF',lateral:'LAT',mediocentro:'MED',delantero:'DEL',polivalente:'POL'}[pos];
+      const activa = posiciones.includes(pos);
+      return `<span onclick="togglePosicion(${j.id},'${pos}')"
+        style="font-size:0.62rem;padding:2px 5px;border-radius:4px;cursor:pointer;font-weight:700;
+        background:${activa ? (pos==='polivalente' ? '#c9910a' : 'var(--verde)') : '#222'};
+        color:${activa ? '#fff' : '#555'};
+        border:1px solid ${activa ? (pos==='polivalente' ? 'var(--amarillo)' : 'var(--verde-neon)') : '#333'};transition:all 0.15s;"
+        title="${pos}">${posLabel}</span>`;
+    }).join('');
 
-      <!-- Nombre -->
-      <div style="display:flex;align-items:center;gap:6px;min-width:0;">
-        ${j.sancionado ? '<span title="Sancionado" style="color:var(--rojo);font-size:0.8rem;">🚫</span>' : ''}
-        <span style="font-size:0.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.nombre}</span>
-        ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;">POR</span>' : ''}
-        ${j.uid && getAdminUids(state).includes(j.uid) ? '<span title="Admin de la liga" style="background:#c9910a;color:#fff;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;font-weight:700;">ADMIN</span>' : ''}
+    const adminBtns = j.uid ? (
+      getAdminUids(state).includes(j.uid)
+        ? `<button onclick="quitarAdmin('${j.uid}', ${j.id})" title="Quitar admin"
+            style="background:#1a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">⭐</button>`
+        : `<button onclick="promoverAdmin('${j.uid}', ${j.id})" title="Promover a admin"
+            style="background:#3a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">☆</button>`
+    ) : '';
+
+    return `
+    <div class="gj-card" id="gj_row_${j.id}">
+      <!-- Fila 1: nombre + puntos + rol + acciones -->
+      <div class="gj-main">
+        <div class="gj-nombre">
+          ${j.sancionado ? '<span title="Sancionado" style="color:var(--rojo);font-size:0.8rem;">🚫</span>' : ''}
+          <span style="font-size:0.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.nombre}</span>
+          ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;">POR</span>' : ''}
+          ${j.uid && getAdminUids(state).includes(j.uid) ? '<span title="Admin" style="background:#c9910a;color:#fff;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;font-weight:700;">ADMIN</span>' : ''}
+        </div>
+        <div class="gj-pts">
+          <button onclick="ajustarPuntos(${j.id},-0.5)" style="background:#333;border:none;color:#aaa;border-radius:4px;width:22px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">−</button>
+          <input type="number" value="${j.puntos}" step="0.5"
+            onchange="setPuntos(${j.id}, this.value)"
+            onblur="setPuntos(${j.id}, this.value)"
+            style="width:46px;background:var(--gris);border:1px solid #333;border-radius:4px;padding:3px 4px;color:var(--blanco);font-family:'Bebas Neue',sans-serif;font-size:0.95rem;text-align:center;outline:none;">
+          <button onclick="ajustarPuntos(${j.id},0.5)" style="background:#1a7a3c;border:none;color:#fff;border-radius:4px;width:22px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">+</button>
+          <span class="gj-total">${formatPts(j.totales)}</span>
+        </div>
+        <div class="gj-acciones">
+          ${adminBtns}
+          <button onclick="toggleSancion(${j.id})" title="${j.sancionado?'Levantar sanción':'Sancionar'}"
+            style="background:${j.sancionado?'#1a7a3c':'#5a1010'};border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">
+            ${j.sancionado ? '✅' : '🚫'}
+          </button>
+          <button onclick="confirmarEliminar(${j.id})"
+            style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">🗑</button>
+        </div>
       </div>
-
-      <!-- Puntos actuales: editable + +/- -->
-      <div style="display:flex;align-items:center;gap:3px;">
-        <button onclick="ajustarPuntos(${j.id},-0.5)" style="background:#333;border:none;color:#aaa;border-radius:4px;width:18px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">−</button>
-        <input type="number" value="${j.puntos}" step="0.5"
-          onchange="setPuntos(${j.id}, this.value)"
-          onblur="setPuntos(${j.id}, this.value)"
-          style="width:46px;background:var(--gris);border:1px solid #333;border-radius:4px;padding:3px 4px;color:var(--blanco);font-family:'Bebas Neue',sans-serif;font-size:0.95rem;text-align:center;outline:none;">
-        <button onclick="ajustarPuntos(${j.id},0.5)" style="background:#1a7a3c;border:none;color:#fff;border-radius:4px;width:18px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">+</button>
+      <!-- Fila 2: posiciones + rol -->
+      <div class="gj-bottom">
+        <div class="gj-posiciones">${posChips}</div>
+        <select onchange="cambiarRol(${j.id},this.value)" class="gj-rol">
+          <option value="false" ${!j.portero?'selected':''}>Jugador</option>
+          <option value="true"  ${j.portero?'selected':''}>Portero</option>
+        </select>
       </div>
-
-      <!-- Totales -->
-      <span style="font-size:0.82rem;color:#666;">${formatPts(j.totales)}</span>
-
-      <!-- Rol -->
-      <select onchange="cambiarRol(${j.id},this.value)" style="background:var(--gris);border:1px solid #333;border-radius:6px;padding:3px 5px;color:var(--blanco);font-size:0.78rem;width:100%;">
-        <option value="false" ${!j.portero?'selected':''}>Jugador</option>
-        <option value="true"  ${j.portero?'selected':''}>Portero</option>
-      </select>
-
-      <!-- Posición (múltiple) -->
-      <div style="display:flex;flex-wrap:wrap;gap:3px;">
-        ${['portero','defensa','lateral','mediocentro','delantero','polivalente'].map(pos => {
-          const posLabel = {portero:'POR',defensa:'DEF',lateral:'LAT',mediocentro:'MED',delantero:'DEL',polivalente:'POL'}[pos];
-          const posiciones = j.posiciones || (j.posicion ? [j.posicion] : []);
-          const activa = posiciones.includes(pos);
-          return `<span onclick="togglePosicion(${j.id},'${pos}')"
-            style="font-size:0.62rem;padding:2px 5px;border-radius:4px;cursor:pointer;font-weight:700;
-            background:${activa ? (pos==='polivalente' ? '#c9910a' : 'var(--verde)') : '#222'};
-            color:${activa ? '#fff' : '#555'};
-            border:1px solid ${activa ? (pos==='polivalente' ? 'var(--amarillo)' : 'var(--verde-neon)') : '#333'};transition:all 0.15s;"
-            title="${pos}">${posLabel}</span>`;
-        }).join('')}
-      </div>
-
-      <!-- Acciones -->
-      <div style="display:flex;gap:4px;">
-        ${j.uid ? (
-          getAdminUids(state).includes(j.uid)
-            ? `<button onclick="quitarAdmin('${j.uid}', ${j.id})" title="Quitar admin"
-                style="background:#1a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">⭐</button>`
-            : `<button onclick="promoverAdmin('${j.uid}', ${j.id})" title="Promover a admin"
-                style="background:#3a3a1f;border:none;color:#aaa;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">☆</button>`
-        ) : ''}
-        <button onclick="toggleSancion(${j.id})" title="${j.sancionado?'Levantar sanción':'Sancionar'}"
-          style="background:${j.sancionado?'#1a7a3c':'#5a1010'};border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">
-          ${j.sancionado ? '✅' : '🚫'}
-        </button>
-        <button onclick="confirmarEliminar(${j.id})"
-          style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">🗑</button>
-      </div>
-    </div>
-  `).join('')}`;
+    </div>`;
+  }).join('');
 }
 
 // Promueve a un jugador (con cuenta vinculada) al rol de admin de la liga.
