@@ -1040,9 +1040,9 @@ window.addEventListener('error', function(e) {
             <button class="btn btn-gris" onclick="toggleNuevaLiga()">Cancelar</button>
           </div>
         </div>
-        <div style="text-align:center;margin-top:16px;">
-          <span id="auth-user-email" style="font-size:0.75rem;color:#444;"></span>
-          <button onclick="cerrarSesion()" style="background:none;border:none;color:#444;font-size:0.75rem;cursor:pointer;margin-left:8px;text-decoration:underline;">Cerrar sesión</button>
+        <div style="text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
+          <div id="auth-user-email" style="font-size:0.78rem;color:#888;margin-bottom:10px;"></div>
+          <button onclick="cerrarSesion()" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.3);border-radius:8px;padding:8px 20px;color:#ff6b6b;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;" onmouseenter="this.style.background='rgba(255,60,60,0.25)'" onmouseleave="this.style.background='rgba(255,60,60,0.12)'">🚪 Cerrar sesión</button>
         </div>
       </div>
 
@@ -1140,6 +1140,7 @@ window.addEventListener('error', function(e) {
       </div>
     </div>
     <div style="display:flex;gap:10px;align-items:center;">
+      <div id="header-user-nick" style="font-size:0.72rem;color:#aaa;letter-spacing:0.5px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       <button onclick="volverALigas()" data-i18n="header.volver_ligas" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
       <div class="ajustes-wrap">
         <button class="btn-ajustes" onclick="toggleMenuAjustes('menu-ajustes-app', event)" aria-label="Ajustes" aria-haspopup="true">
@@ -3061,6 +3062,12 @@ async function entrarLiga(id) {
   ligaActual = id;
   await cargar();
   document.getElementById('liga-nombre-header').textContent = liga.nombre.toUpperCase();
+  // Mostrar nick del usuario en el header
+  (async () => {
+    const _nick = usuarioActual ? await getNickUsuario(usuarioActual.uid) : null;
+    const nickEl = document.getElementById('header-user-nick');
+    if (nickEl) nickEl.textContent = _nick ? `👤 ${_nick}` : '';
+  })();
   document.getElementById('pantalla-inicio').style.display  = 'none';
   document.getElementById('app-principal').style.display    = 'block';
 
