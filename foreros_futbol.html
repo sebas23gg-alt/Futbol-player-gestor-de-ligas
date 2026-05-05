@@ -754,58 +754,65 @@ window.addEventListener('error', function(e) {
     background: var(--gris-oscuro);
     border: 1px solid #222;
     border-radius: 8px;
-    padding: 8px 10px;
-    margin-bottom: 4px;
+    padding: 10px 12px;
+    margin-bottom: 5px;
   }
-  .gj-main {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    flex-wrap: nowrap;
-  }
+  /* Fila 1: nombre completo */
   .gj-nombre {
     display: flex;
     align-items: center;
-    gap: 5px;
-    min-width: 0;
-    flex: 1 1 0;
+    gap: 6px;
+    margin-bottom: 8px;
+    flex-wrap: wrap;
+  }
+  .gj-nombre-text {
+    font-size: 0.92rem;
+    font-weight: 600;
+    color: var(--blanco);
+  }
+  /* Fila 2: puntos + acciones en línea */
+  .gj-controls {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
   }
   .gj-pts {
     display: flex;
     align-items: center;
     gap: 3px;
-    flex-shrink: 0;
   }
   .gj-total {
     font-size: 0.78rem;
     color: #666;
-    margin-left: 4px;
-    min-width: 28px;
+    margin-left: 2px;
+    margin-right: 6px;
   }
   .gj-acciones {
     display: flex;
     gap: 4px;
-    flex-shrink: 0;
+    margin-left: auto;
   }
+  /* Fila 3: posiciones + rol */
   .gj-bottom {
     display: flex;
     align-items: center;
     gap: 8px;
-    margin-top: 6px;
-    padding-top: 6px;
-    border-top: 1px solid rgba(255,255,255,0.04);
+    margin-top: 8px;
+    padding-top: 7px;
+    border-top: 1px solid rgba(255,255,255,0.05);
   }
   .gj-posiciones {
     display: flex;
     flex-wrap: wrap;
-    gap: 3px;
+    gap: 4px;
     flex: 1;
   }
   .gj-rol {
     background: var(--gris);
     border: 1px solid #333;
     border-radius: 6px;
-    padding: 3px 5px;
+    padding: 3px 6px;
     color: var(--blanco);
     font-size: 0.72rem;
     flex-shrink: 0;
@@ -827,10 +834,6 @@ window.addEventListener('error', function(e) {
     .player-row { padding: 8px 10px; gap: 8px; }
     .player-puntos { font-size: 1.1rem; }
     .gestion-tabla-header { font-size: 0.7rem !important; }
-    .gj-main { flex-wrap: wrap; gap: 6px; }
-    .gj-nombre { flex: 1 1 100%; order: 1; }
-    .gj-pts { order: 2; flex: 1; }
-    .gj-acciones { order: 3; }
     input[type="number"] { font-size: 0.88rem; }
     .btn { font-size: 0.82rem; padding: 8px 14px; }
     /* tabs: reglas de layout están arriba en el bloque .tabs @media */
@@ -5033,34 +5036,35 @@ function renderGestionJugadores() {
 
     return `
     <div class="gj-card" id="gj_row_${j.id}">
-      <!-- Fila 1: nombre + puntos + rol + acciones -->
-      <div class="gj-main">
-        <div class="gj-nombre">
-          ${j.sancionado ? '<span title="Sancionado" style="color:var(--rojo);font-size:0.8rem;">🚫</span>' : ''}
-          <span style="font-size:0.88rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${j.nombre}</span>
-          ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;">POR</span>' : ''}
-          ${j.uid && getAdminUids(state).includes(j.uid) ? '<span title="Admin" style="background:#c9910a;color:#fff;font-size:0.6rem;padding:1px 4px;border-radius:3px;flex-shrink:0;font-weight:700;">ADMIN</span>' : ''}
-        </div>
+      <!-- Fila 1: nombre completo -->
+      <div class="gj-nombre">
+        ${j.sancionado ? '<span title="Sancionado" style="color:var(--rojo);font-size:0.85rem;">🚫</span>' : ''}
+        <span class="gj-nombre-text">${j.nombre}</span>
+        ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.6rem;padding:1px 5px;border-radius:3px;">POR</span>' : ''}
+        ${j.uid && getAdminUids(state).includes(j.uid) ? '<span title="Admin" style="background:#c9910a;color:#fff;font-size:0.6rem;padding:1px 5px;border-radius:3px;font-weight:700;">ADMIN</span>' : ''}
+      </div>
+      <!-- Fila 2: puntos + total + acciones -->
+      <div class="gj-controls">
         <div class="gj-pts">
-          <button onclick="ajustarPuntos(${j.id},-0.5)" style="background:#333;border:none;color:#aaa;border-radius:4px;width:22px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">−</button>
+          <button onclick="ajustarPuntos(${j.id},-0.5)" style="background:#333;border:none;color:#aaa;border-radius:4px;width:24px;height:28px;cursor:pointer;font-size:0.85rem;">−</button>
           <input type="number" value="${j.puntos}" step="0.5"
             onchange="setPuntos(${j.id}, this.value)"
             onblur="setPuntos(${j.id}, this.value)"
-            style="width:46px;background:var(--gris);border:1px solid #333;border-radius:4px;padding:3px 4px;color:var(--blanco);font-family:'Bebas Neue',sans-serif;font-size:0.95rem;text-align:center;outline:none;">
-          <button onclick="ajustarPuntos(${j.id},0.5)" style="background:#1a7a3c;border:none;color:#fff;border-radius:4px;width:22px;height:28px;cursor:pointer;font-size:0.85rem;flex-shrink:0;">+</button>
-          <span class="gj-total">${formatPts(j.totales)}</span>
+            style="width:48px;background:var(--gris);border:1px solid #333;border-radius:4px;padding:3px 4px;color:var(--blanco);font-family:'Bebas Neue',sans-serif;font-size:0.95rem;text-align:center;outline:none;">
+          <button onclick="ajustarPuntos(${j.id},0.5)" style="background:#1a7a3c;border:none;color:#fff;border-radius:4px;width:24px;height:28px;cursor:pointer;font-size:0.85rem;">+</button>
         </div>
+        <span class="gj-total">${formatPts(j.totales)} tot</span>
         <div class="gj-acciones">
           ${adminBtns}
           <button onclick="toggleSancion(${j.id})" title="${j.sancionado?'Levantar sanción':'Sancionar'}"
-            style="background:${j.sancionado?'#1a7a3c':'#5a1010'};border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">
+            style="background:${j.sancionado?'#1a7a3c':'#5a1010'};border:none;color:#fff;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.78rem;">
             ${j.sancionado ? '✅' : '🚫'}
           </button>
           <button onclick="confirmarEliminar(${j.id})"
-            style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.75rem;">🗑</button>
+            style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 7px;cursor:pointer;font-size:0.78rem;">🗑</button>
         </div>
       </div>
-      <!-- Fila 2: posiciones + rol -->
+      <!-- Fila 3: posiciones + rol -->
       <div class="gj-bottom">
         <div class="gj-posiciones">${posChips}</div>
         <select onchange="cambiarRol(${j.id},this.value)" class="gj-rol">
