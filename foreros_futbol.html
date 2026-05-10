@@ -3790,34 +3790,42 @@ async function apuntarmePartido() {
   // Determinar rol:
   // - Si la alineación ya está cerrada: siempre reserva (inamovible).
   // - Si vetado: rol "vetado".
-  // - Si fuera de plazo: rol "reserva".
   // - Si dentro de plazo y hay hueco: titular.
   // - Si dentro de plazo y NO hay hueco PERO hay invitados como titular:
   //     desplazar al último invitado a reserva, yo entro como titular.
+  // - Si fuera de plazo PERO hay hueco libre: titular (no tiene sentido
+  //   ponerle reserva si nadie le está disputando el puesto).
+  // - Si fuera de plazo y NO hay hueco: reserva.
   let rol = 'reserva';
   if (alineacionCerrada) {
     rol = 'reserva';
   } else if (vetado) {
     rol = 'vetado';
-  } else if (dentro) {
+  } else {
     const titularesActuales = pp.apuntados.filter(a => a.rol === 'titular').length;
-    if (titularesActuales < limite) {
-      rol = 'titular';
-    } else {
-      // No hay hueco. ¿Hay algún invitado como titular?
-      // Si sí, desplazar al invitado más reciente (el último en apuntarse)
-      // a reservas y yo entro como titular en su lugar.
-      const invitadosTit = pp.apuntados
-        .filter(a => a.rol === 'titular' && a.esInvitado)
-        .sort((a, b) => b.fechaApunte.localeCompare(a.fechaApunte)); // desc por fecha
-      if (invitadosTit.length > 0) {
-        const desplazado = invitadosTit[0];
-        desplazado.rol = 'reserva';
-        mensajeDesplazado = ` Desplazado: ${desplazado.nombre} (INV) → reserva.`;
+    const hayHueco = titularesActuales < limite;
+
+    if (dentro) {
+      if (hayHueco) {
         rol = 'titular';
       } else {
-        rol = 'reserva';
+        // No hay hueco. ¿Hay algún invitado como titular para desplazar?
+        const invitadosTit = pp.apuntados
+          .filter(a => a.rol === 'titular' && a.esInvitado)
+          .sort((a, b) => b.fechaApunte.localeCompare(a.fechaApunte));
+        if (invitadosTit.length > 0) {
+          const desplazado = invitadosTit[0];
+          desplazado.rol = 'reserva';
+          mensajeDesplazado = ` Desplazado: ${desplazado.nombre} (INV) → reserva.`;
+          rol = 'titular';
+        } else {
+          rol = 'reserva';
+        }
       }
+    } else {
+      // Fuera de plazo: solo entras como titular si SOBRA hueco libre.
+      // Si está completo o solo libre por bajas controladas, entras de reserva.
+      rol = hayHueco ? 'titular' : 'reserva';
     }
   }
 
@@ -3920,13 +3928,24 @@ async function cerrarInscripcionAhora() {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
-  if (!confirm('¿Cerrar inscripción y generar alineación? Después podrás editar la alineación manualmente.')) return;
 
-  pp.estado = 'alineacion-lista';
-
-  // Filtrar titulares y reservas según rol
   const titularesNombres = pp.apuntados.filter(a => a.rol === 'titular').map(a => a.nombre);
   const reservasNombres = pp.apuntados.filter(a => a.rol === 'reserva' || a.rol === 'vetado').map(a => a.nombre);
+  const limite = titularesProximoPartido();
+  const faltan = limite - titularesNombres.length;
+
+  // Confirmación distinta según si hay equipos completos o incompletos
+  let mensaje;
+  if (faltan > 0) {
+    mensaje = `⚠️ Faltan ${faltan} jugador${faltan>1?'es':''} para completar (${titularesNombres.length}/${limite}).\n\n¿Generar la alineación igualmente con los apuntados actuales?\n\nLa alineación quedará incompleta pero podrás reabrir la inscripción luego para añadir más jugadores.`;
+  } else if (faltan < 0) {
+    mensaje = `Hay ${Math.abs(faltan)} titular${Math.abs(faltan)>1?'es':''} de más (${titularesNombres.length}/${limite}).\n\n¿Cerrar inscripción y generar la alineación igualmente?`;
+  } else {
+    mensaje = '¿Cerrar inscripción y generar alineación? Después podrás editar la alineación manualmente.';
+  }
+  if (!confirm(mensaje)) return;
+
+  pp.estado = 'alineacion-lista';
 
   // Generar equipos equilibrados
   const equipos = generarEquiposEquilibrados(titularesNombres);
@@ -4297,20 +4316,21 @@ function renderProximoPartido() {
     bloqueListasPre.style.display = conAlineacion ? 'none' : 'grid';
   }
 
-  // Deshabilitar "Cerrar inscripción" si no hay mínimo de titulares
+  // El botón "Cerrar inscripción" siempre está habilitado. Si faltan jugadores
+  // se muestra un aviso pero el admin puede generar igualmente la alineación
+  // con los apuntados actuales (útil si aún se está buscando gente pero quieres
+  // ir avanzando).
   const btnCerrar = document.getElementById('pp-btn-cerrar-inscripcion');
   const avisoCerrar = document.getElementById('pp-aviso-cerrar-inscripcion');
   if (btnCerrar && avisoCerrar) {
+    btnCerrar.disabled = false;
+    btnCerrar.style.opacity = '1';
+    btnCerrar.style.cursor = 'pointer';
     if (titularesCount < limite) {
-      btnCerrar.disabled = true;
-      btnCerrar.style.opacity = '0.5';
-      btnCerrar.style.cursor = 'not-allowed';
       avisoCerrar.style.display = 'block';
-      avisoCerrar.textContent = `⚠️ Faltan ${limite - titularesCount} jugadores para poder cerrar la inscripción.`;
+      avisoCerrar.style.color = '#f5a623';
+      avisoCerrar.textContent = `⚠️ Faltan ${limite - titularesCount} para completar (${titularesCount}/${limite}). Puedes cerrar igualmente y reabrir luego.`;
     } else {
-      btnCerrar.disabled = false;
-      btnCerrar.style.opacity = '1';
-      btnCerrar.style.cursor = 'pointer';
       avisoCerrar.style.display = 'none';
     }
   }
@@ -4598,7 +4618,14 @@ function confirmarBaja() {
   }
 
   let entrante = null;
-  if (state.partido) {
+  // Decidir qué modelo aplicar:
+  // - Si la inscripción sigue abierta (estado "abierto"): usar SOLO el modelo
+  //   nuevo (pp.apuntados) y promoverPrimerReserva. state.partido podría estar
+  //   stale de un partido anterior.
+  // - Si la alineación está generada (state.partido válido): usar el modelo
+  //   legacy con titulares/reservas para mantener el orden visual.
+  const inscripcionAbierta = pp && (pp.estado === 'abierto' || !pp.estado);
+  if (state.partido && !inscripcionAbierta) {
     const erataTit = state.partido.titulares?.includes(nombre);
     state.partido.titulares = (state.partido.titulares || []).filter(n => n !== nombre);
     state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== nombre);
@@ -4616,8 +4643,17 @@ function confirmarBaja() {
       }
     }
   } else if (eraTitular && pp) {
-    // No hay state.partido pero sí proximoPartido → promover en el modelo nuevo
+    // Inscripción abierta o sin state.partido: promover en el modelo nuevo.
+    // También limpiar state.partido stale por si acaso.
+    if (state.partido && inscripcionAbierta) {
+      state.partido.titulares = (state.partido.titulares || []).filter(n => n !== nombre);
+      state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== nombre);
+    }
     promoverPrimerReserva();
+    // Detectar quién subió para el mensaje
+    const promovido = pp.apuntados?.find(a => a.rol === 'titular' && a.fechaApunte && a.nombre !== nombre);
+    // No tenemos forma simple de saber quién subió aquí porque pp.apuntados
+    // ya no tiene al baja, pero el mensaje genérico vale igual.
   }
 
   // Historial
