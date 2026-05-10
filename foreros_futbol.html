@@ -1180,8 +1180,8 @@ window.addEventListener('error', function(e) {
     <div class="stats-row" style="grid-template-columns:repeat(4,1fr);">
       <div class="stat-box"><div class="num" id="s-sancionados">0</div><div class="label">Sancionados</div></div>
       <div class="stat-box"><div class="num" id="s-total">0</div><div class="label">Jugadores</div></div>
-      <div class="stat-box"><div class="num" id="s-victorias" style="color:#f0f0f0;">0</div><div class="label">⚪ Wins</div></div>
-      <div class="stat-box"><div class="num" id="s-victorias-rojo" style="color:#e74c3c;">0</div><div class="label">🔴 Wins</div></div>
+      <div class="stat-box"><div class="num" id="s-victorias">0</div><div class="label" id="s-victorias-label">⚪ Wins</div></div>
+      <div class="stat-box"><div class="num" id="s-victorias-rojo">0</div><div class="label" id="s-victorias-rojo-label">🔴 Wins</div></div>
     </div>
     <input type="text" class="search-input" id="searchInput" placeholder="🔍  Buscar jugador..." oninput="renderRanking()">
     <div class="ranking-grid" id="rankingGrid"></div>
@@ -1348,21 +1348,21 @@ window.addEventListener('error', function(e) {
               <div style="background:var(--gris-oscuro);border:1px solid #2a2a2a;border-radius:10px;padding:14px;">
                 <div style="font-family:'Bebas Neue',sans-serif;font-size:0.9rem;letter-spacing:2px;color:#aaa;margin-bottom:12px;">EQUIPOS</div>
 
-                <!-- Equipo Blanco -->
+                <!-- Equipo A (slot interno "blanco") -->
                 <div style="margin-bottom:14px;">
                   <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-                    <span style="width:12px;height:12px;background:#f0f0f0;border:1px solid #999;border-radius:2px;flex-shrink:0;"></span>
-                    <span style="font-size:0.78rem;font-weight:700;color:#ddd;text-transform:uppercase;letter-spacing:.5px;">Equipo Blanco</span>
+                    <span id="sw-blanco" style="width:12px;height:12px;background:#f0f0f0;border:1px solid #999;border-radius:2px;flex-shrink:0;"></span>
+                    <span id="lbl-blanco" style="font-size:0.78rem;font-weight:700;color:#ddd;text-transform:uppercase;letter-spacing:.5px;">Equipo Blanco</span>
                     <span id="cnt-blanco" style="margin-left:auto;font-size:0.72rem;color:#555;"></span>
                   </div>
                   <div id="panel-blanco" style="min-height:40px;"></div>
                 </div>
 
-                <!-- Equipo Rojo -->
+                <!-- Equipo B (slot interno "rojo") -->
                 <div style="margin-bottom:14px;">
                   <div style="display:flex;align-items:center;gap:6px;margin-bottom:8px;">
-                    <span style="width:12px;height:12px;background:#c0392b;border-radius:2px;flex-shrink:0;"></span>
-                    <span style="font-size:0.78rem;font-weight:700;color:#ddd;text-transform:uppercase;letter-spacing:.5px;">Equipo Rojo</span>
+                    <span id="sw-rojo" style="width:12px;height:12px;background:#c0392b;border-radius:2px;flex-shrink:0;"></span>
+                    <span id="lbl-rojo" style="font-size:0.78rem;font-weight:700;color:#ddd;text-transform:uppercase;letter-spacing:.5px;">Equipo Rojo</span>
                     <span id="cnt-rojo" style="margin-left:auto;font-size:0.72rem;color:#555;"></span>
                   </div>
                   <div id="panel-rojo" style="min-height:40px;"></div>
@@ -1450,12 +1450,12 @@ window.addEventListener('error', function(e) {
           </p>
 
           <div class="form-group" style="margin-bottom:12px;">
-            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">⚪ Equipo Blanco (nombres separados por comas)</label>
+            <label id="cal-manual-lbl-equipo-blanco" style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">⚪ Equipo Blanco (nombres separados por comas)</label>
             <textarea id="cal-manual-blanco" rows="2" placeholder="Sebas, José, Adri, ..." style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:9px 12px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;"></textarea>
           </div>
 
           <div class="form-group" style="margin-bottom:12px;">
-            <label style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">🔴 Equipo Rojo (nombres separados por comas)</label>
+            <label id="cal-manual-lbl-equipo-rojo" style="font-size:0.78rem;color:#aaa;display:block;margin-bottom:4px;">🔴 Equipo Rojo (nombres separados por comas)</label>
             <textarea id="cal-manual-rojo" rows="2" placeholder="Manu, Iván, Hugo, ..." style="width:100%;background:var(--gris-oscuro);border:1px solid #5a1010;border-radius:8px;padding:9px 12px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;resize:vertical;"></textarea>
           </div>
 
@@ -1469,11 +1469,11 @@ window.addEventListener('error', function(e) {
             <div style="display:flex;flex-wrap:wrap;gap:8px;">
               <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
                 <input type="radio" name="cal-manual-resultado" value="blanco" checked style="margin:0;">
-                <span style="width:12px;height:12px;background:#f0f0f0;border:1px solid #999;border-radius:2px;"></span>Gana blanco
+                <span id="cal-manual-sw-blanco" style="width:12px;height:12px;background:#f0f0f0;border:1px solid #999;border-radius:2px;"></span><span id="cal-manual-lbl-blanco">Gana blanco</span>
               </label>
               <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
                 <input type="radio" name="cal-manual-resultado" value="rojo" style="margin:0;">
-                <span style="width:12px;height:12px;background:#c0392b;border-radius:2px;"></span>Gana rojo
+                <span id="cal-manual-sw-rojo" style="width:12px;height:12px;background:#c0392b;border-radius:2px;"></span><span id="cal-manual-lbl-rojo">Gana rojo</span>
               </label>
               <label style="cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:7px;padding:7px 12px;font-size:0.85rem;display:flex;align-items:center;gap:6px;">
                 <input type="radio" name="cal-manual-resultado" value="empate" style="margin:0;">🤝 Empate
@@ -1773,6 +1773,42 @@ window.addEventListener('error', function(e) {
             </p>
           </div>
 
+          <!-- Colores de los equipos -->
+          <div class="form-group">
+            <label>Colores de los equipos</label>
+            <p style="font-size:0.72rem;color:#666;margin-bottom:8px;">
+              Elige el color de cada equipo. Se usará en ranking, alineación y
+              registros de partidos.
+            </p>
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+              <div>
+                <label style="font-size:0.72rem;color:#888;">Equipo A</label>
+                <select id="configColorA" onchange="onCambioColor()" style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:8px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
+                  <option value="blanco">⚪ Blanco</option>
+                  <option value="rojo">🔴 Rojo</option>
+                  <option value="negro">⚫ Negro</option>
+                  <option value="amarillo">🟡 Amarillo</option>
+                  <option value="azul">🔵 Azul</option>
+                  <option value="verde">🟢 Verde</option>
+                </select>
+              </div>
+              <div>
+                <label style="font-size:0.72rem;color:#888;">Equipo B</label>
+                <select id="configColorB" onchange="onCambioColor()" style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:8px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
+                  <option value="blanco">⚪ Blanco</option>
+                  <option value="rojo">🔴 Rojo</option>
+                  <option value="negro">⚫ Negro</option>
+                  <option value="amarillo">🟡 Amarillo</option>
+                  <option value="azul">🔵 Azul</option>
+                  <option value="verde">🟢 Verde</option>
+                </select>
+              </div>
+            </div>
+            <p id="configColorAviso" style="display:none;font-size:0.72rem;color:#e74c3c;margin-top:6px;">
+              ⚠️ Los dos equipos no pueden tener el mismo color.
+            </p>
+          </div>
+
           <button class="btn btn-azul btn-full" onclick="guardarConfig()">💾 Guardar configuración</button>
         </div>
 
@@ -2048,15 +2084,13 @@ window.addEventListener('error', function(e) {
     <h2>🏆 Resultado del partido</h2>
     <p style="color:#aaa;margin-bottom:20px;font-size:0.88rem;">Partido <strong id="resultado-num" style="color:#fff;"></strong> — ¿Quién ganó?</p>
     <div style="display:flex;flex-direction:column;gap:10px;">
-      <button onclick="guardarResultado('blanco')"
-        style="background:rgba(240,240,240,0.1);border:2px solid rgba(240,240,240,0.3);border-radius:10px;padding:14px;color:#f0f0f0;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;"
-        onmouseenter="this.style.background='rgba(240,240,240,0.2)'" onmouseleave="this.style.background='rgba(240,240,240,0.1)'">
-        <span style="width:16px;height:16px;background:#f0f0f0;border-radius:3px;flex-shrink:0;"></span> GANA EQUIPO BLANCO
+      <button id="btn-resultado-blanco" onclick="guardarResultado('blanco')"
+        style="border-radius:10px;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;border:2px solid;">
+        <span id="sw-resultado-blanco" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></span> <span id="lbl-resultado-blanco">GANA EQUIPO BLANCO</span>
       </button>
-      <button onclick="guardarResultado('rojo')"
-        style="background:rgba(192,57,43,0.15);border:2px solid rgba(192,57,43,0.4);border-radius:10px;padding:14px;color:#e74c3c;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;"
-        onmouseenter="this.style.background='rgba(192,57,43,0.28)'" onmouseleave="this.style.background='rgba(192,57,43,0.15)'">
-        <span style="width:16px;height:16px;background:#c0392b;border-radius:3px;flex-shrink:0;"></span> GANA EQUIPO ROJO
+      <button id="btn-resultado-rojo" onclick="guardarResultado('rojo')"
+        style="border-radius:10px;padding:14px;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;border:2px solid;">
+        <span id="sw-resultado-rojo" style="width:16px;height:16px;border-radius:3px;flex-shrink:0;"></span> <span id="lbl-resultado-rojo">GANA EQUIPO ROJO</span>
       </button>
       <button onclick="guardarResultado('empate')"
         style="background:rgba(241,196,15,0.1);border:2px solid rgba(241,196,15,0.3);border-radius:10px;padding:14px;color:#f1c40f;font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:10px;"
@@ -3009,8 +3043,43 @@ function _migrarConfig() {
       activas: true, mismoDia: -3, unDiaAntes: -2, dosDiasAntes: -1, vetoSiguiente: true
     };
   }
+  // Colores de los equipos (default: blanco vs rojo, como históricamente)
+  if (state.config.colorA === undefined) state.config.colorA = 'blanco';
+  if (state.config.colorB === undefined) state.config.colorB = 'rojo';
   // Migrar adminUid (singular) → adminUids[] (plural)
   migrarAdminUidsEnState();
+}
+
+// ─────────────────────────────────────────────────────────
+// Helpers de colores de equipos
+// ─────────────────────────────────────────────────────────
+// Internamente, los datos siempre se guardan con los IDs legacy "blanco" y
+// "rojo" (en `p.resultado`, `_equipoRojo`, etc.). Los colores configurados
+// en state.config.colorA/colorB son SOLO un mapeo visual: el equipo que
+// internamente se llama "blanco" se renderiza con el color A, y "rojo" con el B.
+
+const COLORES_EQUIPO = {
+  blanco:   { hex: '#f5f5f5', emoji: '⚪', label: 'Blanco',   txt: '#1a1a1a', borde: '#aaa'    },
+  rojo:     { hex: '#c0392b', emoji: '🔴', label: 'Rojo',     txt: '#fff',    borde: '#7a1a1a' },
+  negro:    { hex: '#1c1c1c', emoji: '⚫', label: 'Negro',    txt: '#fff',    borde: '#444'    },
+  amarillo: { hex: '#f1c40f', emoji: '🟡', label: 'Amarillo', txt: '#1a1a1a', borde: '#a07d05' },
+  azul:     { hex: '#2980b9', emoji: '🔵', label: 'Azul',     txt: '#fff',    borde: '#15486a' },
+  verde:    { hex: '#27ae60', emoji: '🟢', label: 'Verde',    txt: '#fff',    borde: '#13703b' },
+};
+
+// Color del equipo A (slot interno "blanco")
+function colorA() {
+  const id = state?.config?.colorA || 'blanco';
+  return COLORES_EQUIPO[id] || COLORES_EQUIPO.blanco;
+}
+// Color del equipo B (slot interno "rojo")
+function colorB() {
+  const id = state?.config?.colorB || 'rojo';
+  return COLORES_EQUIPO[id] || COLORES_EQUIPO.rojo;
+}
+// Devuelve color visual a partir del slot legacy ('blanco' o 'rojo')
+function colorPorSlot(slot) {
+  return slot === 'rojo' ? colorB() : colorA();
 }
 
 function _refrescarVista() {
@@ -3180,10 +3249,13 @@ async function renderPantallaInicio() {
     // Leer del caché local (Firebase lo mantiene actualizado)
     const raw = localStorage.getItem(getLigaKey(l.id));
     let jugadores = 0, partidos = 0, victorias = { blanco: 0, rojo: 0, empate: 0 };
+    let ligaColorA = COLORES_EQUIPO.blanco, ligaColorB = COLORES_EQUIPO.rojo;
     try {
       const e = JSON.parse(raw);
       jugadores = e.jugadores?.length || 0;
       partidos  = e.config?.partidos  || 0;
+      ligaColorA = COLORES_EQUIPO[e.config?.colorA] || COLORES_EQUIPO.blanco;
+      ligaColorB = COLORES_EQUIPO[e.config?.colorB] || COLORES_EQUIPO.rojo;
       (e.partidos_jugados || []).forEach(p => {
         if (p.resultado === 'blanco') victorias.blanco++;
         else if (p.resultado === 'rojo') victorias.rojo++;
@@ -3192,7 +3264,7 @@ async function renderPantallaInicio() {
     } catch {}
     const totalRes = victorias.blanco + victorias.rojo + victorias.empate;
     const statsHtml = totalRes > 0
-      ? `<span style="color:rgba(255,255,255,0.4);font-size:0.7rem;margin-left:6px;">⚪${victorias.blanco} 🔴${victorias.rojo} 🤝${victorias.empate}</span>`
+      ? `<span style="color:rgba(255,255,255,0.4);font-size:0.7rem;margin-left:6px;">${ligaColorA.emoji}${victorias.blanco} ${ligaColorB.emoji}${victorias.rojo} 🤝${victorias.empate}</span>`
       : '';
     const codigo = l.codigo || '——';
     // Determinar rol del usuario en esta liga: admin o jugador.
@@ -3586,7 +3658,7 @@ function renderRanking() {
   document.getElementById('s-total').textContent = todos.length;
   document.getElementById('totalPartidos').textContent = state.config.partidos;
 
-  // Victorias por equipo
+  // Victorias por equipo (con colores configurados)
   const wins = { blanco: 0, rojo: 0, empate: 0 };
   (state.partidos_jugados || []).forEach(p => {
     if (p.resultado === 'blanco') wins.blanco++;
@@ -3595,8 +3667,14 @@ function renderRanking() {
   });
   const wB = document.getElementById('s-victorias');
   const wR = document.getElementById('s-victorias-rojo');
-  if (wB) wB.textContent = wins.blanco;
-  if (wR) wR.textContent = wins.rojo;
+  const wBL = document.getElementById('s-victorias-label');
+  const wRL = document.getElementById('s-victorias-rojo-label');
+  const cA = colorA();
+  const cB = colorB();
+  if (wB)  { wB.textContent = wins.blanco; wB.style.color = cA.hex; }
+  if (wR)  { wR.textContent = wins.rojo;   wR.style.color = cB.hex; }
+  if (wBL) wBL.innerHTML = `${cA.emoji} Wins`;
+  if (wRL) wRL.innerHTML = `${cB.emoji} Wins`;
 
   const filtrados = query ? todos.filter(j => j.nombre.toLowerCase().includes(query)) : todos;
 
@@ -4781,6 +4859,13 @@ async function renderAdmin() {
   document.getElementById('configPrecio').value    = state.config.precio    || '';
   document.getElementById('configDiaSemana').value = state.config.diaSemana ?? 1;
 
+  // Colores de los equipos
+  const selColorA = document.getElementById('configColorA');
+  const selColorB = document.getElementById('configColorB');
+  if (selColorA) selColorA.value = state.config.colorA || 'blanco';
+  if (selColorB) selColorB.value = state.config.colorB || 'rojo';
+  onCambioColor(); // refrescar aviso si conflicto
+
   // Tipo de partido
   const selTipo = document.getElementById('configTipoPartido');
   if (selTipo) {
@@ -5388,11 +5473,21 @@ function refrescarAvisoPlazo() {
 }
 
 function guardarConfig() {
+  // Validar colores antes de guardar nada
+  const colorA = document.getElementById('configColorA')?.value || 'blanco';
+  const colorB = document.getElementById('configColorB')?.value || 'rojo';
+  if (colorA === colorB) {
+    notif('Los dos equipos no pueden tener el mismo color', 'error');
+    return;
+  }
+
   state.config.partidos   = parseInt(document.getElementById('configPartidos').value) || 0;
   state.config.campo      = document.getElementById('configCampo').value.trim();
   state.config.hora       = document.getElementById('configHora').value.trim();
   state.config.precio     = document.getElementById('configPrecio').value.trim();
   state.config.diaSemana  = parseInt(document.getElementById('configDiaSemana').value);
+  state.config.colorA     = colorA;
+  state.config.colorB     = colorB;
 
   // Tipo de partido
   const tipoSel = document.getElementById('configTipoPartido')?.value;
@@ -5407,8 +5502,19 @@ function guardarConfig() {
   guardar();
   notif('Configuración guardada');
   renderRanking();
+  renderPartido();
+  if (typeof renderCanvasPartido === 'function') renderCanvasPartido();
   // Refrescar chips por si cambió el día del partido (que ahora está bloqueado)
   renderChipsDiasPlazo();
+}
+
+// Validación en vivo de los selectores de color (admin config)
+function onCambioColor() {
+  const a = document.getElementById('configColorA')?.value;
+  const b = document.getElementById('configColorB')?.value;
+  const aviso = document.getElementById('configColorAviso');
+  if (!aviso) return;
+  aviso.style.display = (a && b && a === b) ? 'block' : 'none';
 }
 
 // Activa/desactiva los inputs de sanciones según el toggle.
@@ -5909,6 +6015,20 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
     if (panelManual) {
       panelManual.style.display = 'block';
       document.getElementById('cal-panel-fecha-manual').textContent = `📅 ${fechaLabel}`;
+      // Aplicar colores configurados al form manual
+      const cA = colorA(); const cB = colorB();
+      const lblEqA = document.getElementById('cal-manual-lbl-equipo-blanco');
+      const lblEqB = document.getElementById('cal-manual-lbl-equipo-rojo');
+      const swA = document.getElementById('cal-manual-sw-blanco');
+      const swB = document.getElementById('cal-manual-sw-rojo');
+      const lblA = document.getElementById('cal-manual-lbl-blanco');
+      const lblB = document.getElementById('cal-manual-lbl-rojo');
+      if (lblEqA) lblEqA.innerHTML = `${cA.emoji} Equipo ${cA.label} (nombres separados por comas)`;
+      if (lblEqB) lblEqB.innerHTML = `${cB.emoji} Equipo ${cB.label} (nombres separados por comas)`;
+      if (swA) { swA.style.background = cA.hex; swA.style.borderColor = cA.borde; }
+      if (swB) { swB.style.background = cB.hex; swB.style.borderColor = cB.borde; }
+      if (lblA) lblA.textContent = `Gana ${cA.label.toLowerCase()}`;
+      if (lblB) lblB.textContent = `Gana ${cB.label.toLowerCase()}`;
       // Limpiar campos por si se llenaron antes
       document.getElementById('cal-manual-blanco').value = '';
       document.getElementById('cal-manual-rojo').value = '';
@@ -5950,11 +6070,13 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
       } else if (registro.sinResultado) {
         estadoHtml = `<span style="font-size:1.3rem;">⚠️</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#888;flex:1;">SIN RESULTADO VÁLIDO</span>`;
       } else if (registro.resultado === 'blanco') {
-        estadoHtml = `<span style="width:18px;height:18px;background:#f0f0f0;border:1px solid #999;border-radius:3px;flex-shrink:0;"></span>
-                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f0f0f0;flex:1;">GANÓ EQUIPO BLANCO</span>`;
+        const cA = colorA();
+        estadoHtml = `<span style="width:18px;height:18px;background:${cA.hex};border:1px solid ${cA.borde};border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:${cA.hex};flex:1;">GANÓ EQUIPO ${cA.label.toUpperCase()}</span>`;
       } else if (registro.resultado === 'rojo') {
-        estadoHtml = `<span style="width:18px;height:18px;background:#c0392b;border-radius:3px;flex-shrink:0;"></span>
-                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#e74c3c;flex:1;">GANÓ EQUIPO ROJO</span>`;
+        const cB = colorB();
+        estadoHtml = `<span style="width:18px;height:18px;background:${cB.hex};border:1px solid ${cB.borde};border-radius:3px;flex-shrink:0;"></span>
+                <span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:${cB.hex};flex:1;">GANÓ EQUIPO ${cB.label.toUpperCase()}</span>`;
       } else if (registro.resultado === 'empate') {
         estadoHtml = `<span style="font-size:1.3rem;">🤝</span><span style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;letter-spacing:2px;color:#f1c40f;flex:1;">EMPATE</span>`;
       } else {
@@ -7047,11 +7169,15 @@ function dibujarEquipoEnMitad(ctx, grupos, esRojo, pad, ANCHO, ALTO, escalaX = 1
 function dibujarCamiseta(ctx, x, y, nombre, esPortero, esRojo, escalaX = 1) {
   let cuerpoColor, mangaColor, numColor, textColor;
   if (esPortero) {
+    // Portero siempre verde fluor (no se confunda con jugadores de campo)
     cuerpoColor = '#27ae60'; mangaColor = '#1d8348'; numColor = '#fff'; textColor = '#fff';
-  } else if (esRojo) {
-    cuerpoColor = '#c0392b'; mangaColor = '#96281b'; numColor = '#fff'; textColor = '#fff';
   } else {
-    cuerpoColor = '#f0f0f0'; mangaColor = '#c0c0c0'; numColor = '#222'; textColor = '#fff';
+    // Equipo A = "blanco" interno, Equipo B = "rojo" interno
+    const c = esRojo ? colorB() : colorA();
+    cuerpoColor = c.hex;
+    mangaColor  = c.borde; // tono más oscuro definido en COLORES_EQUIPO
+    numColor    = c.txt;
+    textColor   = '#fff';
   }
 
   ctx.save();
@@ -7283,6 +7409,19 @@ function renderCanvasPartido() {
     return;
   }
   wrap.style.display = 'block';
+
+  // Aplicar colores configurados a los headers del panel lateral
+  const cA = colorA(); const cB = colorB();
+  const swA = document.getElementById('sw-blanco');
+  const lblA = document.getElementById('lbl-blanco');
+  const swB = document.getElementById('sw-rojo');
+  const lblB = document.getElementById('lbl-rojo');
+  if (swA)  swA.style.background = cA.hex;
+  if (swA)  swA.style.borderColor = cA.borde;
+  if (lblA) lblA.textContent = `Equipo ${cA.label}`;
+  if (swB)  swB.style.background = cB.hex;
+  if (swB)  swB.style.borderColor = cB.borde;
+  if (lblB) lblB.textContent = `Equipo ${cB.label}`;
 
   // Mostrar controles de admin (tipo, formaciones, sorteo) solo a admins.
   // No-admins ven solo el botón de descargar.
@@ -7546,7 +7685,35 @@ function moverAEquipo(nombre, equipoDestino, event) {
   notif(`${nombre} → ${equipoDestino === 'rojo' ? '🔴 rojo' : '⚪ blanco'}`);
 }
 
+// Aplica los colores configurados a los botones del modal de resultado
+function aplicarColoresModalResultado() {
+  const cA = colorA(); const cB = colorB();
+  // Equipo A (slot blanco)
+  const btnA = document.getElementById('btn-resultado-blanco');
+  const swA = document.getElementById('sw-resultado-blanco');
+  const lblA = document.getElementById('lbl-resultado-blanco');
+  if (btnA) {
+    btnA.style.background = `${cA.hex}26`; // ~15% opacity
+    btnA.style.borderColor = `${cA.hex}66`;
+    btnA.style.color = cA.hex === '#f5f5f5' ? '#f5f5f5' : cA.hex;
+  }
+  if (swA) swA.style.background = cA.hex;
+  if (lblA) lblA.textContent = `GANA EQUIPO ${cA.label.toUpperCase()}`;
+  // Equipo B (slot rojo)
+  const btnB = document.getElementById('btn-resultado-rojo');
+  const swB = document.getElementById('sw-resultado-rojo');
+  const lblB = document.getElementById('lbl-resultado-rojo');
+  if (btnB) {
+    btnB.style.background = `${cB.hex}26`;
+    btnB.style.borderColor = `${cB.hex}66`;
+    btnB.style.color = cB.hex;
+  }
+  if (swB) swB.style.background = cB.hex;
+  if (lblB) lblB.textContent = `GANA EQUIPO ${cB.label.toUpperCase()}`;
+}
+
 function abrirModalResultado(numPartido) {
+  aplicarColoresModalResultado();
   document.getElementById('resultado-num').textContent = '#' + numPartido;
   document.getElementById('modalResultado').classList.add('show');
 }
@@ -7555,6 +7722,7 @@ function abrirModalResultado(numPartido) {
 function abrirModalResultadoIdx(idx) {
   const p = state.partidos_jugados[idx];
   if (!p) return;
+  aplicarColoresModalResultado();
   document.getElementById('resultado-num').textContent = '#' + (idx + 1);
   document.getElementById('modalResultado').classList.add('show');
   // Guardar idx temporalmente para que guardarResultado sepa qué partido editar
