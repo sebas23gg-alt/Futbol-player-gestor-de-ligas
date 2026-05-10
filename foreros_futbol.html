@@ -1312,20 +1312,15 @@ window.addEventListener('error', function(e) {
               <label style="display:block;font-size:0.72rem;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">Tipo de partido</label>
               <div style="display:flex;gap:6px;">
                 <button id="btn-tipo-5" onclick="setTipoPartido(5)" class="btn btn-gris" style="font-size:0.8rem;padding:6px 12px;">5vs5</button>
+                <button id="btn-tipo-6" onclick="setTipoPartido(6)" class="btn btn-gris" style="font-size:0.8rem;padding:6px 12px;">6vs6</button>
                 <button id="btn-tipo-7" onclick="setTipoPartido(7)" class="btn btn-gris" style="font-size:0.8rem;padding:6px 12px;">7vs7</button>
                 <button id="btn-tipo-8" onclick="setTipoPartido(8)" class="btn btn-verde" style="font-size:0.8rem;padding:6px 12px;">8vs8</button>
                 <button id="btn-tipo-11" onclick="setTipoPartido(11)" class="btn btn-gris" style="font-size:0.8rem;padding:6px 12px;">11vs11</button>
               </div>
             </div>
-            <div>
-              <label style="display:block;font-size:0.72rem;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">⚪ Formación Blanco</label>
-              <select id="partido-formacion-blanco" onchange="aplicarFormacion()" style="background:var(--gris-oscuro);border:1px solid #555;border-radius:8px;padding:7px 10px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
-              </select>
-            </div>
-            <div>
-              <label style="display:block;font-size:0.72rem;color:#888;margin-bottom:4px;text-transform:uppercase;letter-spacing:.5px;">🔴 Formación Rojo</label>
-              <select id="partido-formacion-rojo" onchange="aplicarFormacion()" style="background:var(--gris-oscuro);border:1px solid #c0392b;border-radius:8px;padding:7px 10px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
-              </select>
+            <div style="display:flex;align-items:center;gap:8px;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:7px 12px;">
+              <span style="font-size:0.7rem;color:#888;text-transform:uppercase;letter-spacing:.5px;">Formación:</span>
+              <span id="partido-formacion-display" style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;color:var(--verde-neon);letter-spacing:1px;">—</span>
             </div>
             <div style="display:flex;gap:8px;margin-left:auto;">
               <button class="btn btn-gris" onclick="resortearEquipos()" style="font-size:0.78rem;padding:6px 12px;">🔀 Sorteo</button>
@@ -4126,45 +4121,73 @@ function generarEquiposEquilibrados(nombres) {
   const porteros = lista.filter(j => j.portero);
   const campo    = lista.filter(j => !j.portero);
 
-  // Equipos
   const blanco = { jugadores: [], suma: 0 };
   const rojo   = { jugadores: [], suma: 0 };
 
-  // Regla porteros:
-  // - Máximo 1 por equipo.
-  // - Si solo 1 portero: va al equipo con menor suma actual (al inicio cualquiera).
-  // - Si hay 2+: 1 al blanco, 1 al rojo. Los demás solo si tienen otra posición.
+  // ── Regla porteros: máximo 1 por equipo ──
   if (porteros.length === 1) {
     blanco.jugadores.push(porteros[0]);
     blanco.suma += porteros[0]._fuerza;
   } else if (porteros.length >= 2) {
-    // Los 2 con más fuerza a porteros (1 cada equipo) — el más fuerte al equipo
-    // que ahora mismo está vacío (=blanco), el segundo al rojo. Tras la fase de
-    // campo, el greedy compensa.
     porteros.sort((a,b) => b._fuerza - a._fuerza);
     blanco.jugadores.push(porteros[0]); blanco.suma += porteros[0]._fuerza;
     rojo.jugadores.push(porteros[1]);   rojo.suma   += porteros[1]._fuerza;
-    // Resto de porteros: añadir a campo solo si tienen otra posición
     porteros.slice(2).forEach(p => {
       const tieneOtra = (p.posiciones || []).some(pos => pos && pos !== 'portero');
       if (tieneOtra) campo.push(p);
     });
   }
 
-  // Repartir campo: orden desc por fuerza, asignar al equipo con menor suma.
-  // Para evitar reparto idéntico cada vez con datos parecidos, mezclamos los
-  // empates con un pequeño desempate aleatorio.
-  const ordenado = [...campo].sort((a,b) => {
-    const diff = b._fuerza - a._fuerza;
-    if (Math.abs(diff) < 0.01) return Math.random() - 0.5;
-    return diff;
+  // ── Reparto por posición primero, luego balance por fuerza ──
+  // Para cada jugador, su posición "principal" es la primera de su array
+  // posiciones[] que no sea portero. Si no tiene, usa j.posicion legacy.
+  // Los polivalentes se reparten al final como comodines.
+  const posPrincipal = (j) => {
+    const lista = j.posiciones || (j.posicion ? [j.posicion] : []);
+    const filtrada = lista.filter(p => p && p !== 'portero');
+    if (filtrada.length === 0) return 'sin';
+    // Si la única posición es polivalente, marcar como polivalente
+    if (filtrada.length === 1 && filtrada[0] === 'polivalente') return 'polivalente';
+    // Devolver la primera posición específica que no sea polivalente
+    const especifica = filtrada.find(p => p !== 'polivalente');
+    return especifica || 'polivalente';
+  };
+
+  // Agrupar campo por posición principal
+  const grupos = { defensa: [], lateral: [], mediocentro: [], delantero: [], polivalente: [], sin: [] };
+  campo.forEach(j => {
+    const p = posPrincipal(j);
+    if (grupos[p]) grupos[p].push(j); else grupos.sin.push(j);
   });
-  ordenado.forEach(j => {
+
+  // Función auxiliar: añadir un jugador al equipo más débil (o al más vacío
+  // si están empatados en fuerza). En empate de tamaño y fuerza, alternar.
+  const añadirAlMejor = (j) => {
+    const difTam = blanco.jugadores.length - rojo.jugadores.length;
+    // Forzar tamaño igual: si un equipo tiene 1 más, el otro recibe sí o sí
+    if (difTam >= 1) { rojo.jugadores.push(j); rojo.suma += j._fuerza; return; }
+    if (difTam <= -1) { blanco.jugadores.push(j); blanco.suma += j._fuerza; return; }
+    // Mismo tamaño → al de menor suma de fuerza
     if (blanco.suma <= rojo.suma) {
       blanco.jugadores.push(j); blanco.suma += j._fuerza;
     } else {
       rojo.jugadores.push(j); rojo.suma += j._fuerza;
     }
+  };
+
+  // Repartir grupo a grupo, ordenado de más fuerte a más débil dentro del grupo.
+  // Esto asegura que las posiciones se distribuyan parejas Y los jugadores
+  // fuertes de cada posición vayan a equipos distintos.
+  ['defensa', 'lateral', 'mediocentro', 'delantero', 'polivalente', 'sin'].forEach(pos => {
+    const grupo = grupos[pos];
+    if (grupo.length === 0) return;
+    // Ordenar por fuerza desc con desempate aleatorio suave
+    grupo.sort((a, b) => {
+      const diff = b._fuerza - a._fuerza;
+      if (Math.abs(diff) < 0.01) return Math.random() - 0.5;
+      return diff;
+    });
+    grupo.forEach(j => añadirAlMejor(j));
   });
 
   return {
@@ -7143,34 +7166,15 @@ function descargarAlineacion() {
 }
 
 // ── Formaciones disponibles por tipo de partido ──
+// Formación FIJA por tipo de partido (una única opción por tipo).
+// Mantenemos el formato como array de un solo elemento para compatibilidad
+// con el resto del código que itera con [0].
 const FORMACIONES_POR_TIPO = {
-  5: [
-    { label: '1-2-2', lineas: [2,2] },
-    { label: '1-1-3', lineas: [1,3] },
-    { label: '1-3-1', lineas: [3,1] },
-    { label: '1-2-1-1', lineas: [2,1,1] },
-  ],
-  7: [
-    { label: '1-2-3-1', lineas: [2,3,1] },
-    { label: '1-2-2-2', lineas: [2,2,2] },
-    { label: '1-3-2-1', lineas: [3,2,1] },
-    { label: '1-1-4-1', lineas: [1,4,1] },
-    { label: '1-2-1-3', lineas: [2,1,3] },
-  ],
-  8: [
-    { label: '1-3-3-1', lineas: [3,3,1] },
-    { label: '1-2-4-1', lineas: [2,4,1] },
-    { label: '1-3-2-2', lineas: [3,2,2] },
-    { label: '1-2-3-2', lineas: [2,3,2] },
-    { label: '1-4-2-1', lineas: [4,2,1] },
-  ],
-  11: [
-    { label: '1-4-4-2', lineas: [4,4,2] },
-    { label: '1-4-3-3', lineas: [4,3,3] },
-    { label: '1-3-5-2', lineas: [3,5,2] },
-    { label: '1-4-2-3-1', lineas: [4,2,3,1] },
-    { label: '1-5-3-2', lineas: [5,3,2] },
-  ],
+  5:  [ { label: '1-2-2',     lineas: [2,2]     } ],
+  6:  [ { label: '1-2-2-1',   lineas: [2,2,1]   } ],
+  7:  [ { label: '1-3-3',     lineas: [3,3]     } ],
+  8:  [ { label: '1-3-3-1',   lineas: [3,3,1]   } ],
+  11: [ { label: '1-4-4-2',   lineas: [4,4,2]   } ],
 };
 
 function setTipoPartido(tipo) {
@@ -7182,7 +7186,7 @@ function setTipoPartido(tipo) {
   state.partido._equipoRojo = null;
   guardar();
 
-  [5, 7, 8, 11].forEach(t => {
+  [5, 6, 7, 8, 11].forEach(t => {
     const btn = document.getElementById(`btn-tipo-${t}`);
     if (btn) {
       btn.className = t === tipo ? 'btn btn-verde' : 'btn btn-gris';
@@ -7197,14 +7201,20 @@ function setTipoPartido(tipo) {
 
 function actualizarSelectFormacion(tipo) {
   const forms = FORMACIONES_POR_TIPO[tipo] || FORMACIONES_POR_TIPO[8];
-  const formBlanco = state.partido?._formacionBlanco;
-  const formRojo   = state.partido?._formacionRojo;
-  const opts = forms.map(f => `<option value="${f.label}">${f.label}</option>`).join('');
-
+  // Como solo hay UNA formación fija por tipo, ambos equipos usan la misma.
+  const formacionLabel = forms[0].label;
+  // Forzar que ambos equipos usen la formación fija (por si quedaba una vieja)
+  if (state.partido) {
+    state.partido._formacionBlanco = formacionLabel;
+    state.partido._formacionRojo   = formacionLabel;
+  }
+  const display = document.getElementById('partido-formacion-display');
+  if (display) display.textContent = formacionLabel;
+  // Compatibilidad: si el select viejo aún existe en el DOM, sincronizarlo
   const selB = document.getElementById('partido-formacion-blanco');
   const selR = document.getElementById('partido-formacion-rojo');
-  if (selB) { selB.innerHTML = opts; selB.value = formBlanco || forms[0].label; }
-  if (selR) { selR.innerHTML = opts; selR.value = formRojo   || forms[0].label; }
+  if (selB) { selB.innerHTML = `<option value="${formacionLabel}">${formacionLabel}</option>`; selB.value = formacionLabel; }
+  if (selR) { selR.innerHTML = `<option value="${formacionLabel}">${formacionLabel}</option>`; selR.value = formacionLabel; }
 }
 
 function aplicarFormacion() {
@@ -7253,7 +7263,7 @@ function renderCanvasPartido() {
   if (!p._formacionRojo   || !forms.find(f => f.label === p._formacionRojo))   p._formacionRojo   = forms[0].label;
 
   // Sincronizar UI
-  [5, 7, 8, 11].forEach(t => {
+  [5, 6, 7, 8, 11].forEach(t => {
     const btn = document.getElementById(`btn-tipo-${t}`);
     if (btn) {
       btn.className = t === tipo ? 'btn btn-verde' : 'btn btn-gris';
