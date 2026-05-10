@@ -1593,6 +1593,77 @@ window.addEventListener('error', function(e) {
           <button class="btn btn-rojo btn-full" onclick="aplicarSancion()">🟥 Aplicar Sanción</button>
         </div>
 
+        <!-- TESORERÍA (ancho completo, colapsable) -->
+        <div class="card" id="tesoreria-card" style="grid-column:1/-1;">
+          <details ontoggle="if(this.open) renderTesoreria()">
+            <summary style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--verde-neon);cursor:pointer;list-style:none;display:flex;align-items:center;gap:8px;">
+              <span>💰 TESORERÍA</span>
+              <span style="font-size:0.72rem;color:#444;font-family:'DM Sans',sans-serif;font-weight:400;letter-spacing:0;">(bote, cobros y gastos)</span>
+              <span id="tesoreria-bote-resumen" style="margin-left:auto;font-family:'Bebas Neue',sans-serif;font-size:1.2rem;letter-spacing:1px;color:var(--verde-neon);">—</span>
+            </summary>
+
+            <div style="margin-top:16px;">
+
+              <!-- Resumen visual -->
+              <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;">
+                <div style="background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:1px;">Bote actual</div>
+                  <div id="tes-bote" style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;color:var(--verde-neon);">0,00€</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border:1px solid #333;border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:1px;">Recaudado</div>
+                  <div id="tes-recaudado" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#ccc;">0,00€</div>
+                </div>
+                <div style="background:rgba(255,255,255,0.03);border:1px solid #333;border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:1px;">Alquiler campo</div>
+                  <div id="tes-alquiler" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#ccc;">0,00€</div>
+                </div>
+                <div style="background:rgba(231,76,60,0.06);border:1px solid rgba(231,76,60,0.25);border-radius:10px;padding:12px;text-align:center;">
+                  <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:1px;">Gastos</div>
+                  <div id="tes-gastos" style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;color:#e74c3c;">0,00€</div>
+                </div>
+              </div>
+
+              <!-- Configuración alquiler -->
+              <div style="background:rgba(255,255,255,0.02);border:1px solid #2a2a2a;border-radius:10px;padding:14px;margin-bottom:18px;">
+                <div style="font-size:0.78rem;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;margin-bottom:10px;">⚙️ Configuración</div>
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+                  <div class="form-group" style="margin:0;">
+                    <label style="font-size:0.72rem;">Coste alquiler del campo (€/partido)</label>
+                    <input type="number" id="tesAlquilerCampo" step="0.5" min="0" placeholder="50">
+                  </div>
+                  <div class="form-group" style="margin:0;">
+                    <label style="font-size:0.72rem;">Precio por jugador (€)</label>
+                    <input type="number" id="tesPrecioJugador" step="0.1" min="0" placeholder="4" disabled style="opacity:0.7;">
+                    <p style="font-size:0.66rem;color:#666;margin:2px 0 0 0;">Se gestiona en config general</p>
+                  </div>
+                </div>
+                <button class="btn btn-azul" onclick="guardarTesoreriaConfig()" style="margin-top:10px;font-size:0.82rem;padding:6px 14px;">💾 Guardar alquiler</button>
+                <p id="tesAporteEstimado" style="font-size:0.74rem;color:#666;margin-top:8px;"></p>
+              </div>
+
+              <!-- Cobros por partido -->
+              <div style="margin-bottom:18px;">
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <div style="font-size:0.78rem;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">📥 Cobros</div>
+                  <button class="btn btn-verde" onclick="abrirModalCobro()" style="font-size:0.78rem;padding:5px 12px;">+ Registrar cobro</button>
+                </div>
+                <div id="tes-cobros-lista"></div>
+              </div>
+
+              <!-- Gastos -->
+              <div>
+                <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px;">
+                  <div style="font-size:0.78rem;color:#aaa;font-weight:700;text-transform:uppercase;letter-spacing:1px;">🛒 Gastos</div>
+                  <button class="btn btn-rojo" onclick="abrirModalGasto()" style="font-size:0.78rem;padding:5px 12px;">+ Añadir gasto</button>
+                </div>
+                <div id="tes-gastos-lista"></div>
+              </div>
+
+            </div>
+          </details>
+        </div>
+
         <!-- Nuevo Partido manual (ancho completo, colapsable) -->
         <div class="card" style="grid-column:1/-1;">
           <details>
@@ -2125,6 +2196,87 @@ window.addEventListener('error', function(e) {
     <div class="modal-btns">
       <button class="btn btn-gris" onclick="cerrarModal()">Cancelar</button>
       <button class="btn btn-rojo" onclick="confirmarBaja()">Confirmar Baja</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL COBRO ═══ -->
+<div class="modal-overlay" id="modalCobro">
+  <div class="modal" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 style="margin:0;">📥 Registrar cobro</h2>
+      <button onclick="cerrarModalCobro()" style="background:none;border:none;color:#888;font-size:1.4rem;cursor:pointer;">✕</button>
+    </div>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:14px;">Importe total recibido por el cobrador en un partido.</p>
+
+    <div class="form-group">
+      <label>Cobrador (quien recogió el dinero)</label>
+      <select id="cobroJugador"></select>
+    </div>
+
+    <div class="form-group">
+      <label>Partido</label>
+      <select id="cobroPartido"></select>
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group">
+        <label>Nº jugadores que pagaron</label>
+        <input type="number" id="cobroJugadoresNum" min="0" step="1" placeholder="14" oninput="recalcCobroTotal()">
+      </div>
+      <div class="form-group">
+        <label>Total recibido (€)</label>
+        <input type="number" id="cobroTotal" step="0.5" min="0" placeholder="56">
+      </div>
+    </div>
+
+    <p id="cobroDesgloseInfo" style="font-size:0.74rem;color:#666;margin-top:-6px;margin-bottom:12px;"></p>
+
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <input type="text" id="cobroNota" placeholder="ej: faltó pagar Pepe, lo paga la próxima">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-gris" onclick="cerrarModalCobro()" style="flex:1;">Cancelar</button>
+      <button class="btn btn-verde" onclick="guardarCobro()" style="flex:1;">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL GASTO ═══ -->
+<div class="modal-overlay" id="modalGasto">
+  <div class="modal" style="max-width:420px;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 style="margin:0;">🛒 Añadir gasto</h2>
+      <button onclick="cerrarModalGasto()" style="background:none;border:none;color:#888;font-size:1.4rem;cursor:pointer;">✕</button>
+    </div>
+    <p style="color:#888;font-size:0.82rem;margin-bottom:14px;">Material, recompensas o cualquier salida del bote.</p>
+
+    <div class="form-group">
+      <label>Concepto</label>
+      <input type="text" id="gastoConcepto" placeholder="ej: Balones, conos...">
+    </div>
+
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+      <div class="form-group">
+        <label>Importe (€)</label>
+        <input type="number" id="gastoImporte" step="0.01" min="0" placeholder="25.50">
+      </div>
+      <div class="form-group">
+        <label>Fecha</label>
+        <input type="date" id="gastoFecha">
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label>Nota (opcional)</label>
+      <input type="text" id="gastoNota" placeholder="ej: comprado por Sebas en Decathlon">
+    </div>
+
+    <div style="display:flex;gap:8px;margin-top:14px;">
+      <button class="btn btn-gris" onclick="cerrarModalGasto()" style="flex:1;">Cancelar</button>
+      <button class="btn btn-rojo" onclick="guardarGasto()" style="flex:1;">💾 Guardar</button>
     </div>
   </div>
 </div>
@@ -3046,6 +3198,11 @@ function _migrarConfig() {
   // Colores de los equipos (default: blanco vs rojo, como históricamente)
   if (state.config.colorA === undefined) state.config.colorA = 'blanco';
   if (state.config.colorB === undefined) state.config.colorB = 'rojo';
+
+  // Tesorería
+  if (state.config.alquilerCampo === undefined) state.config.alquilerCampo = 0; // €/partido
+  if (!Array.isArray(state.cobros))  state.cobros  = []; // {fecha, partidoIdx, cobradorNombre, total, jugadores, nota}
+  if (!Array.isArray(state.gastos))  state.gastos  = []; // {fecha, concepto, importe, nota}
   // Migrar adminUid (singular) → adminUids[] (plural)
   migrarAdminUidsEnState();
 }
@@ -4823,6 +4980,13 @@ async function renderAdmin() {
     if (alin) alin.style.display = 'none';
   }
 
+  // Actualizar resumen del bote en la cabecera de la card Tesorería (siempre visible)
+  try {
+    const t = calcularTesoreria();
+    const resumenEl = document.getElementById('tesoreria-bote-resumen');
+    if (resumenEl) resumenEl.textContent = fmtEur(t.bote);
+  } catch(_){}
+
   // ── Aviso de partidos sin resultado ──
   const sinResultado = (state.partidos_jugados || [])
     .map((p, i) => ({ ...p, _idx: i }))
@@ -5066,6 +5230,333 @@ function aplicarSancion() {
   notif(`Sanción aplicada a ${nombre}`);
   renderAdmin();
   renderRanking();
+}
+
+// ═══════════════════════════════════════════════
+//   TESORERÍA
+// ═══════════════════════════════════════════════
+
+// Formatea € a "X,XX€" estilo español
+function fmtEur(v) {
+  const n = Number(v) || 0;
+  return n.toFixed(2).replace('.', ',') + '€';
+}
+
+// Cálculo central: el bote actual.
+// bote = Σ(cobros.total) − Σ(cobros.alquilerCampoEnEsePartido) − Σ(gastos.importe)
+// Guardamos el alquiler EN CADA cobro (snapshot del momento) para que cambiar
+// el alquiler en el futuro no altere el histórico.
+function calcularTesoreria() {
+  const cobros = state.cobros || [];
+  const gastos = state.gastos || [];
+  const recaudado = cobros.reduce((s, c) => s + (Number(c.total) || 0), 0);
+  const alquilerTotal = cobros.reduce((s, c) => s + (Number(c.alquilerCampo) || 0), 0);
+  const gastosTotal = gastos.reduce((s, g) => s + (Number(g.importe) || 0), 0);
+  const aporteBote = recaudado - alquilerTotal; // lo que va al bote por partidos
+  const bote = aporteBote - gastosTotal;
+  return { recaudado, alquilerTotal, gastosTotal, aporteBote, bote, numCobros: cobros.length, numGastos: gastos.length };
+}
+
+// Render principal de la tesorería (cuando se abre el details)
+function renderTesoreria() {
+  if (!esAdminActual(state)) return;
+
+  // Cargar config de alquiler en el input
+  const inpAlq = document.getElementById('tesAlquilerCampo');
+  if (inpAlq) inpAlq.value = state.config.alquilerCampo ?? 0;
+  const inpPrecio = document.getElementById('tesPrecioJugador');
+  if (inpPrecio) inpPrecio.value = state.config.precio ?? '';
+
+  // Resumen
+  const t = calcularTesoreria();
+  document.getElementById('tes-bote').textContent       = fmtEur(t.bote);
+  document.getElementById('tes-recaudado').textContent  = fmtEur(t.recaudado);
+  document.getElementById('tes-alquiler').textContent   = fmtEur(t.alquilerTotal);
+  document.getElementById('tes-gastos').textContent     = fmtEur(t.gastosTotal);
+  const resumenEl = document.getElementById('tesoreria-bote-resumen');
+  if (resumenEl) resumenEl.textContent = fmtEur(t.bote);
+
+  // Aporte estimado por partido
+  const precio = parseFloat(state.config.precio) || 0;
+  const alquiler = parseFloat(state.config.alquilerCampo) || 0;
+  const tipoMatch = (state.config.tipoPartido || '7vs7').match(/^(\d+)vs/);
+  const jugadoresPartido = tipoMatch ? parseInt(tipoMatch[1]) * 2 : 14;
+  const aporteEst = (precio * jugadoresPartido) - alquiler;
+  const tipoLabel = state.config.tipoPartido || '—';
+  const aporteEl = document.getElementById('tesAporteEstimado');
+  if (aporteEl) {
+    if (precio > 0 && alquiler > 0) {
+      aporteEl.innerHTML = `Aporte estimado por partido (${tipoLabel}): <strong style="color:${aporteEst >= 0 ? 'var(--verde-neon)' : '#e74c3c'};">${fmtEur(aporteEst)}</strong> (${jugadoresPartido}×${precio}€ − ${alquiler}€)`;
+    } else {
+      aporteEl.textContent = 'Configura precio y alquiler para ver el aporte por partido.';
+    }
+  }
+
+  // Lista de cobros
+  renderTesoreriaCobros();
+  // Lista de gastos
+  renderTesoreriaGastos();
+}
+
+function renderTesoreriaCobros() {
+  const cont = document.getElementById('tes-cobros-lista');
+  if (!cont) return;
+  const cobros = (state.cobros || []).slice().reverse(); // más recientes primero
+  if (cobros.length === 0) {
+    cont.innerHTML = '<p style="color:#555;text-align:center;padding:14px;font-size:0.85rem;">Sin cobros registrados</p>';
+    return;
+  }
+  cont.innerHTML = cobros.map((c, idxRev) => {
+    const idx = (state.cobros.length - 1) - idxRev;
+    const fecha = c.fecha ? new Date(c.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' }) : '—';
+    const aporte = (Number(c.total) || 0) - (Number(c.alquilerCampo) || 0);
+    return `
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.15);border-radius:8px;padding:10px 12px;margin-bottom:5px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${c.cobradorNombre || '—'} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}${c.partidoNum ? ' · partido #' + c.partidoNum : ''}</span></div>
+          <div style="font-size:0.72rem;color:#777;margin-top:2px;">
+            ${c.jugadores || 0} jugadores · alquiler ${fmtEur(c.alquilerCampo || 0)} · al bote <strong style="color:var(--verde-neon);">${fmtEur(aporte)}</strong>
+          </div>
+          ${c.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${c.nota}"</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#ddd;">${fmtEur(c.total)}</div>
+        </div>
+        <button onclick="borrarCobro(${idx})" title="Borrar"
+          style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78rem;">🗑</button>
+      </div>`;
+  }).join('');
+}
+
+function renderTesoreriaGastos() {
+  const cont = document.getElementById('tes-gastos-lista');
+  if (!cont) return;
+  const gastos = (state.gastos || []).slice().reverse();
+  if (gastos.length === 0) {
+    cont.innerHTML = '<p style="color:#555;text-align:center;padding:14px;font-size:0.85rem;">Sin gastos registrados</p>';
+    return;
+  }
+  cont.innerHTML = gastos.map((g, idxRev) => {
+    const idx = (state.gastos.length - 1) - idxRev;
+    const fecha = g.fecha ? new Date(g.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' }) : '—';
+    return `
+      <div style="display:flex;align-items:center;gap:10px;background:rgba(231,76,60,0.04);border:1px solid rgba(231,76,60,0.15);border-radius:8px;padding:10px 12px;margin-bottom:5px;">
+        <div style="flex:1;min-width:0;">
+          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${g.concepto || '—'} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}</span></div>
+          ${g.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${g.nota}"</div>` : ''}
+        </div>
+        <div style="text-align:right;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#e74c3c;">−${fmtEur(g.importe)}</div>
+        </div>
+        <button onclick="borrarGasto(${idx})" title="Borrar"
+          style="background:#2a1010;border:none;color:#e74c3c;border-radius:6px;padding:4px 8px;cursor:pointer;font-size:0.78rem;">🗑</button>
+      </div>`;
+  }).join('');
+}
+
+// ── Configuración alquiler ──
+function guardarTesoreriaConfig() {
+  if (!esAdminActual(state)) return;
+  const v = parseFloat(document.getElementById('tesAlquilerCampo').value);
+  if (isNaN(v) || v < 0) { notif('Importe de alquiler no válido', 'error'); return; }
+  state.config.alquilerCampo = v;
+  guardar();
+  notif('Configuración de tesorería guardada');
+  renderTesoreria();
+}
+
+// ── Modal Cobro ──
+function abrirModalCobro() {
+  if (!esAdminActual(state)) return;
+  // Poblar select cobrador con jugadores
+  const selJug = document.getElementById('cobroJugador');
+  const jugadoresOrdenados = [...state.jugadores].sort((a, b) => a.nombre.localeCompare(b.nombre));
+  selJug.innerHTML = jugadoresOrdenados
+    .map(j => `<option value="${j.nombre}">${j.nombre}</option>`)
+    .join('');
+
+  // Poblar select de partidos: los partidos jugados, más reciente primero,
+  // mostrando solo los que NO tienen un cobro ya asociado.
+  const selPart = document.getElementById('cobroPartido');
+  const cobrosIdx = new Set((state.cobros || []).map(c => c.partidoIdx).filter(i => i !== undefined && i !== null));
+  const partidos = state.partidos_jugados || [];
+  const opts = partidos.map((p, idx) => {
+    const fecha = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES', { day:'numeric', month:'short' }) : '—';
+    const yaCobrado = cobrosIdx.has(idx) ? ' (ya cobrado)' : '';
+    const numTit = (p.titulares || []).length;
+    return `<option value="${idx}"${cobrosIdx.has(idx) ? ' disabled' : ''}>Partido #${idx+1} — ${fecha} — ${numTit} jugadores${yaCobrado}</option>`;
+  });
+  // Opción "otro" (cobro libre sin partido asociado)
+  opts.unshift('<option value="">Sin partido asociado / otro</option>');
+  selPart.innerHTML = opts.join('');
+
+  // Defaults
+  const inpJug = document.getElementById('cobroJugadoresNum');
+  const inpTotal = document.getElementById('cobroTotal');
+  const inpNota = document.getElementById('cobroNota');
+  inpJug.value = '';
+  inpTotal.value = '';
+  inpNota.value = '';
+
+  // Si hay un partido elegido, auto-rellenar jugadoresNum y total estimado
+  selPart.onchange = () => {
+    const v = selPart.value;
+    if (v === '') return;
+    const idx = parseInt(v);
+    const p = state.partidos_jugados[idx];
+    if (!p) return;
+    const numTit = (p.titulares || []).length;
+    const numRes = (p.reservas || []).length;
+    const total = numTit + numRes;
+    inpJug.value = total;
+    const precio = parseFloat(state.config.precio) || 0;
+    if (precio > 0) inpTotal.value = (total * precio).toFixed(2);
+    recalcCobroTotal();
+  };
+
+  // Si solo hay 1 jugador admin (o el actual), preseleccionarlo
+  if (usuarioActual) {
+    const jugadorYo = state.jugadores.find(j => j.uid === usuarioActual.uid);
+    if (jugadorYo) selJug.value = jugadorYo.nombre;
+  }
+
+  document.getElementById('modalCobro').classList.add('show');
+}
+
+function cerrarModalCobro() {
+  document.getElementById('modalCobro').classList.remove('show');
+}
+
+function recalcCobroTotal() {
+  const num = parseInt(document.getElementById('cobroJugadoresNum').value) || 0;
+  const precio = parseFloat(state.config.precio) || 0;
+  const alquiler = parseFloat(state.config.alquilerCampo) || 0;
+  const totalEsperado = num * precio;
+  const totalReal = parseFloat(document.getElementById('cobroTotal').value) || 0;
+  const aporte = totalReal - alquiler;
+  const info = document.getElementById('cobroDesgloseInfo');
+  if (!info) return;
+  if (num > 0 && precio > 0) {
+    let txt = `Esperado: ${num}×${precio}€ = ${fmtEur(totalEsperado)}`;
+    if (totalReal > 0) {
+      txt += ` · Aporte al bote: <strong style="color:${aporte>=0?'var(--verde-neon)':'#e74c3c'};">${fmtEur(aporte)}</strong>`;
+      if (Math.abs(totalReal - totalEsperado) > 0.01) {
+        const dif = totalReal - totalEsperado;
+        txt += ` · <span style="color:#f5a623;">${dif>0?'+':''}${fmtEur(dif)} vs esperado</span>`;
+      }
+    }
+    info.innerHTML = txt;
+  } else {
+    info.textContent = '';
+  }
+}
+
+function guardarCobro() {
+  if (!esAdminActual(state)) return;
+  const cobrador = document.getElementById('cobroJugador').value;
+  const partidoVal = document.getElementById('cobroPartido').value;
+  const numJugadores = parseInt(document.getElementById('cobroJugadoresNum').value) || 0;
+  const total = parseFloat(document.getElementById('cobroTotal').value);
+  const nota = document.getElementById('cobroNota').value.trim();
+
+  if (!cobrador) { notif('Selecciona el cobrador', 'error'); return; }
+  if (isNaN(total) || total < 0) { notif('Importe total no válido', 'error'); return; }
+  if (numJugadores <= 0) { notif('Indica cuántos jugadores pagaron', 'error'); return; }
+
+  let partidoIdx = null, partidoNum = null, fecha;
+  if (partidoVal !== '') {
+    partidoIdx = parseInt(partidoVal);
+    const p = state.partidos_jugados[partidoIdx];
+    fecha = p?.fecha || new Date().toISOString().slice(0, 10);
+    partidoNum = partidoIdx + 1;
+  } else {
+    fecha = new Date().toISOString().slice(0, 10);
+  }
+
+  // Snapshot del alquiler para no recalcular si cambia en el futuro
+  const alquilerCampo = parseFloat(state.config.alquilerCampo) || 0;
+
+  state.cobros.push({
+    fecha,
+    partidoIdx,
+    partidoNum,
+    cobradorNombre: cobrador,
+    jugadores: numJugadores,
+    total,
+    alquilerCampo,
+    nota,
+    creadoEn: new Date().toISOString()
+  });
+
+  registrarHistorial(`💰 Cobro registrado: ${cobrador} · ${fmtEur(total)} (${numJugadores} jug.) · partido ${partidoNum ? '#'+partidoNum : 'libre'}`);
+  guardar();
+  cerrarModalCobro();
+  renderTesoreria();
+  notif('Cobro registrado correctamente');
+}
+
+function borrarCobro(idx) {
+  if (!esAdminActual(state)) return;
+  const c = state.cobros[idx];
+  if (!c) return;
+  if (!confirm(`¿Borrar el cobro de ${c.cobradorNombre} (${fmtEur(c.total)})?`)) return;
+  state.cobros.splice(idx, 1);
+  registrarHistorial(`🗑 Cobro borrado: ${c.cobradorNombre} · ${fmtEur(c.total)}`);
+  guardar();
+  renderTesoreria();
+  notif('Cobro borrado');
+}
+
+// ── Modal Gasto ──
+function abrirModalGasto() {
+  if (!esAdminActual(state)) return;
+  document.getElementById('gastoConcepto').value = '';
+  document.getElementById('gastoImporte').value = '';
+  document.getElementById('gastoFecha').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('gastoNota').value = '';
+  document.getElementById('modalGasto').classList.add('show');
+}
+
+function cerrarModalGasto() {
+  document.getElementById('modalGasto').classList.remove('show');
+}
+
+function guardarGasto() {
+  if (!esAdminActual(state)) return;
+  const concepto = document.getElementById('gastoConcepto').value.trim();
+  const importe = parseFloat(document.getElementById('gastoImporte').value);
+  const fecha = document.getElementById('gastoFecha').value;
+  const nota = document.getElementById('gastoNota').value.trim();
+
+  if (!concepto) { notif('Indica un concepto', 'error'); return; }
+  if (isNaN(importe) || importe <= 0) { notif('Importe no válido', 'error'); return; }
+  if (!fecha) { notif('Indica una fecha', 'error'); return; }
+
+  state.gastos.push({
+    fecha,
+    concepto,
+    importe,
+    nota,
+    creadoEn: new Date().toISOString()
+  });
+
+  registrarHistorial(`🛒 Gasto: ${concepto} · ${fmtEur(importe)}`);
+  guardar();
+  cerrarModalGasto();
+  renderTesoreria();
+  notif('Gasto añadido');
+}
+
+function borrarGasto(idx) {
+  if (!esAdminActual(state)) return;
+  const g = state.gastos[idx];
+  if (!g) return;
+  if (!confirm(`¿Borrar el gasto "${g.concepto}" (${fmtEur(g.importe)})?`)) return;
+  state.gastos.splice(idx, 1);
+  registrarHistorial(`🗑 Gasto borrado: ${g.concepto} · ${fmtEur(g.importe)}`);
+  guardar();
+  renderTesoreria();
+  notif('Gasto borrado');
 }
 
 function agregarJugador() {
