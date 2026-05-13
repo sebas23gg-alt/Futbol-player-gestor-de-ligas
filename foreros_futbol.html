@@ -3009,9 +3009,39 @@ async function crearLiga() {
     nick = usuarioActual.email.split('@')[0].toUpperCase();
   }
 
-  const ligas = await getLigasIndex();
-  if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
-    notifInicio('Ya existe una liga con ese nombre', 'error'); return;
+  // Validar que el nombre no exista globalmente (en NINGUNA liga del sistema,
+  // no solo en las del usuario). Los nombres de liga son únicos en toda la app.
+  const db = fbDb();
+  if (db) {
+    try {
+      // Comparación case-insensitive: traemos todas y comparamos en JS porque
+      // Firestore no tiene búsqueda case-insensitive nativa.
+      const snap = await db.collection('ligas').get();
+      const existeOtra = snap.docs.some(d => {
+        const data = d.data();
+        return (data.nombre || '').toLowerCase() === nombre.toLowerCase();
+      });
+      if (existeOtra) {
+        notifInicio('Ya existe una liga con ese nombre. Elige otro.', 'error');
+        return;
+      }
+    } catch(e) {
+      console.warn('No se pudo validar globalmente el nombre, usando solo locales', e);
+      // Fallback: si por algún motivo no podemos leer todas, al menos
+      // validamos las propias del usuario.
+      const ligas = await getLigasIndex();
+      if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
+        notifInicio('Ya existe una liga con ese nombre', 'error');
+        return;
+      }
+    }
+  } else {
+    // Sin Firebase, solo podemos validar locales
+    const ligas = await getLigasIndex();
+    if (ligas.find(l => l.nombre.toLowerCase() === nombre.toLowerCase())) {
+      notifInicio('Ya existe una liga con ese nombre', 'error');
+      return;
+    }
   }
 
   const id     = 'liga_' + Date.now();
@@ -3053,11 +3083,11 @@ async function crearLiga() {
     adminUids: uid ? [uid] : []
   };
 
-  const db = fbDb();
-  if (db) {
+  const dbRef = fbDb();
+  if (dbRef) {
     try {
-      await db.collection('ligas').doc(id).set(nuevaLiga);
-      await db.collection('ligas').doc(id).collection('data').doc('state').set(estadoInicial);
+      await dbRef.collection('ligas').doc(id).set(nuevaLiga);
+      await dbRef.collection('ligas').doc(id).collection('data').doc('state').set(estadoInicial);
       // También guardamos copia local para que renderPantallaInicio muestre stats correctas
       const datosLocal = { ...estadoInicial }; delete datosLocal.adminLoggedIn;
       localStorage.setItem(getLigaKey(id), JSON.stringify(datosLocal));
@@ -3069,8 +3099,10 @@ async function crearLiga() {
     localStorage.setItem(getLigaKey(id), JSON.stringify(estadoInicial));
   }
 
-  ligas.push(nuevaLiga);
-  await saveLigasIndex(ligas);
+  // Añadir la nueva liga al índice del usuario
+  const ligasUsuario = await getLigasIndex();
+  ligasUsuario.push(nuevaLiga);
+  await saveLigasIndex(ligasUsuario);
   document.getElementById('nuevaLigaNombre').value = '';
   toggleNuevaLiga();
   await renderPantallaInicio();
