@@ -1039,10 +1039,26 @@ window.addEventListener('error', function(e) {
             <button class="btn btn-gris" onclick="toggleNuevaLiga()">Cancelar</button>
           </div>
         </div>
+        <button onclick="mostrarVista('publicas');renderLigasPublicas()"
+          style="width:100%;margin-top:10px;background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:12px;padding:12px;color:#7be595;font-family:'DM Sans',sans-serif;font-size:0.85rem;font-weight:600;cursor:pointer;letter-spacing:.5px;transition:all 0.2s;">
+          🌐 Explorar ligas públicas
+        </button>
         <div style="text-align:center;margin-top:18px;padding-top:14px;border-top:1px solid rgba(255,255,255,0.06);">
           <div id="auth-user-email" style="font-size:0.78rem;color:#888;margin-bottom:10px;"></div>
           <button onclick="cerrarSesion()" style="background:rgba(255,60,60,0.12);border:1px solid rgba(255,60,60,0.3);border-radius:8px;padding:8px 20px;color:#ff6b6b;font-family:'DM Sans',sans-serif;font-size:0.82rem;font-weight:600;cursor:pointer;transition:all 0.2s;letter-spacing:0.5px;" onmouseenter="this.style.background='rgba(255,60,60,0.25)'" onmouseleave="this.style.background='rgba(255,60,60,0.12)'">🚪 Cerrar sesión</button>
         </div>
+      </div>
+
+      <!-- Vista: ligas públicas -->
+      <div id="vista-publicas" style="display:none;">
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:14px;">
+          <button onclick="mostrarVista('ligas')" style="background:rgba(255,255,255,0.06);border:1px solid rgba(255,255,255,0.12);border-radius:8px;padding:6px 12px;color:#aaa;font-size:0.8rem;cursor:pointer;">← Mis ligas</button>
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1rem;letter-spacing:2px;color:var(--verde-neon);">LIGAS PÚBLICAS</div>
+        </div>
+        <p style="font-size:0.78rem;color:rgba(255,255,255,0.4);margin-bottom:14px;">
+          Ligas que han elegido ser visibles para todos. Solo puedes ver el ranking y el calendario.
+        </p>
+        <div id="publicas-lista" style="margin-bottom:14px;"></div>
       </div>
 
       <!-- Vista: login -->
@@ -1604,6 +1620,11 @@ window.addEventListener('error', function(e) {
 
             <div style="margin-top:16px;">
 
+              <!-- Botón exportar -->
+              <div style="text-align:right;margin-bottom:10px;">
+                <button class="btn btn-gris" onclick="event.preventDefault();exportarTesoreriaCSV()" style="font-size:0.78rem;padding:5px 12px;">📥 Exportar CSV</button>
+              </div>
+
               <!-- Resumen visual -->
               <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:10px;margin-bottom:18px;">
                 <div style="background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;padding:12px;text-align:center;">
@@ -1881,6 +1902,20 @@ window.addEventListener('error', function(e) {
           </div>
 
           <button class="btn btn-azul btn-full" onclick="guardarConfig()">💾 Guardar configuración</button>
+
+          <!-- Visibilidad de la liga (pública/privada) -->
+          <div style="margin-top:18px;padding-top:18px;border-top:1px solid rgba(255,255,255,0.06);">
+            <label style="display:block;margin-bottom:10px;">🌐 Visibilidad de la liga</label>
+            <p style="font-size:0.72rem;color:#666;margin-bottom:10px;">
+              Si marcas la liga como pública, otros usuarios con cuenta podrán
+              ver el ranking y el calendario sin necesidad del código de
+              invitación. No verán el partido actual ni el historial detallado.
+            </p>
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:10px 14px;">
+              <input type="checkbox" id="configLigaPublica" onchange="toggleLigaPublica()" style="margin:0;width:18px;height:18px;cursor:pointer;">
+              <span style="font-size:0.88rem;">Liga pública (visible en el directorio)</span>
+            </label>
+          </div>
         </div>
 
         <!-- Sanciones automáticas -->
@@ -2321,7 +2356,7 @@ let usuarioActual = null;
 function fbAuth() { return window._auth || null; }
 
 function mostrarVista(vista) {
-  ['login','registro','recuperar','ligas'].forEach(v => {
+  ['login','registro','recuperar','ligas','publicas'].forEach(v => {
     const el = document.getElementById('vista-' + v);
     if (el) el.style.display = v === vista ? 'block' : 'none';
   });
@@ -2821,6 +2856,147 @@ async function saveLigasIndex(ligas) {
 
 function getLigaKey(id) { return `foreros_liga_${id}`; }
 
+// ─────────────────────────────────────────────────────────
+//  Ligas públicas
+// ─────────────────────────────────────────────────────────
+
+// Variable global: cuando el usuario entra a una liga pública sin pertenecer
+// a ella, esto se pone a true para limitar la UI (sin admin, sin partido).
+let modoLecturaPublica = false;
+
+// Lista TODAS las ligas marcadas como públicas. Lee del índice general de ligas.
+async function getLigasPublicas() {
+  const db = fbDb();
+  if (!db) return [];
+  try {
+    const snap = await db.collection('ligas').where('publica', '==', true).get();
+    return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+  } catch(e) {
+    console.warn('getLigasPublicas Firebase error', e);
+    return [];
+  }
+}
+
+// Renderiza la vista "Explorar ligas públicas"
+async function renderLigasPublicas() {
+  const cont = document.getElementById('publicas-lista');
+  if (!cont) return;
+  cont.innerHTML = '<p style="color:rgba(255,255,255,0.4);text-align:center;padding:20px;font-size:0.85rem;">Cargando…</p>';
+
+  const todas = await getLigasPublicas();
+  // Filtrar las que el usuario YA tiene en sus ligas (no tiene sentido mostrarlas)
+  const propias = await getLigasIndex();
+  const propiasIds = new Set(propias.map(l => l.id));
+  const externas = todas.filter(l => !propiasIds.has(l.id));
+
+  if (externas.length === 0) {
+    cont.innerHTML = '<div style="background:rgba(20,20,20,0.82);border:1px solid rgba(255,255,255,0.08);border-radius:12px;padding:20px;text-align:center;color:rgba(255,255,255,0.5);font-size:0.85rem;">No hay ligas públicas disponibles ahora mismo.</div>';
+    return;
+  }
+
+  // Pre-leer estados de cada liga para mostrar nº jugadores y partidos.
+  // Usamos Promise.all para que sea paralelo y rápido.
+  const db = fbDb();
+  const stats = await Promise.all(externas.map(async (l) => {
+    try {
+      const snap = await db.collection('ligas').doc(l.id).collection('data').doc('state').get();
+      if (!snap.exists) return { jugadores: 0, partidos: 0 };
+      const s = snap.data();
+      return {
+        jugadores: (s.jugadores || []).length,
+        partidos: (s.partidos_jugados || []).length
+      };
+    } catch { return { jugadores: 0, partidos: 0 }; }
+  }));
+
+  cont.innerHTML = externas.map((l, i) => {
+    const s = stats[i];
+    return `
+    <div onclick="entrarLigaPublica('${l.id}')" style="background:rgba(20,20,20,0.82);border:1px solid rgba(46,204,113,0.18);border-radius:12px;padding:14px 16px;margin-bottom:8px;cursor:pointer;transition:background 0.15s;" onmouseenter="this.style.background='rgba(30,30,30,0.92)'" onmouseleave="this.style.background='rgba(20,20,20,0.82)'">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <span style="font-size:1.1rem;">🌐</span>
+        <div style="flex:1;min-width:0;">
+          <div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px;color:#fff;">${l.nombre || '—'}</div>
+          <div style="font-size:0.72rem;color:rgba(255,255,255,0.4);margin-top:2px;">
+            ${s.jugadores} jugadores · ${s.partidos} partidos
+          </div>
+        </div>
+        <span style="color:rgba(255,255,255,0.3);font-size:1rem;">›</span>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// Entrar a una liga pública en MODO LECTURA (sin admin, sin escritura)
+async function entrarLigaPublica(id) {
+  modoLecturaPublica = true;
+  await entrarLiga(id);
+}
+
+// Toggle de "Liga pública" desde la config admin (checkbox)
+async function toggleLigaPublica() {
+  if (!esAdminActual(state)) {
+    notif('Solo los admins pueden cambiar la visibilidad', 'error');
+    document.getElementById('configLigaPublica').checked = !document.getElementById('configLigaPublica').checked;
+    return;
+  }
+  const checked = document.getElementById('configLigaPublica').checked;
+  const db = fbDb();
+  if (!db) {
+    notif('Firebase no disponible', 'error');
+    return;
+  }
+  try {
+    await db.collection('ligas').doc(ligaActual).update({ publica: checked });
+    notif(checked ? 'Liga marcada como pública' : 'Liga marcada como privada');
+    registrarHistorial(`🌐 Visibilidad cambiada a ${checked ? 'pública' : 'privada'}`);
+    guardar();
+  } catch(e) {
+    console.warn('toggleLigaPublica error', e);
+    notif('Error al cambiar visibilidad: ' + e.message, 'error');
+    document.getElementById('configLigaPublica').checked = !checked;
+  }
+}
+
+// Aplica/quita el modo lectura. En modo lectura:
+// - Solo se ven las pestañas Ranking y Calendario.
+// - Se añade clase 'modo-lectura-publica' al body para que el CSS oculte
+//   botones de acción y bloquee inputs.
+// - Se muestra un banner indicando que es modo lectura.
+function aplicarModoLecturaPublica() {
+  const enLectura = !!modoLecturaPublica;
+  document.body.classList.toggle('modo-lectura-publica', enLectura);
+
+  // Mostrar / ocultar pestañas
+  const tabs = document.querySelectorAll('.tab');
+  tabs.forEach(t => {
+    const key = t.getAttribute('data-i18n') || '';
+    const esRankingOCalendario = key.includes('ranking') || key.includes('calendario');
+    if (enLectura) {
+      t.style.display = esRankingOCalendario ? '' : 'none';
+    } else {
+      t.style.display = '';
+    }
+  });
+
+  // Banner indicador
+  let banner = document.getElementById('banner-lectura-publica');
+  if (enLectura) {
+    if (!banner) {
+      banner = document.createElement('div');
+      banner.id = 'banner-lectura-publica';
+      banner.style.cssText = 'background:rgba(46,204,113,0.1);border-bottom:1px solid rgba(46,204,113,0.25);color:#7be595;padding:8px 16px;text-align:center;font-size:0.78rem;letter-spacing:0.5px;';
+      banner.innerHTML = '🌐 Estás viendo una liga pública en modo lectura';
+      const app = document.getElementById('app-principal');
+      app.insertBefore(banner, app.firstChild);
+    } else {
+      banner.style.display = '';
+    }
+  } else if (banner) {
+    banner.style.display = 'none';
+  }
+}
+
 // ── Crear liga ──
 async function crearLiga() {
   const nombre = document.getElementById('nuevaLigaNombre').value.trim();
@@ -3158,6 +3334,12 @@ async function cargar() {
 // ── Guardar estado de liga ──
 async function guardar() {
   if (!ligaActual) return;
+  // En modo lectura pública NUNCA debemos escribir (no somos miembros de la liga,
+  // las reglas Firestore lo rechazarían y se corromperían los datos locales).
+  if (modoLecturaPublica) {
+    console.warn('[guardar] omitido: modo lectura pública');
+    return;
+  }
   _statsCache = null;
   const datos = { ...state };
   delete datos.adminLoggedIn;
@@ -3297,6 +3479,10 @@ async function entrarLiga(id) {
   document.querySelectorAll('.tab').forEach(t  => t.classList.remove('active'));
   document.getElementById('page-ranking').classList.add('active');
   document.querySelector('.tab').classList.add('active');
+
+  // Aplicar modo lectura pública si corresponde (oculta pestañas Partido/Admin/Historial)
+  aplicarModoLecturaPublica();
+
   renderRanking();
 
   // Mostrar modal de registro si no tiene perfil en esta liga
@@ -3375,10 +3561,13 @@ async function volverALigas() {
   if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
   state.adminLoggedIn = false;
   ligaActual = null;
+  modoLecturaPublica = false; // siempre se desactiva al salir
   // Reset estado WA — es por-liga, no debe persistir al volver
   resetWAState();
   document.getElementById('app-principal').style.display   = 'none';
   document.getElementById('pantalla-inicio').style.display = 'flex';
+  // Quitar la clase del body por si quedó
+  document.body.classList.remove('modo-lectura-publica');
   mostrarVista('ligas');
   await renderPantallaInicio();
 }
@@ -3835,6 +4024,21 @@ function renderRanking() {
 
   const filtrados = query ? todos.filter(j => j.nombre.toLowerCase().includes(query)) : todos;
 
+  // ── Rey del winrate: jugador con mejor % de victorias (mínimo 3 partidos
+  //    para que sea representativo; empate se decide por más partidos jugados).
+  let reyWinrateNombre = null;
+  {
+    let mejor = null;
+    state.jugadores.forEach(j => {
+      const s = calcularStatsJugador(j.nombre);
+      if (!s || s.jugados < 3 || s.pct === null) return;
+      if (!mejor || s.pct > mejor.pct || (s.pct === mejor.pct && s.jugados > mejor.jugados)) {
+        mejor = { nombre: j.nombre, pct: s.pct, jugados: s.jugados };
+      }
+    });
+    if (mejor) reyWinrateNombre = mejor.nombre;
+  }
+
   const grid = document.getElementById('rankingGrid');
   grid.innerHTML = '';
 
@@ -3848,6 +4052,10 @@ function renderRanking() {
     const pctBadge = stats.jugados > 0
       ? `<span style="font-size:0.7rem;color:${pctColor};background:rgba(255,255,255,0.04);border:1px solid ${pctColor}33;border-radius:4px;padding:2px 5px;flex-shrink:0;">${stats.pct}%</span>`
       : '';
+    const esReyWinrate = j.nombre === reyWinrateNombre;
+    const trofeoBadge = esReyWinrate
+      ? '<span title="Mejor winrate de la liga" style="font-size:0.95rem;margin-left:4px;">🏆</span>'
+      : '';
 
     const div = document.createElement('div');
     div.className = 'player-row' + (j.sancionado ? ' sancionado' : '');
@@ -3857,6 +4065,7 @@ function renderRanking() {
       <div class="player-pos">${pos}</div>
       <div class="player-name">
         ${j.nombre}
+        ${trofeoBadge}
         ${j.uid ? '<span class="player-cuenta-badge" title="Jugador con cuenta vinculada">✓</span>' : ''}
         ${j.portero ? '<span class="player-portero-badge">🧤</span>' : ''}
         ${j.sancionado ? '<span style="font-size:0.7rem;color:var(--rojo);margin-left:4px;">SANCIONADO</span>' : ''}
@@ -4925,6 +5134,7 @@ function getAdminUids(stateOrLiga) {
 
 // ¿El usuario actual es admin de la liga cuyos datos pasamos?
 function esAdminActual(stateOrLiga) {
+  if (modoLecturaPublica) return false; // nunca admin en modo lectura
   const uid = usuarioActual?.uid;
   if (!uid) return false;
   return getAdminUids(stateOrLiga).includes(uid);
@@ -5029,6 +5239,20 @@ async function renderAdmin() {
   if (selColorA) selColorA.value = state.config.colorA || 'blanco';
   if (selColorB) selColorB.value = state.config.colorB || 'rojo';
   onCambioColor(); // refrescar aviso si conflicto
+
+  // Estado del toggle "liga pública": leemos de la liga (no del state)
+  const chkPublica = document.getElementById('configLigaPublica');
+  if (chkPublica) {
+    (async () => {
+      try {
+        const db = fbDb();
+        if (db && ligaActual) {
+          const snap = await db.collection('ligas').doc(ligaActual).get();
+          if (snap.exists) chkPublica.checked = !!snap.data().publica;
+        }
+      } catch(e){}
+    })();
+  }
 
   // Tipo de partido
   const selTipo = document.getElementById('configTipoPartido');
@@ -5557,6 +5781,83 @@ function borrarGasto(idx) {
   guardar();
   renderTesoreria();
   notif('Gasto borrado');
+}
+
+// Exporta toda la tesorería a un CSV legible (se abre en Excel/Numbers/Sheets).
+// Incluye: resumen, lista de cobros, lista de gastos.
+function exportarTesoreriaCSV() {
+  if (!esAdminActual(state)) return;
+  const t = calcularTesoreria();
+  const ligaInfo = (typeof ligaActual === 'string' ? ligaActual : '') || 'liga';
+
+  // Helper para escapar campos (envuelve en " si contiene coma, comilla o salto)
+  const esc = (val) => {
+    const s = String(val ?? '');
+    if (/[",\n;]/.test(s)) return '"' + s.replace(/"/g, '""') + '"';
+    return s;
+  };
+  // Usar punto y coma como separador (Excel ES lo abre directamente)
+  const SEP = ';';
+  const row = (...vals) => vals.map(esc).join(SEP);
+  const lineas = [];
+
+  // Encabezado del archivo
+  lineas.push(row('TESORERÍA - ' + ligaInfo));
+  lineas.push(row('Generado:', new Date().toLocaleString('es-ES')));
+  lineas.push('');
+
+  // Resumen
+  lineas.push(row('RESUMEN'));
+  lineas.push(row('Bote actual', fmtEur(t.bote)));
+  lineas.push(row('Total recaudado', fmtEur(t.recaudado)));
+  lineas.push(row('Alquileres pagados', fmtEur(t.alquilerTotal)));
+  lineas.push(row('Total gastos', fmtEur(t.gastosTotal)));
+  lineas.push(row('Aporte total al bote (recaudado − alquileres)', fmtEur(t.aporteBote)));
+  lineas.push('');
+
+  // Cobros
+  lineas.push(row('COBROS (' + (state.cobros || []).length + ')'));
+  lineas.push(row('Fecha', 'Partido', 'Cobrador', 'Nº jugadores', 'Total recibido (€)', 'Alquiler (€)', 'Aporte al bote (€)', 'Nota'));
+  (state.cobros || []).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).forEach(c => {
+    const aporte = (Number(c.total) || 0) - (Number(c.alquilerCampo) || 0);
+    lineas.push(row(
+      c.fecha || '',
+      c.partidoNum ? '#' + c.partidoNum : '—',
+      c.cobradorNombre || '',
+      c.jugadores ?? '',
+      (Number(c.total) || 0).toFixed(2).replace('.', ','),
+      (Number(c.alquilerCampo) || 0).toFixed(2).replace('.', ','),
+      aporte.toFixed(2).replace('.', ','),
+      c.nota || ''
+    ));
+  });
+  lineas.push('');
+
+  // Gastos
+  lineas.push(row('GASTOS (' + (state.gastos || []).length + ')'));
+  lineas.push(row('Fecha', 'Concepto', 'Importe (€)', 'Nota'));
+  (state.gastos || []).slice().sort((a,b)=>(a.fecha||'').localeCompare(b.fecha||'')).forEach(g => {
+    lineas.push(row(
+      g.fecha || '',
+      g.concepto || '',
+      (Number(g.importe) || 0).toFixed(2).replace('.', ','),
+      g.nota || ''
+    ));
+  });
+
+  // BOM UTF-8 para que Excel reconozca acentos correctamente
+  const csv = '\uFEFF' + lineas.join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  const hoy = new Date().toISOString().slice(0, 10);
+  a.download = `tesoreria_${ligaInfo}_${hoy}.csv`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  notif('CSV de tesorería descargado');
 }
 
 function agregarJugador() {
@@ -8246,6 +8547,44 @@ function guardarResultado(resultado) {
   }
   // Si estamos en admin, refrescar el aviso de pendientes
   if (document.getElementById('page-admin').classList.contains('active')) renderAdmin();
+
+  // Sugerencia tesorería: si este partido no tiene cobro registrado todavía,
+  // ofrecer abrir directamente el modal de cobro (solo para admins).
+  if (esAdminActual(state)) {
+    const yaCobrado = (state.cobros || []).some(c => c.partidoIdx === idx);
+    if (!yaCobrado) {
+      // Pequeño delay para que el modal anterior se cierre limpiamente y la
+      // notificación se vea antes de abrir el confirm.
+      setTimeout(() => abrirSugerenciaCobro(idx), 400);
+    }
+  }
+}
+
+// Ventana que sugiere registrar el cobro tras anotar resultado de un partido.
+function abrirSugerenciaCobro(partidoIdx) {
+  const p = state.partidos_jugados[partidoIdx];
+  if (!p) return;
+  const numTit = (p.titulares || []).length;
+  const numRes = (p.reservas  || []).length;
+  const total = numTit + numRes;
+  const precio = parseFloat(state.config.precio) || 0;
+  const totalEur = total * precio;
+  const fechaTxt = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'}) : '';
+  const detalle = (precio > 0 && total > 0)
+    ? `\n\n${total} jugadores × ${precio}€ = ${fmtEur(totalEur)}`
+    : '';
+  const msg = `✅ Resultado guardado.\n\n¿Quieres registrar ahora el cobro del partido del ${fechaTxt}?${detalle}\n\nPuedes hacerlo más tarde desde Admin → Tesorería.`;
+  if (confirm(msg)) {
+    abrirModalCobro();
+    // Preseleccionar este partido en el modal
+    setTimeout(() => {
+      const selPart = document.getElementById('cobroPartido');
+      if (selPart) {
+        selPart.value = String(partidoIdx);
+        selPart.onchange?.(); // dispara el autorrelleno
+      }
+    }, 60);
+  }
 }
 
 // Restaurar un partido cancelado o suspendido. Lo elimina de partidos_jugados[]
