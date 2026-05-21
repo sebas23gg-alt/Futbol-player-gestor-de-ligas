@@ -16,10 +16,19 @@
 <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
 <!-- Firebase SDK — carga dinámica garantizada en todos los navegadores -->
 <script>
-// Captura global de errores para evitar Script error genérico en Safari
+// Captura global de errores — muestra en pantalla para diagnóstico
 window.addEventListener('error', function(e) {
   if (e.message === 'Script error.' || e.message === 'Script error') return;
-  console.warn('Error capturado:', e.message);
+  console.error('Error capturado:', e.message, e.filename, e.lineno);
+  // Mostrar en pantalla si el login no está visible
+  var dbg = document.getElementById('_dbg_error');
+  if (!dbg) {
+    dbg = document.createElement('div');
+    dbg.id = '_dbg_error';
+    dbg.style.cssText = 'position:fixed;bottom:0;left:0;right:0;background:#c0392b;color:#fff;font-size:12px;padding:8px;z-index:99999;white-space:pre-wrap;max-height:40vh;overflow:auto;';
+    document.body.appendChild(dbg);
+  }
+  dbg.textContent += '\n' + e.message + ' (' + (e.filename||'').split('/').pop() + ':' + e.lineno + ')';
 });
 
 (function() {
@@ -254,6 +263,67 @@ window.addEventListener('error', function(e) {
     letter-spacing: 2px;
     color: var(--verde-neon);
     margin-bottom: 16px;
+  }
+
+  /* ── AVATAR ── */
+  .avatar-circle {
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 700;
+    flex-shrink: 0;
+    user-select: none;
+    letter-spacing: -0.5px;
+  }
+  #modal-avatar-picker {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.75);
+    z-index: 9998;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+  }
+  #modal-avatar-picker.open { display: flex; }
+  .avatar-picker-box {
+    background: #181818;
+    border: 1px solid #2a2a2a;
+    border-radius: 16px;
+    padding: 24px;
+    width: 100%;
+    max-width: 340px;
+    max-height: 90vh;
+    overflow-y: auto;
+  }
+  .avatar-emoji-btn {
+    background: rgba(255,255,255,0.04);
+    border: 1px solid #2a2a2a;
+    border-radius: 8px;
+    padding: 6px 4px;
+    font-size: 1.35rem;
+    cursor: pointer;
+    transition: border-color .15s, background .15s;
+    line-height: 1;
+    text-align: center;
+  }
+  .avatar-emoji-btn.sel {
+    border-color: var(--verde-neon);
+    background: rgba(46,204,113,0.15);
+  }
+  .avatar-color-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 3px solid transparent;
+    cursor: pointer;
+    transition: border-color .15s, transform .1s;
+    flex-shrink: 0;
+  }
+  .avatar-color-btn.sel {
+    border-color: #fff;
+    transform: scale(1.15);
   }
 
   /* ── RANKING ── */
@@ -636,22 +706,26 @@ window.addEventListener('error', function(e) {
 
   .notif {
     position: fixed;
-    bottom: 24px;
-    right: 24px;
+    top: 72px;
+    left: 50%;
+    transform: translateX(-50%) translateY(-20px);
     background: var(--verde);
     color: white;
-    padding: 12px 20px;
+    padding: 12px 24px;
     border-radius: 10px;
-    font-size: 0.88rem;
-    font-weight: 600;
+    font-size: 0.9rem;
+    font-weight: 700;
     z-index: 9999;
-    transform: translateY(80px);
     opacity: 0;
-    transition: all 0.3s;
-    max-width: 300px;
+    transition: all 0.25s;
+    max-width: 420px;
+    width: max-content;
+    text-align: center;
+    box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+    pointer-events: none;
   }
 
-  .notif.show { transform: translateY(0); opacity: 1; }
+  .notif.show { transform: translateX(-50%) translateY(0); opacity: 1; }
   .notif.error { background: var(--rojo-oscuro); }
 
   /* ── LOGIN ── */
@@ -1144,7 +1218,7 @@ window.addEventListener('error', function(e) {
 
 <header>
   <div class="header-inner">
-    <div style="display:flex;flex-direction:column;justify-content:center;">
+    <div style="display:flex;flex-direction:column;justify-content:center;cursor:pointer;" onclick="volverALigas()" title="Volver al inicio">
       <div style="font-family:'Bebas Neue',sans-serif;line-height:1;">
         <span style="font-size:1.3rem;letter-spacing:3px;color:#fff;">FÚTBOL</span>
         <span style="font-size:1.3rem;letter-spacing:3px;background:linear-gradient(135deg,#f5d020,#f5a623);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;"> PLAYER</span>
@@ -1157,6 +1231,14 @@ window.addEventListener('error', function(e) {
     <div style="display:flex;gap:10px;align-items:center;">
       <div id="header-user-nick" style="font-size:0.72rem;color:#aaa;letter-spacing:0.5px;max-width:90px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></div>
       <button onclick="volverALigas()" data-i18n="header.volver_ligas" style="background:none;border:1px solid #333;border-radius:6px;padding:4px 10px;color:#666;font-size:0.75rem;cursor:pointer;transition:all 0.2s;" onmouseenter="this.style.color='#fff'" onmouseleave="this.style.color='#666'">← Ligas</button>
+      <!-- Campana de notificaciones -->
+      <div id="notif-bell-wrap" style="display:none;position:relative;">
+        <button onclick="abrirNotificaciones()" style="background:none;border:none;cursor:pointer;padding:4px;position:relative;line-height:1;" aria-label="Notificaciones">
+          <span style="font-size:1.2rem;">🔔</span>
+          <span id="notif-bell-badge" style="position:absolute;top:-2px;right:-4px;background:#e74c3c;color:#fff;font-size:0.58rem;font-weight:900;border-radius:50%;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 2px;box-shadow:0 0 0 2px var(--negro);"></span>
+        </button>
+      </div>
+
       <div class="ajustes-wrap">
         <button class="btn-ajustes" onclick="toggleMenuAjustes('menu-ajustes-app', event)" aria-label="Ajustes" aria-haspopup="true">
           <span class="icon-cog">⚙️</span><span class="lang-code" id="lang-code-app">ES</span>
@@ -1183,9 +1265,9 @@ window.addEventListener('error', function(e) {
     <div class="tab active" data-i18n="tab.ranking" onclick="showTab('ranking', this)"><span class="tab-emoji">🏆</span><span class="tab-text">Ranking</span></div>
     <div class="tab" data-i18n="tab.partido" onclick="showTab('partido', this)"><span class="tab-emoji">⚽</span><span class="tab-text">Partido</span></div>
     <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)"><span class="tab-emoji">📅</span><span class="tab-text">Calendario</span></div>
-    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span></div>
+    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)" style="position:relative;"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span><span id="badge-admin-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
     <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)"><span class="tab-emoji">📋</span><span class="tab-text">Historial</span></div>
-    <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)"><span class="tab-emoji">👤</span><span class="tab-text">Perfil</span></div>
+    <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)" style="position:relative;"><span class="tab-emoji">👤</span><span class="tab-text">Perfil</span><span id="badge-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
   </div>
 </header>
 
@@ -1199,7 +1281,7 @@ window.addEventListener('error', function(e) {
       <div class="stat-box"><div class="num" id="s-victorias">0</div><div class="label" id="s-victorias-label">⚪ Wins</div></div>
       <div class="stat-box"><div class="num" id="s-victorias-rojo">0</div><div class="label" id="s-victorias-rojo-label">🔴 Wins</div></div>
     </div>
-    <input type="text" class="search-input" id="searchInput" placeholder="🔍  Buscar jugador..." oninput="renderRanking()">
+    <input type="text" class="search-input" id="searchInput" placeholder="🔍  Buscar jugador..." oninput="renderRankingDebounced()">
     <div class="ranking-grid" id="rankingGrid"></div>
   </div>
 
@@ -1259,6 +1341,9 @@ window.addEventListener('error', function(e) {
           <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
           <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
         </div>
+
+        <!-- Historial personal reciente -->
+        <div id="pp-historial-personal" style="display:none;margin-top:12px;border-top:1px solid #222;padding-top:10px;"></div>
       </div>
 
       <!-- LISTAS de apuntados (oculta cuando hay alineación: redundante con el campo) -->
@@ -1293,6 +1378,20 @@ window.addEventListener('error', function(e) {
       <div style="font-size:3rem;margin-bottom:12px;">⚽</div>
       <div style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:#555;margin-bottom:16px;">NO HAY PARTIDO ACTIVO</div>
       <p style="color:#555;font-size:0.9rem;">Ve al panel Admin para configurar el próximo partido</p>
+    </div>
+
+    <!-- Bloque crear partido manual (solo admins en modo fecha manual) -->
+    <div id="pp-crear-manual" class="card" style="display:none;border:1px solid rgba(46,204,113,0.35);background:rgba(46,204,113,0.05);text-align:center;padding:32px 24px;">
+      <div style="font-size:2.8rem;margin-bottom:10px;">📅</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.6rem;letter-spacing:3px;color:var(--verde-neon);margin-bottom:6px;">NO HAY PARTIDO ACTIVO</div>
+      <p style="color:#777;font-size:0.88rem;margin-bottom:24px;">Elige la fecha y crea el próximo partido cuando quieras.</p>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;justify-content:center;max-width:360px;margin:0 auto;">
+        <div style="flex:1;min-width:160px;text-align:left;">
+          <label style="display:block;font-size:0.72rem;color:#888;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;">Fecha del partido</label>
+          <input type="date" id="pp-manual-fecha" style="width:100%;background:var(--gris-oscuro);border:1px solid rgba(46,204,113,0.4);border-radius:8px;padding:10px 14px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.95rem;outline:none;">
+        </div>
+        <button class="btn btn-verde" onclick="crearPartidoManual()" style="padding:11px 24px;font-size:0.95rem;white-space:nowrap;">✅ Crear partido</button>
+      </div>
     </div>
     <div id="partido-activo" style="display:none;">
       <!-- Banner viejo y listas duplicadas: ocultos. Toda la info está
@@ -1410,6 +1509,37 @@ window.addEventListener('error', function(e) {
   <!-- ═══ CALENDARIO ═══ -->
   <div id="page-calendario" class="page">
 
+    <!-- Info del próximo partido (visible también en modo lectura pública) -->
+    <div id="cal-partido-info" class="card" style="display:none;margin-bottom:16px;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.05rem;letter-spacing:2px;color:var(--verde-neon);margin-bottom:10px;">📅 PRÓXIMO PARTIDO</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:8px;font-size:0.82rem;">
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Campo</div>
+          <div id="cal-pp-campo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Hora</div>
+          <div id="cal-pp-hora" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Precio</div>
+          <div id="cal-pp-precio" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Tipo</div>
+          <div id="cal-pp-tipo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Apuntados</div>
+          <div id="cal-pp-apuntados" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:8px 10px;">
+          <div style="color:#666;font-size:0.65rem;text-transform:uppercase;letter-spacing:.5px;">Plazo</div>
+          <div id="cal-pp-plazo" style="color:#ddd;margin-top:2px;font-weight:600;">—</div>
+        </div>
+      </div>
+    </div>
+
     <!-- Cabecera mes -->
     <div class="card" style="margin-bottom:16px;">
       <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px;">
@@ -1452,6 +1582,19 @@ window.addEventListener('error', function(e) {
 
     <!-- Panel partido seleccionado -->
     <div id="cal-panel" style="display:none;">
+
+      <!-- ── CONVOCAR partido futuro (modo fecha manual) ── -->
+      <div id="cal-panel-convocar" style="display:none;">
+        <div class="card" style="border:1px solid rgba(46,204,113,0.3);background:rgba(46,204,113,0.04);text-align:center;padding:28px 20px;">
+          <div style="font-size:2rem;margin-bottom:8px;">📅</div>
+          <div id="cal-convocar-fecha" style="font-family:'Bebas Neue',sans-serif;font-size:1.3rem;letter-spacing:2px;color:var(--verde-neon);margin-bottom:6px;"></div>
+          <p style="color:#777;font-size:0.85rem;margin-bottom:20px;">¿Convocar el partido para este día?</p>
+          <div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap;">
+            <button class="btn btn-verde" onclick="convocarPartidoDesdeCalendario()" style="padding:10px 28px;font-size:0.95rem;">✅ Convocar partido</button>
+            <button onclick="cerrarCalPanel()" class="btn btn-gris" style="padding:10px 18px;font-size:0.9rem;">Cancelar</button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── AÑADIR MANUAL: día libre, admin puede meter un partido ── -->
       <div id="cal-panel-manual" style="display:none;">
@@ -1763,7 +1906,7 @@ window.addEventListener('error', function(e) {
         <!-- FILA 2: Gestión de jugadores (ancho completo) -->
         <div class="card" style="grid-column:1/-1;">
           <div class="card-title">👤 Gestión de Jugadores</div>
-          <input type="text" id="gestion-search" placeholder="🔍 Buscar jugador..." oninput="renderGestionJugadores()"
+          <input type="text" id="gestion-search" placeholder="🔍 Buscar jugador..." oninput="renderGestionDebounced()"
             style="width:100%;background:var(--gris-oscuro);border:1px solid #333;border-radius:8px;padding:10px 14px;color:var(--blanco);font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;margin-bottom:14px;">
           <div id="gestion-lista" style="max-height:420px;overflow-y:auto;margin-bottom:16px;"></div>
           <div class="divider"></div>
@@ -1806,7 +1949,16 @@ window.addEventListener('error', function(e) {
           <div class="card-title">⚙️ Configuración del partido</div>
 
           <div class="form-group">
-            <label>Día del partido</label>
+            <label>Modo de programación</label>
+            <select id="configModoManual" onchange="toggleModoManualUI()">
+              <option value="fijo">📅 Día fijo a la semana</option>
+              <option value="manual">🗓️ Selección manual</option>
+            </select>
+            <p id="config-modo-desc" style="font-size:0.7rem;color:#555;margin-top:4px;"></p>
+          </div>
+
+          <div id="config-dia-semana-grupo" class="form-group">
+            <label>Día fijo del partido</label>
             <select id="configDiaSemana">
               <option value="1">Lunes</option>
               <option value="2">Martes</option>
@@ -2019,6 +2171,25 @@ window.addEventListener('error', function(e) {
 
       </div><!-- /admin-grid -->
 
+      <!-- Solicitudes de unirse -->
+      <div id="admin-solicitudes-bloque" style="margin-top:20px;display:none;">
+        <div class="card">
+          <div class="card-title">🙋 Solicitudes de acceso</div>
+          <div id="admin-solicitudes-lista" style="display:flex;flex-direction:column;gap:8px;margin-top:8px;">
+            <div style="color:#555;font-size:0.85rem;">Cargando…</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Usuarios bloqueados -->
+      <div id="admin-bloqueados-bloque" style="margin-top:20px;display:none;">
+        <div class="card">
+          <div class="card-title">🚫 Usuarios bloqueados</div>
+          <p style="font-size:0.78rem;color:#666;margin-bottom:10px;">Estos usuarios no pueden enviar solicitudes de acceso a esta liga.</p>
+          <div id="admin-bloqueados-lista" style="display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+
     </div><!-- /admin-panel -->
   </div><!-- /page-admin -->
 
@@ -2061,8 +2232,41 @@ window.addEventListener('error', function(e) {
   <!-- ═══ PERFIL ═══ -->
   <div id="page-perfil" class="page">
 
+    <!-- Solicitudes de acceso: solo visible para admins de esta liga -->
+    <div id="perfil-solicitudes-bloque" style="display:none;margin-bottom:16px;">
+      <div class="card" style="border-color:rgba(46,204,113,0.25);">
+        <div class="card-title" style="display:flex;align-items:center;justify-content:space-between;">
+          <span>🙋 Solicitudes de acceso</span>
+          <span id="perfil-solicitudes-badge" style="display:none;background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;font-size:0.72rem;font-weight:700;border-radius:20px;padding:2px 10px;"></span>
+        </div>
+        <div id="perfil-solicitudes-lista" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;">
+          <div style="color:#555;font-size:0.85rem;">Cargando…</div>
+        </div>
+      </div>
+    </div>
+
     <div class="card" style="margin-bottom:16px;">
       <div class="card-title">👤 Mi perfil</div>
+
+      <!-- Avatar -->
+      <div class="form-group" style="display:flex;align-items:center;gap:16px;">
+        <div id="perfil-avatar-display" onclick="abrirAvatarPicker()"
+          style="cursor:pointer;position:relative;" title="Cambiar avatar">
+          <div id="perfil-avatar-circle" class="avatar-circle"
+            style="width:64px;height:64px;font-size:1.8rem;background:#333;color:#fff;border:2px solid #333;transition:border-color .2s;">
+            ??
+          </div>
+          <div style="position:absolute;bottom:-2px;right:-2px;background:var(--verde-neon);border-radius:50%;width:20px;height:20px;display:flex;align-items:center;justify-content:center;font-size:0.65rem;color:#000;font-weight:800;">✏️</div>
+        </div>
+        <div>
+          <div style="font-weight:600;color:#ccc;font-size:0.88rem;">Tu avatar</div>
+          <div style="font-size:0.75rem;color:#555;margin-top:2px;">Visible en el ranking de todas tus ligas</div>
+          <button class="btn" onclick="abrirAvatarPicker()"
+            style="margin-top:8px;font-size:0.75rem;padding:4px 12px;background:rgba(255,255,255,0.06);border:1px solid #333;color:#aaa;">
+            🎨 Cambiar avatar
+          </button>
+        </div>
+      </div>
 
       <!-- Nick -->
       <div class="form-group">
@@ -2151,6 +2355,67 @@ window.addEventListener('error', function(e) {
   </div>
 </div>
 
+<!-- ═══ MODAL AVATAR PICKER ═══ -->
+<div id="modal-avatar-picker">
+  <div class="avatar-picker-box">
+
+    <!-- Preview + tabs -->
+    <div style="display:flex;align-items:center;gap:14px;margin-bottom:18px;">
+      <div id="avatar-picker-preview" class="avatar-circle"
+        style="width:60px;height:60px;font-size:1.7rem;background:#333;flex-shrink:0;border:2px solid #333;overflow:hidden;"></div>
+      <div style="flex:1;">
+        <div style="font-weight:700;color:#eee;font-size:1rem;">Tu avatar</div>
+        <div style="display:flex;gap:0;margin-top:8px;border:1px solid #333;border-radius:8px;overflow:hidden;">
+          <button id="avatar-tab-foto" onclick="switchAvatarTab('foto')"
+            style="flex:1;padding:6px;font-size:0.78rem;font-weight:600;border:none;cursor:pointer;transition:background .15s;background:var(--verde-neon);color:#000;">
+            📷 Foto
+          </button>
+          <button id="avatar-tab-emoji" onclick="switchAvatarTab('emoji')"
+            style="flex:1;padding:6px;font-size:0.78rem;font-weight:600;border:none;cursor:pointer;transition:background .15s;background:#1a1a1a;color:#666;">
+            🎨 Emoji
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Panel: Foto -->
+    <div id="avatar-panel-foto">
+      <div onclick="document.getElementById('avatar-file-input').click()"
+        style="border:2px dashed #333;border-radius:12px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s;"
+        onmouseenter="this.style.borderColor='var(--verde-neon)'"
+        onmouseleave="this.style.borderColor='#333'">
+        <div style="font-size:2rem;margin-bottom:8px;">📷</div>
+        <div style="color:#aaa;font-size:0.85rem;font-weight:600;">Toca para elegir foto</div>
+        <div style="color:#555;font-size:0.72rem;margin-top:4px;">JPG, PNG o WEBP · Se recortará en círculo</div>
+      </div>
+      <input type="file" id="avatar-file-input" accept="image/*"
+        style="display:none;" onchange="onAvatarFileSelected(this)">
+      <div id="avatar-foto-info" style="display:none;margin-top:10px;font-size:0.75rem;color:#2ecc71;text-align:center;"></div>
+      <button id="avatar-foto-quitar" onclick="quitarFotoAvatar()"
+        style="display:none;margin-top:8px;width:100%;font-size:0.75rem;color:#e74c3c;background:none;border:none;cursor:pointer;text-decoration:underline;">
+        Quitar foto y usar emoji/iniciales
+      </button>
+    </div>
+
+    <!-- Panel: Emoji -->
+    <div id="avatar-panel-emoji" style="display:none;">
+      <div style="font-size:0.7rem;color:#555;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;">Emoji</div>
+      <div id="avatar-emoji-grid" style="display:grid;grid-template-columns:repeat(8,1fr);gap:5px;margin-bottom:8px;"></div>
+      <button onclick="selAvatarEmoji(null)"
+        style="font-size:0.72rem;color:#555;background:none;border:none;cursor:pointer;text-decoration:underline;padding:0;margin-bottom:14px;">
+        Usar iniciales (sin emoji)
+      </button>
+      <div style="font-size:0.7rem;color:#555;letter-spacing:.6px;text-transform:uppercase;margin-bottom:8px;">Color de fondo</div>
+      <div id="avatar-color-row" style="display:flex;gap:8px;flex-wrap:wrap;"></div>
+    </div>
+
+    <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:20px;">
+      <button class="btn btn-gris" onclick="cerrarAvatarPicker()">Cancelar</button>
+      <button class="btn btn-verde" onclick="guardarAvatar()">💾 Guardar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ MODAL REGISTRO JUGADOR ═══ -->
 <div class="modal-overlay" id="modalRegistro">
   <div class="modal" style="max-width:400px;">
@@ -2209,6 +2474,154 @@ window.addEventListener('error', function(e) {
 </div>
 
 <!-- ═══ MODAL BAJA ═══ -->
+<!-- ═══ WIZARD NUEVA LIGA ═══ -->
+<div id="wizardNuevaLiga" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.85);z-index:9999;display:none;align-items:center;justify-content:center;padding:16px;">
+  <div style="background:#141414;border:1px solid #2a2a2a;border-radius:16px;width:100%;max-width:480px;overflow:hidden;">
+
+    <!-- Cabecera con pasos -->
+    <div style="padding:20px 24px 0;border-bottom:1px solid #1e1e1e;">
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:2px;color:var(--verde-neon);margin-bottom:14px;">🏆 CONFIGURAR LIGA</div>
+      <div style="display:flex;gap:0;margin-bottom:0;">
+        <div class="wiz-step-tab" id="wiz-tab-1" style="flex:1;text-align:center;padding:8px 4px;font-size:0.75rem;font-weight:700;letter-spacing:.5px;border-bottom:2px solid var(--verde-neon);color:var(--verde-neon);cursor:default;">PASO 1</div>
+        <div class="wiz-step-tab" id="wiz-tab-2" style="flex:1;text-align:center;padding:8px 4px;font-size:0.75rem;font-weight:700;letter-spacing:.5px;border-bottom:2px solid #222;color:#444;cursor:default;">PASO 2</div>
+        <div class="wiz-step-tab" id="wiz-tab-3" style="flex:1;text-align:center;padding:8px 4px;font-size:0.75rem;font-weight:700;letter-spacing:.5px;border-bottom:2px solid #222;color:#444;cursor:default;">PASO 3</div>
+        <div class="wiz-step-tab" id="wiz-tab-4" style="flex:1;text-align:center;padding:8px 4px;font-size:0.75rem;font-weight:700;letter-spacing:.5px;border-bottom:2px solid #222;color:#444;cursor:default;">FINALIZAR</div>
+      </div>
+    </div>
+
+    <!-- PASO 1: Lo básico -->
+    <div id="wiz-paso-1" style="padding:24px;">
+      <div class="form-group">
+        <label>🏟️ Nombre del campo</label>
+        <input type="text" id="wiz-campo" placeholder="Ej: Don Bosco, La Jota..." style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div class="form-group">
+          <label>🕒 Hora del partido</label>
+          <input type="time" id="wiz-hora" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+        </div>
+        <div class="form-group">
+          <label>💰 Precio (€/persona)</label>
+          <input type="number" id="wiz-precio" placeholder="3.5" min="0" step="0.5" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+        </div>
+      </div>
+      <p style="font-size:0.75rem;color:#555;margin-top:4px;">Puedes dejarlo en blanco y rellenarlo después.</p>
+      <div style="display:flex;justify-content:space-between;margin-top:20px;">
+        <button class="btn btn-gris" onclick="wizCancelar()" style="padding:10px 18px;">✕ Cancelar</button>
+        <button class="btn btn-verde" onclick="wizPaso(2)" style="padding:10px 28px;">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- PASO 2: El partido -->
+    <div id="wiz-paso-2" style="padding:24px;display:none;">
+      <div class="form-group">
+        <label>📅 Programación de partidos</label>
+        <select id="wiz-modo" onchange="wizToggleDia()" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+          <option value="fijo">📅 Día fijo a la semana</option>
+          <option value="manual">🗓️ Selección manual</option>
+        </select>
+        <p id="wiz-modo-desc" style="font-size:0.72rem;color:#555;margin-top:5px;">El sistema genera automáticamente el partido cada semana.</p>
+      </div>
+      <div id="wiz-dia-grupo" class="form-group">
+        <label>📆 Día de la semana</label>
+        <select id="wiz-dia" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+          <option value="1">Lunes</option>
+          <option value="2">Martes</option>
+          <option value="3">Miércoles</option>
+          <option value="4">Jueves</option>
+          <option value="5">Viernes</option>
+          <option value="6">Sábado</option>
+          <option value="0">Domingo</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>👥 Tipo de partido</label>
+        <select id="wiz-tipo" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.9rem;outline:none;">
+          <option value="5vs5">5 vs 5 · 10 jugadores</option>
+          <option value="6vs6">6 vs 6 · 12 jugadores</option>
+          <option value="7vs7" selected>7 vs 7 · 14 jugadores</option>
+          <option value="8vs8">8 vs 8 · 16 jugadores</option>
+          <option value="11vs11">11 vs 11 · 22 jugadores</option>
+        </select>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:20px;">
+        <button class="btn btn-gris" onclick="wizPaso(1)" style="padding:10px 18px;">← Atrás</button>
+        <button class="btn btn-verde" onclick="wizPaso(3)" style="padding:10px 28px;">Siguiente →</button>
+      </div>
+    </div>
+
+    <!-- PASO 3: Ajustes avanzados -->
+    <div id="wiz-paso-3" style="padding:24px;display:none;">
+      <!-- Días de plazo -->
+      <div class="form-group" style="margin-bottom:18px;">
+        <label style="font-size:0.78rem;color:#aaa;letter-spacing:.5px;text-transform:uppercase;font-weight:700;">📆 Días con plazo de inscripción abierto</label>
+        <p style="font-size:0.75rem;color:#555;margin:4px 0 10px;">Marca los días en los que los jugadores pueden apuntarse. El día del partido está bloqueado.</p>
+        <div id="wiz-plazo-chips" style="display:flex;flex-wrap:wrap;gap:8px;"></div>
+        <p id="wiz-plazo-aviso" style="display:none;font-size:0.72rem;color:var(--amarillo);margin-top:6px;">⚠️ Sin días marcados, nadie podrá apuntarse en plazo.</p>
+      </div>
+      <!-- Colores de equipos -->
+      <div class="form-group" style="margin-bottom:18px;">
+        <label style="font-size:0.78rem;color:#aaa;letter-spacing:.5px;text-transform:uppercase;font-weight:700;">🎨 Colores de los equipos</label>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:8px;">
+          <div>
+            <label style="font-size:0.72rem;color:#888;">Equipo A</label>
+            <select id="wiz-color-a" onchange="wizOnCambioColor()" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
+              <option value="blanco">⚪ Blanco</option>
+              <option value="rojo">🔴 Rojo</option>
+              <option value="negro">⚫ Negro</option>
+              <option value="amarillo">🟡 Amarillo</option>
+              <option value="azul">🔵 Azul</option>
+              <option value="verde">🟢 Verde</option>
+            </select>
+          </div>
+          <div>
+            <label style="font-size:0.72rem;color:#888;">Equipo B</label>
+            <select id="wiz-color-b" onchange="wizOnCambioColor()" style="width:100%;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:8px;color:#fff;font-family:'DM Sans',sans-serif;font-size:0.88rem;outline:none;">
+              <option value="blanco">⚪ Blanco</option>
+              <option value="rojo" selected>🔴 Rojo</option>
+              <option value="negro">⚫ Negro</option>
+              <option value="amarillo">🟡 Amarillo</option>
+              <option value="azul">🔵 Azul</option>
+              <option value="verde">🟢 Verde</option>
+            </select>
+          </div>
+        </div>
+        <p id="wiz-color-aviso" style="display:none;font-size:0.72rem;color:#e74c3c;margin-top:6px;">⚠️ Los dos equipos no pueden tener el mismo color.</p>
+      </div>
+      <!-- Visibilidad -->
+      <div class="form-group" style="margin-bottom:4px;">
+        <label style="font-size:0.78rem;color:#aaa;letter-spacing:.5px;text-transform:uppercase;font-weight:700;">🌐 Visibilidad de la liga</label>
+        <p style="font-size:0.75rem;color:#555;margin:4px 0 10px;">Si es pública, cualquier usuario con cuenta puede ver el ranking y el calendario sin código.</p>
+        <label style="display:flex;align-items:center;gap:10px;cursor:pointer;background:#1e1e1e;border:1px solid #333;border-radius:8px;padding:10px 14px;">
+          <input type="checkbox" id="wiz-publica" style="margin:0;width:18px;height:18px;cursor:pointer;">
+          <span style="font-size:0.88rem;">Liga pública (visible en el directorio)</span>
+        </label>
+      </div>
+      <div style="display:flex;justify-content:space-between;margin-top:24px;">
+        <button class="btn btn-gris" onclick="wizPaso(2)" style="padding:10px 18px;">← Atrás</button>
+        <button class="btn btn-verde" onclick="wizGuardarYFinalizar()" style="padding:10px 28px;">Guardar y finalizar →</button>
+      </div>
+    </div>
+
+    <!-- PASO 4: Listo -->
+    <div id="wiz-paso-4" style="padding:24px;display:none;text-align:center;">
+      <div style="font-size:3rem;margin-bottom:10px;">🎉</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:1.5rem;letter-spacing:2px;color:var(--verde-neon);margin-bottom:6px;">¡LIGA LISTA!</div>
+      <p style="color:#777;font-size:0.88rem;margin-bottom:22px;">Ya puedes invitar jugadores y empezar a apuntaros.</p>
+      <!-- Resumen -->
+      <div id="wiz-resumen" style="background:#1a1a1a;border:1px solid #2a2a2a;border-radius:10px;padding:14px;text-align:left;margin-bottom:20px;font-size:0.85rem;line-height:1.9;color:#aaa;"></div>
+      <!-- Código de invitación -->
+      <div style="background:rgba(46,204,113,0.08);border:1px solid rgba(46,204,113,0.25);border-radius:10px;padding:14px 18px;margin-bottom:20px;">
+        <div style="font-size:0.72rem;color:#666;letter-spacing:.5px;text-transform:uppercase;margin-bottom:6px;">Código de invitación</div>
+        <div id="wiz-codigo" style="font-family:'Bebas Neue',sans-serif;font-size:2rem;letter-spacing:6px;color:var(--verde-neon);margin-bottom:10px;"></div>
+        <button class="btn btn-gris" onclick="wizCopiarCodigo()" style="width:100%;font-size:0.85rem;">📋 Copiar código</button>
+      </div>
+      <button class="btn btn-verde" onclick="wizEntrar()" style="width:100%;padding:12px;font-size:1rem;font-weight:700;">⚽ Ir a la liga →</button>
+    </div>
+
+  </div>
+</div>
+
 <div class="modal-overlay" id="modalBaja">
   <div class="modal">
     <h2>🟥 Dar de Baja</h2>
@@ -2316,6 +2729,35 @@ window.addEventListener('error', function(e) {
   </div>
 </div>
 
+<!-- ═══ MODAL CONFIRMACIÓN GENÉRICO ═══ -->
+<div class="modal-overlay" id="modalConfirm">
+  <div class="modal" style="max-width:380px;">
+    <h2 id="confirm-titulo" style="margin-bottom:12px;"></h2>
+    <p id="confirm-cuerpo" style="color:#aaa;font-size:0.88rem;line-height:1.6;white-space:pre-line;margin-bottom:4px;"></p>
+    <p id="confirm-detalle" style="color:#777;font-size:0.8rem;line-height:1.5;white-space:pre-line;margin-top:8px;"></p>
+    <div class="modal-btns" style="margin-top:22px;">
+      <button id="confirm-btn-cancelar" class="btn" style="background:#1a1a1a;border:1px solid #333;color:#aaa;flex:1;">Cancelar</button>
+      <button id="confirm-btn-aceptar" class="btn" style="flex:1;">Aceptar</button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══ MODAL INPUT ═══ -->
+<div class="modal-overlay" id="modalInput">
+  <div class="modal" style="max-width:380px;">
+    <h2 id="input-titulo" style="margin-bottom:12px;"></h2>
+    <p id="input-cuerpo" style="color:#aaa;font-size:0.88rem;line-height:1.6;white-space:pre-line;margin-bottom:12px;"></p>
+    <input id="input-campo" type="text" class="campo" style="width:100%;box-sizing:border-box;display:none;" autocomplete="off" />
+    <select id="input-select" class="campo" style="width:100%;box-sizing:border-box;display:none;cursor:pointer;"></select>
+    <textarea id="input-textarea" class="campo" style="width:100%;box-sizing:border-box;display:none;resize:vertical;font-family:monospace;font-size:0.8rem;" rows="6" readonly></textarea>
+    <p id="input-detalle" style="color:#777;font-size:0.8rem;line-height:1.5;white-space:pre-line;margin-top:8px;display:none;"></p>
+    <div class="modal-btns" style="margin-top:22px;">
+      <button id="input-btn-cancelar" class="btn" style="background:#1a1a1a;border:1px solid #333;color:#aaa;flex:1;">Cancelar</button>
+      <button id="input-btn-aceptar" class="btn" style="flex:1;">Aceptar</button>
+    </div>
+  </div>
+</div>
+
 <!-- ═══ NOTIFICACIÓN ═══ -->
 <div class="notif" id="notif"></div>
 
@@ -2340,6 +2782,10 @@ let state = {
 let bajaTemp = null;
 let waDetectados = []; // jugadores detectados del WA
 let _statsCache = null; // caché de stats por jugador, invalidado en cada guardar()
+let _guardarTimer = null; // timer para debounce de guardar()
+let _cargarGen = 0;       // generación de cargar(), evita listeners duplicados
+let _accionPendiente = false; // bloquea operaciones async simultáneas
+let _renderTimer = null;  // timer para debounce de búsquedas
 
 // ═══════════════════════════════════════════════
 //  SISTEMA DE LIGAS
@@ -2390,6 +2836,7 @@ async function registrarUsuario() {
   const errEl = document.getElementById('regError');
   if (!nick)  { mostrarError(errEl, 'El nick es obligatorio'); return; }
   if (!email) { mostrarError(errEl, 'El correo es obligatorio'); return; }
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { mostrarError(errEl, 'El correo no tiene un formato válido'); return; }
   if (pass.length < 6) { mostrarError(errEl, 'La contraseña debe tener al menos 6 caracteres'); return; }
   if (auth) {
     try {
@@ -2694,7 +3141,7 @@ if (document.readyState === 'loading') {
 }
 
 async function cerrarSesion() {
-  if (!confirm(t('msg.confirmar_cerrar_sesion'))) return;
+  if (!await confirmar('¿Cerrar sesión?', t('msg.confirmar_cerrar_sesion'), { aceptar: 'Cerrar sesión' })) return;
   const auth = fbAuth();
   if (auth) await auth.signOut();
   usuarioActual = null;
@@ -2807,7 +3254,8 @@ function iniciarListenerAuth() {
 //  Fallback a localStorage si Firebase no está disponible
 // ═══════════════════════════════════════════════
 
-let _unsubscribeLiga = null; // listener en tiempo real activo
+let _unsubscribeLiga          = null; // listener estado liga en tiempo real
+let _unsubscribeSolicitudes   = null; // listener solicitudes pendientes en tiempo real
 
 function fbDb() { return window._db || null; }
 
@@ -2986,7 +3434,13 @@ function aplicarModoLecturaPublica() {
       banner = document.createElement('div');
       banner.id = 'banner-lectura-publica';
       banner.style.cssText = 'background:rgba(46,204,113,0.1);border-bottom:1px solid rgba(46,204,113,0.25);color:#7be595;padding:8px 16px;text-align:center;font-size:0.78rem;letter-spacing:0.5px;';
-      banner.innerHTML = '🌐 Estás viendo una liga pública en modo lectura';
+      banner.innerHTML = `
+        <span>🌐 Estás viendo una liga pública en modo lectura</span>
+        <button id="btn-solicitar-unirse"
+          onclick="solicitarUnirse()"
+          style="margin-left:14px;background:var(--verde-neon);color:#000;border:none;border-radius:6px;padding:5px 14px;font-size:0.78rem;font-weight:700;cursor:pointer;letter-spacing:.3px;">
+          🙋 Solicitar unirse
+        </button>`;
       const app = document.getElementById('app-principal');
       app.insertBefore(banner, app.firstChild);
     } else {
@@ -2994,6 +3448,117 @@ function aplicarModoLecturaPublica() {
     }
   } else if (banner) {
     banner.style.display = 'none';
+  }
+}
+
+// ── Solicitar unirse a una liga pública ──
+// Escritura en dos rutas:
+//   1) usuarios/{uid}  → para que el usuario vea su estado
+//   2) ligas/{ligaId}/solicitudes/{uid}  → para que el admin la vea (cubierto por reglas de la liga)
+async function solicitarUnirse() {
+  const btn = document.getElementById('btn-solicitar-unirse');
+
+  if (!usuarioActual) {
+    await confirmar(
+      'Necesitas una cuenta',
+      'Para solicitar unirte a esta liga necesitas iniciar sesión o crear una cuenta gratuita.',
+      { aceptar: 'Ir al login', cancelar: null }
+    );
+    document.getElementById('app-principal').style.display = 'none';
+    document.getElementById('inicio').style.display = 'block';
+    return;
+  }
+
+  if (!ligaActual) return;
+
+  const db = fbDb();
+  if (!db) { notif('Sin conexión. Inténtalo de nuevo.', 'error'); return; }
+
+  const uid   = usuarioActual.uid;
+  const email = usuarioActual.email || '';
+  const nick  = await getNickUsuario(uid) || email.split('@')[0].toUpperCase();
+
+  // Comprobar si el usuario está bloqueado en esta liga
+  const bloqueados = state.config?.usuariosBloqueados || [];
+  if (bloqueados.some(b => b.uid === uid)) {
+    await confirmar('Acceso bloqueado', 'No puedes enviar solicitudes a esta liga.', { aceptar: 'OK', cancelar: null });
+    return;
+  }
+
+  // Comprobar estado de solicitud previa desde el propio doc del usuario
+  try {
+    const snap = await db.collection('usuarios').doc(uid).get();
+    if (snap.exists) {
+      const sol = snap.data().solicitudes?.[ligaActual];
+      if (sol) {
+        const estado = sol.estado || 'pendiente';
+        if (estado === 'pendiente') {
+          // Garantizar que el state doc de la liga tiene la solicitud (por si hubo error previo)
+          try {
+            const stRef = db.collection('ligas').doc(ligaActual).collection('data').doc('state');
+            const stSnap = await stRef.get();
+            if (stSnap.exists && !stSnap.data()?.solicitudes?.[uid]) {
+              const payload = { ...sol, uid, ligaId: ligaActual, estado: 'pendiente' };
+              await stRef.update({ [`solicitudes.${uid}`]: payload });
+            }
+          } catch(_) {}
+          await confirmar('Solicitud ya enviada', 'Tu solicitud ya está pendiente de aprobación por el administrador.', { aceptar: 'OK', cancelar: null });
+          return;
+        } else if (estado === 'bloqueada') {
+          await confirmar('Acceso bloqueado', 'No puedes enviar solicitudes a esta liga.', { aceptar: 'OK', cancelar: null });
+          return;
+        } else if (estado === 'rechazada') {
+          await confirmar('Solicitud rechazada', 'Tu solicitud fue rechazada por el administrador. Contacta con él si crees que es un error.', { aceptar: 'OK', cancelar: null });
+          return;
+        } else if (estado === 'aceptada') {
+          // Si fue aceptado pero ya no está en jugadores (se salió), permitir nueva solicitud
+          const sigueEnLiga = state.jugadores?.some(j => j.uid === uid);
+          if (sigueEnLiga) {
+            await confirmar('Ya eres miembro', 'Ya formas parte de esta liga.', { aceptar: 'OK', cancelar: null });
+            return;
+          }
+          // Si no está en jugadores, limpiar estado y dejar enviar nueva solicitud
+          try {
+            await db.collection('usuarios').doc(uid).set(
+              { solicitudes: { [ligaActual]: firebase.firestore.FieldValue.delete() } }, { merge: true }
+            );
+          } catch(_) {}
+        }
+      }
+    }
+  } catch(e) { console.error('solicitarUnirse check:', e); }
+
+  const ok = await confirmar(
+    '¿Solicitar acceso?',
+    'Enviarás una solicitud al administrador de la liga para unirte como jugador.',
+    { aceptar: '✅ Enviar solicitud', cancelar: 'Cancelar' }
+  );
+  if (!ok) return;
+
+  if (btn) { btn.disabled = true; btn.textContent = '⏳ Enviando…'; }
+
+  const payload = { uid, ligaId: ligaActual, email, nick, timestamp: new Date().toISOString(), estado: 'pendiente' };
+
+  try {
+    // 1) Doc propio del usuario — tracking de estado para el propio solicitante
+    await db.collection('usuarios').doc(uid).set(
+      { solicitudes: { [ligaActual]: payload } },
+      { merge: true }
+    );
+
+    // 2) State doc de la liga — llamada directa (no a través de guardar() que
+    //    tiene el guard de modoLecturaPublica). Cualquier usuario autenticado
+    //    puede escribir gracias a la regla /{allSubcollections=**}.
+    //    El admin lo verá automáticamente vía su liga state onSnapshot.
+    const stateRef = db.collection('ligas').doc(ligaActual).collection('data').doc('state');
+    await stateRef.update({ [`solicitudes.${uid}`]: payload });
+
+    if (btn) { btn.textContent = '✅ Solicitud enviada'; btn.style.background = '#2ecc71'; }
+    notif('Solicitud enviada. El administrador la revisará pronto.', 'ok');
+  } catch(e) {
+    console.error('solicitarUnirse error:', e);
+    notif('Error al enviar la solicitud. Inténtalo de nuevo.', 'error');
+    if (btn) { btn.disabled = false; btn.textContent = '🙋 Solicitar unirse'; }
   }
 }
 
@@ -3106,7 +3671,223 @@ async function crearLiga() {
   document.getElementById('nuevaLigaNombre').value = '';
   toggleNuevaLiga();
   await renderPantallaInicio();
-  notifInicio(`Liga "${nombre}" creada · Código: ${codigo}`);
+  abrirWizardNuevaLiga(id, codigo, nombre);
+}
+
+// ══════════════════════════════════════════
+//  WIZARD NUEVA LIGA
+// ══════════════════════════════════════════
+let _wizardLigaId   = null;
+let _wizardLigaCod  = null;
+let _wizardLigaNom  = null;
+
+function abrirWizardNuevaLiga(id, codigo, nombre) {
+  _wizardLigaId  = id;
+  _wizardLigaCod = codigo;
+  _wizardLigaNom = nombre;
+  // Resetear todos los campos del wizard
+  document.getElementById('wiz-campo').value   = '';
+  document.getElementById('wiz-hora').value    = '';
+  document.getElementById('wiz-precio').value  = '';
+  document.getElementById('wiz-modo').value    = 'fijo';
+  document.getElementById('wiz-dia').value     = '1';
+  document.getElementById('wiz-tipo').value    = '7vs7';
+  const wizColorA = document.getElementById('wiz-color-a');
+  const wizColorB = document.getElementById('wiz-color-b');
+  if (wizColorA) wizColorA.value = 'blanco';
+  if (wizColorB) wizColorB.value = 'rojo';
+  const wizPublica = document.getElementById('wiz-publica');
+  if (wizPublica) wizPublica.checked = false;
+  const wizColorAviso = document.getElementById('wiz-color-aviso');
+  if (wizColorAviso) wizColorAviso.style.display = 'none';
+  const wizPlazoAviso = document.getElementById('wiz-plazo-aviso');
+  if (wizPlazoAviso) wizPlazoAviso.style.display = 'none';
+  wizToggleDia();
+  wizPaso(1);
+  const el = document.getElementById('wizardNuevaLiga');
+  el.style.display = 'flex';
+}
+
+async function wizCancelar() {
+  // Borrar la liga recién creada (aún no configurada)
+  if (_wizardLigaId) {
+    const db = fbDb();
+    if (db) {
+      try {
+        await db.collection('ligas').doc(_wizardLigaId).collection('data').doc('state').delete();
+        await db.collection('ligas').doc(_wizardLigaId).delete();
+      } catch(e) { console.warn('wizCancelar error', e); }
+    }
+    localStorage.removeItem(getLigaKey(_wizardLigaId));
+    const ligas = await getLigasIndex();
+    await saveLigasIndex(ligas.filter(l => l.id !== _wizardLigaId));
+  }
+  _wizardLigaId = null;
+  _wizardLigaCod = null;
+  _wizardLigaNom = null;
+  document.getElementById('wizardNuevaLiga').style.display = 'none';
+  await renderPantallaInicio();
+}
+
+function wizPaso(n) {
+  [1,2,3,4].forEach(i => {
+    document.getElementById(`wiz-paso-${i}`).style.display = i === n ? 'block' : 'none';
+    const tab = document.getElementById(`wiz-tab-${i}`);
+    const activo = i <= n;
+    tab.style.borderBottomColor = activo ? 'var(--verde-neon)' : '#222';
+    tab.style.color = activo ? 'var(--verde-neon)' : '#444';
+  });
+  // Al entrar en paso 3: renderizar chips con el día elegido en paso 2
+  if (n === 3) wizRenderChipsPlazo();
+}
+
+function wizToggleDia() {
+  const manual = document.getElementById('wiz-modo').value === 'manual';
+  document.getElementById('wiz-dia-grupo').style.display = manual ? 'none' : 'block';
+  document.getElementById('wiz-modo-desc').textContent = manual
+    ? 'El admin elige la fecha de cada partido manualmente.'
+    : 'El sistema genera el partido automáticamente cada semana.';
+}
+
+function wizGetPlazoDias() {
+  const chips = document.querySelectorAll('#wiz-plazo-chips .dia-chip.activo');
+  return Array.from(chips).map(c => parseInt(c.dataset.dia)).filter(n => !isNaN(n));
+}
+
+function wizTogglePlazoDia(i) {
+  const chip = document.querySelector(`#wiz-plazo-chips [data-dia="${i}"]`);
+  if (!chip || chip.classList.contains('bloqueado')) return;
+  chip.classList.toggle('activo');
+  const aviso = document.getElementById('wiz-plazo-aviso');
+  if (aviso) aviso.style.display = wizGetPlazoDias().length === 0 ? 'block' : 'none';
+}
+
+function wizRenderChipsPlazo() {
+  const cont = document.getElementById('wiz-plazo-chips');
+  if (!cont) return;
+  const modoManual = document.getElementById('wiz-modo')?.value === 'manual';
+  // En modo manual no hay día fijo → ningún chip bloqueado
+  const diaPartido = modoManual ? -1 : parseInt(document.getElementById('wiz-dia')?.value ?? 1);
+  const labels = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  // Conservar selección previa si ya había chips
+  const prevActivos = wizGetPlazoDias();
+  cont.innerHTML = labels.map((etiqueta, i) => {
+    const bloqueado = i === diaPartido;
+    const activo = !bloqueado && prevActivos.includes(i);
+    const cls = bloqueado ? 'dia-chip bloqueado' : (activo ? 'dia-chip activo' : 'dia-chip');
+    const onclick = bloqueado ? '' : `onclick="wizTogglePlazoDia(${i})"`;
+    const tit = bloqueado ? 'title="Día del partido — bloqueado"' : '';
+    return `<span class="${cls}" ${onclick} ${tit} data-dia="${i}">${etiqueta}</span>`;
+  }).join('');
+  const aviso = document.getElementById('wiz-plazo-aviso');
+  if (aviso) aviso.style.display = wizGetPlazoDias().length === 0 ? 'block' : 'none';
+}
+
+function wizOnCambioColor() {
+  const a = document.getElementById('wiz-color-a')?.value;
+  const b = document.getElementById('wiz-color-b')?.value;
+  const aviso = document.getElementById('wiz-color-aviso');
+  if (aviso) aviso.style.display = (a && b && a === b) ? 'block' : 'none';
+}
+
+async function wizGuardarYFinalizar() {
+  const campo   = document.getElementById('wiz-campo').value.trim();
+  const hora    = document.getElementById('wiz-hora').value.trim();
+  const precio  = document.getElementById('wiz-precio').value.trim();
+  const modo    = document.getElementById('wiz-modo').value;
+  const dia     = parseInt(document.getElementById('wiz-dia').value);
+  const tipo    = document.getElementById('wiz-tipo').value;
+  const manual  = modo === 'manual';
+  const colorA  = document.getElementById('wiz-color-a')?.value || 'blanco';
+  const colorB  = document.getElementById('wiz-color-b')?.value || 'rojo';
+  const publica = document.getElementById('wiz-publica')?.checked || false;
+
+  // Validar colores
+  if (colorA === colorB) {
+    document.getElementById('wiz-color-aviso').style.display = 'block';
+    return;
+  }
+  document.getElementById('wiz-color-aviso').style.display = 'none';
+
+  // Plazo: quitar el día del partido si estuviera marcado
+  const plazoDias = wizGetPlazoDias().filter(d => d !== dia);
+
+  // Guardar config en Firestore
+  const db = fbDb();
+  if (db) {
+    try {
+      await db.collection('ligas').doc(_wizardLigaId).collection('data').doc('state').update({
+        'config.campo':           campo,
+        'config.hora':            hora,
+        'config.precio':          precio,
+        'config.diaSemana':       dia,
+        'config.tipoPartido':     tipo,
+        'config.modoFechaManual': manual,
+        'config.colorA':          colorA,
+        'config.colorB':          colorB,
+        'config.plazoDias':       plazoDias,
+        'publica':                publica
+      });
+      // Actualizar también localStorage
+      const raw = localStorage.getItem(getLigaKey(_wizardLigaId));
+      if (raw) {
+        try {
+          const datos = JSON.parse(raw);
+          datos.config = { ...datos.config, campo, hora, precio, diaSemana: dia, tipoPartido: tipo,
+                           modoFechaManual: manual, colorA, colorB, plazoDias };
+          datos.publica = publica;
+          localStorage.setItem(getLigaKey(_wizardLigaId), JSON.stringify(datos));
+        } catch(_) {}
+      }
+    } catch(e) { console.warn('wizGuardarYFinalizar error', e); }
+  }
+
+  // Rellenar resumen en paso 4
+  const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+  const DIAS_LABELS = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const plazoDesc = plazoDias.length ? plazoDias.sort().map(d => DIAS_LABELS[d]).join(', ') : 'Sin plazo';
+  const colorNomA = (COLORES_EQUIPO[colorA] || {}).label || colorA;
+  const colorNomB = (COLORES_EQUIPO[colorB] || {}).label || colorB;
+  const lineas = [
+    campo   ? `🏟️ <strong style="color:#fff;">${campo}</strong>` : null,
+    hora    ? `🕒 <strong style="color:#fff;">${hora}</strong>` : null,
+    precio  ? `💰 <strong style="color:#fff;">${precio} €/persona</strong>` : null,
+    manual  ? `📅 <strong style="color:#fff;">Selección manual</strong>` : `📅 <strong style="color:#fff;">Cada ${DIAS[dia]}</strong>`,
+    `👥 <strong style="color:#fff;">${tipo}</strong>`,
+    `📆 <strong style="color:#fff;">Plazo: ${plazoDesc}</strong>`,
+    `🎨 <strong style="color:#fff;">${colorNomA} vs ${colorNomB}</strong>`,
+    publica ? `🌐 <strong style="color:#fff;">Liga pública</strong>` : null
+  ].filter(Boolean);
+  document.getElementById('wiz-resumen').innerHTML = lineas.join('<br>');
+  document.getElementById('wiz-codigo').textContent = _wizardLigaCod;
+
+  wizPaso(4);
+}
+
+function wizCopiarCodigo() {
+  if (!_wizardLigaCod) return;
+  navigator.clipboard.writeText(_wizardLigaCod)
+    .then(() => notifInicio(`Código ${_wizardLigaCod} copiado`, 'ok'))
+    .catch(() => notifInicio(_wizardLigaCod, 'ok'));
+}
+
+async function wizEntrar() {
+  document.getElementById('wizardNuevaLiga').style.display = 'none';
+  await entrarLiga(_wizardLigaId);
+  // Abrir panel admin automáticamente
+  setTimeout(() => {
+    if (esAdminActual(state)) {
+      state.adminLoggedIn = true;
+      const loginEl = document.getElementById('admin-login');
+      const panelEl = document.getElementById('admin-panel');
+      if (loginEl) loginEl.style.display = 'none';
+      if (panelEl) panelEl.style.display = 'block';
+      const tabs = document.querySelectorAll('.tab-btn');
+      const adminTab = [...tabs].find(t => t.dataset.i18n === 'tab.admin' || t.textContent.includes('Admin'));
+      if (adminTab) showTab('admin', adminTab);
+      renderAdmin();
+    }
+  }, 500);
 }
 
 // ── Unirse con código ──
@@ -3148,7 +3929,7 @@ async function unirseConCodigo() {
       // ¿Ya estoy unido? → aviso y entrada directa
       const yaSoyJugador = jugadores.find(j => j.uid === uid);
       if (yaSoyJugador) {
-        alert(`Ya estás en la liga "${liga.nombre}"`);
+        avisar(`Ya estás en la liga "${liga.nombre}"`);
       } else {
         // Determinar nick a usar (puede pedirse cambio si choca)
         let nickFinal = nickPerfil;
@@ -3168,22 +3949,25 @@ async function unirseConCodigo() {
 
           if (existe.uid && existe.uid !== uid) {
             // Caso C: ya hay un jugador con ese nick vinculado a otra cuenta → forzar cambio
-            const nuevo = prompt(
-              `Ya existe un jugador llamado "${nickFinal}" en esta liga vinculado a otra cuenta.\n\nElige un nick distinto para esta liga:`,
-              ''
+            const nuevo = await pedirTexto(
+              'Elige un nick',
+              `Ya existe "${nickFinal}" vinculado a otra cuenta en esta liga.`,
+              { placeholder: 'Tu nick para esta liga', aceptar: 'Confirmar' }
             );
-            if (!nuevo || !nuevo.trim()) {
+            if (!nuevo) {
               notifInicio('Te has unido a la liga sin asignar nick. Pide al admin que te añada manualmente.', 'error');
               break;
             }
-            nickFinal = nuevo.trim().toUpperCase();
+            nickFinal = nuevo.toUpperCase();
             continue;
           }
 
           if (!existe.uid) {
             // Caso B: existe sin cuenta vinculada → ¿eres tú?
-            const soyYo = confirm(
-              `Ya existe un jugador llamado "${nickFinal}" en esta liga.\n\n¿Eres tú? (acepta para vincular tu cuenta a ese jugador)`
+            const soyYo = await confirmar(
+              `¿Eres tú?`,
+              `Ya existe un jugador llamado "${nickFinal}" en esta liga.`,
+              { aceptar: 'Sí, soy yo', cancelar: 'No, cambiar nick', detalle: 'Acepta para vincular tu cuenta a ese jugador.' }
             );
             if (soyYo) {
               // Vincular: añadir uid al jugador existente, conservar puntos/historial
@@ -3191,12 +3975,16 @@ async function unirseConCodigo() {
               jugadorNuevo = existe; // marcar para reseñar
               break;
             } else {
-              const nuevo = prompt('Elige un nick distinto para esta liga:', '');
-              if (!nuevo || !nuevo.trim()) {
+              const nuevo = await pedirTexto(
+                'Elige un nick',
+                `Elige un nick distinto para esta liga:`,
+                { placeholder: 'Tu nick para esta liga', aceptar: 'Confirmar' }
+              );
+              if (!nuevo) {
                 notifInicio('Te has unido a la liga sin asignar nick. Pide al admin que te añada manualmente.', 'error');
                 break;
               }
-              nickFinal = nuevo.trim().toUpperCase();
+              nickFinal = nuevo.toUpperCase();
               continue;
             }
           }
@@ -3245,13 +4033,12 @@ async function eliminarLiga(id) {
     } catch {}
   }
   if (!usuarioActual || !adminUidsLiga.includes(usuarioActual.uid)) {
-    alert('Solo los admins pueden eliminar la liga.');
+    avisar('Solo los admins pueden eliminar la liga.');
     return;
   }
 
-  // Doble confirmación
-  if (!confirm(`¿Eliminar la liga "${liga.nombre}"?\n\nSe borrarán TODOS sus datos. Esta acción es PERMANENTE y no se puede deshacer.`)) return;
-  if (!confirm(`Última confirmación.\n\n¿Borrar definitivamente "${liga.nombre}"?`)) return;
+  if (!await confirmar(`¿Eliminar liga?`, `Se borrarán TODOS los datos de "${liga.nombre}".`, { aceptar: 'Continuar', peligro: true, detalle: 'Esta acción es PERMANENTE y no se puede deshacer.' })) return;
+  if (!await confirmar('Confirmación final', `¿Borrar definitivamente "${liga.nombre}"?`, { aceptar: 'Sí, borrar liga', peligro: true })) return;
 
   const db = fbDb();
   if (db) {
@@ -3288,14 +4075,14 @@ async function salirDeLiga(id) {
   }
   if (usuarioActual && adminUidsLiga.includes(usuarioActual.uid)) {
     if (adminUidsLiga.length === 1) {
-      alert('Eres el único admin de esta liga. Para salir, primero promueve a otro jugador como admin desde el panel admin.');
+      avisar('Eres el único admin de esta liga. Primero promueve a otro jugador como admin.');
     } else {
-      alert('Eres admin de esta liga. Para salir, primero quítate el rol de admin desde la pestaña Admin → Gestión de jugadores.');
+      avisar('Eres admin de esta liga. Primero quítate el rol desde Admin → Gestión de jugadores.');
     }
     return;
   }
 
-  if (!confirm(`¿Salir de la liga "${liga.nombre}"?\n\nTus datos en esta liga (puntos, historial) se perderán. Si quieres volver, tendrás que unirte de nuevo con el código.`)) return;
+  if (!await confirmar(`¿Salir de la liga?`, `Saldrás de "${liga.nombre}".`, { aceptar: 'Salir', peligro: true, detalle: 'Tus puntos e historial se perderán. Para volver necesitarás el código.' })) return;
 
   // Eliminar al usuario del state.jugadores en Firestore
   const db = fbDb();
@@ -3306,11 +4093,33 @@ async function salirDeLiga(id) {
       const snap = await stateRef.get();
       if (snap.exists) {
         const data = snap.data();
-        const jugadores = (data.jugadores || []).filter(j => j.uid !== uid);
-        await stateRef.update({ jugadores });
+        const miNombre = usuarioActual?.displayName || '';
+        // Filtrar por uid (registrados) y por nombre como fallback (entradas legacy sin uid)
+        const jugadores = (data.jugadores || []).filter(j =>
+          j.uid ? j.uid !== uid : j.nombre !== miNombre
+        );
+        // También quitar de proximoPartido.apuntados si estaba apuntado
+        const pp = data.proximoPartido;
+        const updates = { jugadores };
+        if (pp && Array.isArray(pp.apuntados)) {
+          pp.apuntados = pp.apuntados.filter(a => a.uid ? a.uid !== uid : a.nombre !== miNombre);
+          updates.proximoPartido = pp;
+        }
+        await stateRef.update(updates);
       }
-      // Desvincular la liga del usuario
+      // Desvincular la liga del usuario y limpiar estado de solicitud
       await db.collection('usuarios').doc(uid).collection('ligas').doc(id).delete();
+      try {
+        // Limpiar solicitud del doc del usuario
+        await db.collection('usuarios').doc(uid).set(
+          { solicitudes: { [id]: firebase.firestore.FieldValue.delete() } }, { merge: true }
+        );
+        // Limpiar del state doc de la liga por si tenía solicitud pendiente
+        try {
+          await db.collection('ligas').doc(id).collection('data').doc('state')
+            .update({ [`solicitudes.${uid}`]: firebase.firestore.FieldValue.delete() });
+        } catch(_) {}
+      } catch(_) {}
     } catch(e) {
       console.warn('Firebase salirDeLiga', e);
       notifInicio('Error al salir de la liga', 'error');
@@ -3328,6 +4137,7 @@ async function salirDeLiga(id) {
 async function cargar() {
   if (!ligaActual) return;
   _statsCache = null;
+  const miGen = ++_cargarGen;
 
   state = {
     jugadores: [], partido: null, historial: [], partidos_jugados: [],
@@ -3339,6 +4149,7 @@ async function cargar() {
   if (db) {
     try {
       const snap = await db.collection('ligas').doc(ligaActual).collection('data').doc('state').get();
+      if (miGen !== _cargarGen) return; // otra llamada a cargar() llegó primero
       if (snap.exists) { state = snap.data(); _migrarConfig(); }
       else { await guardar(); }
 
@@ -3353,6 +4164,10 @@ async function cargar() {
           _statsCache = null;
           _refrescarVista();
         }, err => console.warn('onSnapshot error', err));
+
+      // Las solicitudes se leen directamente del state doc de la liga
+      // (campo state.solicitudes) que llega vía el listener _unsubscribeLiga.
+      // No se necesita listener adicional.
     } catch(e) {
       console.warn('Firebase cargar fallback', e);
       _cargarLocal();
@@ -3361,6 +4176,22 @@ async function cargar() {
     _cargarLocal();
   }
   state.adminLoggedIn = false;
+}
+
+// ── Guardar con debounce — para ediciones frecuentes (puntos, posiciones, etc.) ──
+function guardarDebounced() {
+  clearTimeout(_guardarTimer);
+  _guardarTimer = setTimeout(guardar, 400);
+}
+
+// ── Debounce para búsquedas en tiempo real ──
+function renderRankingDebounced() {
+  clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(renderRanking, 200);
+}
+function renderGestionDebounced() {
+  clearTimeout(_renderTimer);
+  _renderTimer = setTimeout(renderGestionJugadores, 200);
 }
 
 // ── Guardar estado de liga ──
@@ -3459,6 +4290,9 @@ function _refrescarVista() {
   else if (activa === 'page-partido')    renderPartido();
   else if (activa === 'page-historial')  renderHistorial();
   else if (activa === 'page-calendario') renderCalendario();
+  else if (activa === 'page-admin')      renderSolicitudes();
+  // Badge siempre actualizado al recibir cambios de estado
+  actualizarBadgeSolicitudes();
 }
 
 // ── Generar código único de 6 caracteres ──
@@ -3516,6 +4350,11 @@ async function entrarLiga(id) {
   aplicarModoLecturaPublica();
 
   renderRanking();
+  // Cargar avatares en segundo plano (re-renderiza el ranking cuando termina)
+  precargarAvatares();
+
+  // Badge de solicitudes pendientes (solo admin)
+  actualizarBadgeSolicitudes();
 
   // Mostrar modal de registro si no tiene perfil en esta liga
   const perfilKey = `futbolplayer_perfil_${id}`;
@@ -3590,7 +4429,9 @@ function saltarRegistro() {
 }
 
 async function volverALigas() {
-  if (_unsubscribeLiga) { _unsubscribeLiga(); _unsubscribeLiga = null; }
+  if (_unsubscribeLiga)        { _unsubscribeLiga();        _unsubscribeLiga        = null; }
+  if (_unsubscribeSolicitudes) { _unsubscribeSolicitudes(); _unsubscribeSolicitudes = null; }
+  _avatarCache = {}; // limpiar caché al salir de la liga
   state.adminLoggedIn = false;
   ligaActual = null;
   modoLecturaPublica = false; // siempre se desactiva al salir
@@ -3705,6 +4546,250 @@ function notifInicio(msg, tipo = 'ok') {
 // ═══════════════════════════════════════════════
 //  PERFIL
 // ═══════════════════════════════════════════════
+
+// ── Sistema de avatares ──────────────────────────────────────
+// Avatar = emoji opcional + color de fondo.
+// Sin emoji: se muestran las iniciales del nombre.
+// Almacenado en usuarios/{uid}.avatar  = { emoji, color }
+// _avatarCache: uid → {emoji,color} | null   (null = sin avatar custom)
+
+let _avatarCache = {};  // uid → { emoji, color, img } | null
+let _avatarPendiente = { emoji: null, color: null, img: null }; // img = base64 o null
+let _avatarTab = 'foto'; // tab activa en el picker
+
+const AVATAR_EMOJIS = [
+  '⚽','🧤','🦁','🐯','🦊','🐺','🦅','🔥',
+  '⚡','💪','🏆','⭐','🎯','👊','🦸','🐻',
+  '🏅','🌟','💎','🚀','👑','🐉','🎪','🤺'
+];
+const AVATAR_COLORS = [
+  '#e74c3c','#e67e22','#f39c12','#2ecc71','#1abc9c',
+  '#3498db','#8e44ad','#e91e63','#607d8b','#16a085'
+];
+
+function _avatarHashColor(str) {
+  let h = 0;
+  for (let i = 0; i < str.length; i++) h = str.charCodeAt(i) + ((h << 5) - h);
+  return AVATAR_COLORS[Math.abs(h) % AVATAR_COLORS.length];
+}
+
+function _avatarInitials(nombre) {
+  const p = (nombre || '??').trim().split(/\s+/);
+  return p.length >= 2 ? (p[0][0] + p[1][0]).toUpperCase() : nombre.substring(0, 2).toUpperCase();
+}
+
+// Redimensiona un File de imagen a un cuadrado (maxSize px) y devuelve base64 JPEG
+function _resizarImagen(file, maxSize = 88) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      const img = new Image();
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = canvas.height = maxSize;
+        const ctx = canvas.getContext('2d');
+        // Recortar cuadrado centrado
+        const side = Math.min(img.width, img.height);
+        const sx = (img.width  - side) / 2;
+        const sy = (img.height - side) / 2;
+        ctx.drawImage(img, sx, sy, side, side, 0, 0, maxSize, maxSize);
+        resolve(canvas.toDataURL('image/jpeg', 0.82));
+      };
+      img.onerror = reject;
+      img.src = e.target.result;
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+// Devuelve HTML de un círculo avatar listo para insertar en innerHTML
+function avatarHTML(nombre, uid, size = 34) {
+  const cached = uid ? _avatarCache[uid] : undefined;
+  const av     = cached || null;
+  if (av?.img) {
+    return `<div class="avatar-circle" style="width:${size}px;height:${size}px;min-width:${size}px;overflow:hidden;padding:0;"><img src="${av.img}" style="width:100%;height:100%;object-fit:cover;display:block;"></div>`;
+  }
+  const color   = av?.color  || _avatarHashColor(nombre || '?');
+  const isEmoji = !!av?.emoji;
+  const content = av?.emoji  || _avatarInitials(nombre || '??');
+  const fs      = isEmoji ? Math.round(size * 0.56) : Math.round(size * 0.38);
+  const fw      = isEmoji ? '400' : '800';
+  return `<div class="avatar-circle" style="width:${size}px;height:${size}px;min-width:${size}px;background:${color};font-size:${fs}px;font-weight:${fw};color:#fff;">${isEmoji ? content : esc(content)}</div>`;
+}
+
+// Pre-carga avatares de todos los jugadores con uid de la liga actual
+async function precargarAvatares() {
+  const db = fbDb();
+  if (!db) return;
+  const uids = [...new Set((state.jugadores || []).filter(j => j.uid).map(j => j.uid))];
+  await Promise.allSettled(uids.map(async uid => {
+    if (_avatarCache[uid] !== undefined) return;
+    try {
+      const snap = await db.collection('usuarios').doc(uid).get();
+      _avatarCache[uid] = (snap.exists && snap.data().avatar) ? snap.data().avatar : null;
+    } catch(_) { _avatarCache[uid] = null; }
+  }));
+  if (document.querySelector('.page.active')?.id === 'page-ranking') renderRanking();
+}
+
+// Actualiza el círculo avatar grande en la pantalla Perfil
+function renderPerfilAvatar() {
+  const uid    = usuarioActual?.uid;
+  const nick   = document.getElementById('perfilNick')?.value || usuarioActual?.email?.split('@')[0] || '??';
+  const circle = document.getElementById('perfil-avatar-circle');
+  if (!circle) return;
+  const av = uid ? (_avatarCache[uid] || null) : null;
+  if (av?.img) {
+    circle.style.background = 'transparent';
+    circle.style.overflow   = 'hidden';
+    circle.style.padding    = '0';
+    circle.innerHTML = `<img src="${av.img}" style="width:100%;height:100%;object-fit:cover;display:block;border-radius:50%;">`;
+  } else {
+    circle.innerHTML = '';
+    const color   = av?.color || _avatarHashColor(nick);
+    const isEmoji = !!av?.emoji;
+    circle.style.background  = color;
+    circle.style.borderColor = color;
+    circle.style.overflow    = '';
+    circle.style.padding     = '';
+    circle.style.fontSize    = isEmoji ? '1.9rem' : '1.35rem';
+    circle.style.fontWeight  = isEmoji ? '400' : '800';
+    circle.textContent       = av?.emoji || _avatarInitials(nick);
+  }
+}
+
+// Cambia la pestaña activa en el picker (foto / emoji)
+function switchAvatarTab(tab) {
+  _avatarTab = tab;
+  document.getElementById('avatar-panel-foto').style.display  = tab === 'foto'  ? 'block' : 'none';
+  document.getElementById('avatar-panel-emoji').style.display = tab === 'emoji' ? 'block' : 'none';
+  const tabFoto  = document.getElementById('avatar-tab-foto');
+  const tabEmoji = document.getElementById('avatar-tab-emoji');
+  if (tabFoto)  { tabFoto.style.background  = tab === 'foto'  ? 'var(--verde-neon)' : '#1a1a1a'; tabFoto.style.color  = tab === 'foto'  ? '#000' : '#666'; }
+  if (tabEmoji) { tabEmoji.style.background = tab === 'emoji' ? 'var(--verde-neon)' : '#1a1a1a'; tabEmoji.style.color = tab === 'emoji' ? '#000' : '#666'; }
+}
+
+// Abre el picker de avatar
+function abrirAvatarPicker() {
+  const uid     = usuarioActual?.uid;
+  const current = uid ? (_avatarCache[uid] || {}) : {};
+  _avatarPendiente = {
+    emoji: current.emoji || null,
+    color: current.color || AVATAR_COLORS[3],
+    img:   current.img   || null
+  };
+  // Abrir en la tab foto si ya tiene foto, si no en emoji si tiene emoji, si no foto por defecto
+  const tab = _avatarPendiente.img ? 'foto' : (_avatarPendiente.emoji ? 'emoji' : 'foto');
+  switchAvatarTab(tab);
+  _renderAvatarPickerUI();
+  document.getElementById('modal-avatar-picker').classList.add('open');
+}
+
+function cerrarAvatarPicker() {
+  document.getElementById('modal-avatar-picker').classList.remove('open');
+}
+
+function _renderAvatarPickerPreview() {
+  const preview = document.getElementById('avatar-picker-preview');
+  if (!preview) return;
+  if (_avatarPendiente.img) {
+    preview.style.background = 'transparent';
+    preview.style.overflow   = 'hidden';
+    preview.innerHTML = `<img src="${_avatarPendiente.img}" style="width:100%;height:100%;object-fit:cover;display:block;">`;
+  } else {
+    preview.innerHTML = '';
+    preview.style.overflow = '';
+    const isEmoji = !!_avatarPendiente.emoji;
+    preview.style.background = _avatarPendiente.color || AVATAR_COLORS[3];
+    preview.style.fontSize   = isEmoji ? '1.8rem' : '1.2rem';
+    preview.style.fontWeight = isEmoji ? '400' : '800';
+    const nick = document.getElementById('perfilNick')?.value || '??';
+    preview.textContent = _avatarPendiente.emoji || _avatarInitials(nick);
+  }
+}
+
+function _renderAvatarPickerUI() {
+  const grid     = document.getElementById('avatar-emoji-grid');
+  const colorRow = document.getElementById('avatar-color-row');
+  const fotoInfo   = document.getElementById('avatar-foto-info');
+  const fotoQuitar = document.getElementById('avatar-foto-quitar');
+
+  if (grid) {
+    grid.innerHTML = AVATAR_EMOJIS.map(e =>
+      `<button class="avatar-emoji-btn${e === _avatarPendiente.emoji ? ' sel' : ''}"
+        onclick="selAvatarEmoji('${e}')">${e}</button>`
+    ).join('');
+  }
+  if (colorRow) {
+    colorRow.innerHTML = AVATAR_COLORS.map(c =>
+      `<button class="avatar-color-btn${c === _avatarPendiente.color ? ' sel' : ''}"
+        style="background:${c};" onclick="selAvatarColor('${c}')"></button>`
+    ).join('');
+  }
+  if (fotoInfo) {
+    if (_avatarPendiente.img) {
+      fotoInfo.style.display = 'block';
+      fotoInfo.textContent   = '✅ Foto lista para guardar';
+    } else { fotoInfo.style.display = 'none'; }
+  }
+  if (fotoQuitar) {
+    fotoQuitar.style.display = _avatarPendiente.img ? 'block' : 'none';
+  }
+  _renderAvatarPickerPreview();
+}
+
+async function onAvatarFileSelected(input) {
+  const file = input.files?.[0];
+  if (!file) return;
+  try {
+    const base64 = await _resizarImagen(file, 88);
+    _avatarPendiente.img = base64;
+    _renderAvatarPickerUI();
+  } catch(e) {
+    notif('No se pudo procesar la imagen', 'error');
+  }
+  input.value = ''; // reset para permitir elegir la misma imagen otra vez
+}
+
+function quitarFotoAvatar() {
+  _avatarPendiente.img = null;
+  _renderAvatarPickerUI();
+}
+
+function selAvatarEmoji(e) {
+  _avatarPendiente.emoji = (e && e !== _avatarPendiente.emoji) ? e : null;
+  _avatarPendiente.img   = null; // si elige emoji, quitar foto
+  _renderAvatarPickerUI();
+}
+
+function selAvatarColor(c) {
+  _avatarPendiente.color = c;
+  _renderAvatarPickerUI();
+}
+
+async function guardarAvatar() {
+  const uid = usuarioActual?.uid;
+  if (!uid) return;
+  const av = {
+    img:   _avatarPendiente.img   || null,
+    emoji: _avatarPendiente.img ? null : (_avatarPendiente.emoji || null),
+    color: _avatarPendiente.color || AVATAR_COLORS[3]
+  };
+  const db = fbDb();
+  if (db) {
+    try {
+      await db.collection('usuarios').doc(uid).update({ avatar: av });
+    } catch(e) { notif('Error guardando avatar', 'error'); return; }
+  }
+  _avatarCache[uid] = av;
+  cerrarAvatarPicker();
+  renderPerfilAvatar();
+  if (document.querySelector('.page.active')?.id === 'page-ranking') renderRanking();
+  notif('Avatar guardado ✓');
+}
+// ─────────────────────────────────────────────────────────────
+
 async function renderPerfil() {
   const user = usuarioActual;
   if (!user) return;
@@ -3724,12 +4809,17 @@ async function renderPerfil() {
       if (snap.exists) {
         nick = snap.data().nick || nick;
         posiciones = snap.data().posiciones || posiciones;
+        // Cargar avatar en caché para mostrarlo inmediatamente
+        if (snap.data().avatar) _avatarCache[user.uid] = snap.data().avatar;
       }
     } catch(e) {}
   }
 
   const nickEl = document.getElementById('perfilNick');
   if (nickEl) nickEl.value = nick;
+
+  // Mostrar avatar actual
+  renderPerfilAvatar();
 
   // Marcar posiciones
   document.querySelectorAll('.perfil-pos').forEach(cb => {
@@ -3768,7 +4858,7 @@ async function guardarNickGlobal() {
   }
 
   // Preguntar si quiere propagar a las ligas
-  const propagar = confirm(`Nick guardado en tu perfil.\n\n¿Aplicarlo también a las ${ligas.length} liga(s) en las que estás?\n\nAceptar = aplicar a todas.\nCancelar = solo en el perfil.`);
+  const propagar = await confirmar('¿Aplicar nick a todas las ligas?', `¿Aplicar también a las ${ligas.length} liga(s) en las que estás?`, { aceptar: 'Aplicar a todas', cancelar: 'Solo en el perfil' });
   if (!propagar) {
     notif('Nick actualizado solo en el perfil');
     return;
@@ -3807,8 +4897,8 @@ async function guardarNickGlobal() {
 
   // Resumen al usuario
   let msg = `Nick aplicado en ${aplicadas} liga(s).`;
-  if (conflictos.length) msg += `\nSaltadas por conflicto de nick: ${conflictos.join(', ')}.`;
-  alert(msg);
+  if (conflictos.length) msg += ` Saltadas por conflicto de nick: ${conflictos.join(', ')}.`;
+  notif(msg);
 
   // Actualizar el header (email/nick)
   const emailEl = document.getElementById('auth-user-email');
@@ -3851,10 +4941,14 @@ async function borrarCuenta() {
   if (!user) return;
 
   // Primera confirmación
-  if (!confirm('¿Seguro que quieres borrar tu cuenta?\n\nSe eliminarán todos tus datos y tu jugador será eliminado de TODAS las ligas en las que estés. Esta acción no se puede deshacer.')) return;
+  if (!await confirmar('¿Borrar cuenta?', 'Tu jugador será eliminado de TODAS las ligas en las que estés.', { aceptar: 'Borrar mi cuenta', peligro: true, detalle: 'Esta acción no se puede deshacer.' })) return;
 
   // Segunda confirmación con el email
-  const emailConfirm = prompt(`Para confirmar, escribe tu correo electrónico:\n${user.email}`);
+  const emailConfirm = await pedirTexto(
+    'Escribe tu correo para confirmar',
+    'Esta acción eliminará tu cuenta de forma permanente.',
+    { tipo: 'email', placeholder: user.email, detalle: user.email, aceptar: 'Borrar cuenta definitivamente', cancelar: 'Cancelar' }
+  );
   if (!emailConfirm || emailConfirm.trim().toLowerCase() !== user.email.toLowerCase()) {
     notif('Correo incorrecto — cuenta no borrada', 'error');
     return;
@@ -3984,7 +5078,7 @@ function showTab(name, el) {
     if (eresAdmin) renderAdmin();
   }
   if (name === 'historial') renderHistorial();
-  if (name === 'perfil')    renderPerfil();
+  if (name === 'perfil')  { renderPerfil(); renderSolicitudesPerfil(); }
 }
 
 // ═══════════════════════════════════════════════
@@ -4023,6 +5117,12 @@ function calcularOrden(jugadores) {
 
 function renderRanking() {
   const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
+
+  // Sanear campos numéricos por si algún jugador viene con undefined desde Firestore
+  state.jugadores.forEach(j => {
+    if (j.puntos  === undefined || j.puntos  === null || isNaN(j.puntos))  j.puntos  = 0;
+    if (j.totales === undefined || j.totales === null || isNaN(j.totales)) j.totales = 0;
+  });
 
   // Simple sort: puntos desc, totales desc, id asc (antigüedad)
   const todos = [...state.jugadores].sort((a,b) => {
@@ -4095,8 +5195,9 @@ function renderRanking() {
     div.onclick = () => abrirFichaJugador(j.id);
     div.innerHTML = `
       <div class="player-pos">${pos}</div>
+      ${avatarHTML(j.nombre, j.uid, 32)}
       <div class="player-name">
-        ${j.nombre}
+        ${esc(j.nombre)}
         ${trofeoBadge}
         ${j.uid ? '<span class="player-cuenta-badge" title="Jugador con cuenta vinculada">✓</span>' : ''}
         ${j.portero ? '<span class="player-portero-badge">🧤</span>' : ''}
@@ -4114,7 +5215,8 @@ function renderRanking() {
 }
 
 function formatPts(n) {
-  return Number.isInteger(n) ? n : n.toFixed(1);
+  if (n === undefined || n === null || isNaN(n)) return '0';
+  return Number.isInteger(n) ? n : Number(n).toFixed(1);
 }
 
 // ═══════════════════════════════════════════════
@@ -4163,10 +5265,14 @@ function calcularFechaProximoPartido() {
 // regenera uno nuevo apuntando a la siguiente fecha libre.
 function asegurarProximoPartido() {
   if (!state) return null;
-  const fechaCalc = calcularFechaProximoPartido();
   const tipo = state.config?.tipoPartido || '7vs7';
   let pp = state.proximoPartido;
   const jugadas = new Set((state.partidos_jugados || []).map(p => p.fecha));
+
+  // En modo fecha manual no auto-creamos: el admin elige la fecha
+  if (!pp && state.config?.modoFechaManual) return null;
+
+  const fechaCalc = calcularFechaProximoPartido();
 
   // Si no existe, crear
   if (!pp) {
@@ -4211,6 +5317,28 @@ function asegurarProximoPartido() {
   return state.proximoPartido;
 }
 
+// ── Fuente de verdad unificada para el rol del jugador en el partido actual ──
+// state.partido tiene prioridad porque incluye ediciones del canvas (moverATitular/moverAReserva).
+// Si no existe state.partido (inscripción aún abierta), se lee de proximoPartido.apuntados.
+function esTitularEnPartidoActual(nombre) {
+  if (state.partido?.titulares) return state.partido.titulares.includes(nombre);
+  const pp = state.proximoPartido;
+  if (pp?.apuntados) {
+    const apt = pp.apuntados.find(a => a.nombre === nombre);
+    return apt?.rol === 'titular';
+  }
+  return false;
+}
+
+// ── Sincronizar un cambio de rol desde state.partido hacia proximoPartido.apuntados ──
+// Se llama desde moverATitular/moverAReserva para mantener ambos sistemas alineados.
+function _syncRolPartido(nombre, nuevoRol) {
+  const pp = state.proximoPartido;
+  if (!pp?.apuntados) return;
+  const apt = pp.apuntados.find(a => a.nombre === nombre);
+  if (apt) apt.rol = nuevoRol;
+}
+
 // ¿La fecha "hoy" está dentro de plazo según config?
 function estoyEnPlazo() {
   const diasPlazo = getPlazoDias();
@@ -4236,7 +5364,12 @@ function titularesProximoPartido() {
 
 // Apuntar al usuario actual al próximo partido
 async function apuntarmePartido() {
+  if (_accionPendiente) return;
   if (!usuarioActual) { notif('Necesitas iniciar sesión para apuntarte', 'error'); return; }
+  _accionPendiente = true;
+  const btnApu = document.getElementById('pp-btn-apuntar');
+  if (btnApu) { btnApu.disabled = true; btnApu.style.opacity = '0.5'; }
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (pp.estado === 'cancelado') { notif('El partido fue cancelado', 'error'); return; }
@@ -4316,6 +5449,9 @@ async function apuntarmePartido() {
     equipo: null
   });
 
+  // Consumir el veto: ya se aplicó al rol, limpiar para no arrastrar al partido siguiente
+  if (vetado) jugador._vetadoSiguiente = false;
+
   await guardar();
   renderPartido();
   const baseMsg = rol === 'titular'
@@ -4326,18 +5462,28 @@ async function apuntarmePartido() {
             ? '⏳ Te has apuntado como reserva (alineación ya cerrada)'
             : '⏳ Te has apuntado como reserva'));
   notif(baseMsg + mensajeDesplazado);
+  } finally {
+    _accionPendiente = false;
+    const b = document.getElementById('pp-btn-apuntar');
+    if (b) { b.disabled = false; b.style.opacity = ''; }
+  }
 }
 
 // Cancelar mi inscripción al próximo partido
 async function cancelarInscripcionPartido() {
+  if (_accionPendiente) return;
   if (!usuarioActual) return;
+  _accionPendiente = true;
+  const btnCan = document.getElementById('pp-btn-cancelar');
+  if (btnCan) { btnCan.disabled = true; btnCan.style.opacity = '0.5'; }
+  try {
   const pp = state.proximoPartido;
   if (!pp || !pp.apuntados) return;
 
   const yo = pp.apuntados.find(a => a.uid === usuarioActual.uid);
   if (!yo) return;
 
-  if (!confirm('¿Cancelar tu inscripción al partido?')) return;
+  if (!await confirmar('¿Cancelar inscripción?', '¿Seguro que quieres cancelar tu plaza para el próximo partido?', { aceptar: 'Sí, cancelar', peligro: true })) return;
 
   // Calcular sanción si aplica
   const sc = getSancionesConfig();
@@ -4355,7 +5501,6 @@ async function cancelarInscripcionPartido() {
     if (pts < 0 && jugador) {
       jugador.puntos = Math.round((jugador.puntos + pts) * 10) / 10;
       mensajeSancion = ` Sanción aplicada: ${pts} pts.`;
-      registrarHistorial(`🟥 Baja titular: ${jugador.nombre} (${pts} pts)`, jugador.nombre);
     }
     // Veto al siguiente partido si baja el mismo día
     if (diasHasta === 0 && sc.vetoSiguiente && jugador) {
@@ -4364,24 +5509,43 @@ async function cancelarInscripcionPartido() {
     }
   }
 
+  // Historial siempre para bajas de titular (con o sin sanción)
+  if (yo.rol === 'titular') {
+    const jugador = state.jugadores.find(j => j.uid === usuarioActual.uid);
+    const nombre = jugador?.nombre || yo.nombre || '?';
+    const detalle = mensajeSancion.trim() || 'sin sanción';
+    registrarHistorial(`🟡 Baja titular propia: ${nombre} (${detalle})`, nombre, 'baja');
+  }
+
   // Quitarme del array de apuntados
   pp.apuntados = pp.apuntados.filter(a => a.uid !== usuarioActual.uid);
 
-  // Si era titular y hay reservas, promover el primero adecuado
-  if (yo.rol === 'titular' && pp.estado !== 'abierto') {
-    promoverPrimerReserva();
+  // Si era titular, promover el primer reserva adecuado (siempre, independientemente del estado)
+  let entranteCancelacion = null;
+  if (yo.rol === 'titular') {
+    entranteCancelacion = promoverPrimerReserva();
   }
 
   await guardar();
   renderPartido();
-  notif('Inscripción cancelada.' + mensajeSancion);
+  if (entranteCancelacion) {
+    notif(`Inscripción cancelada.${mensajeSancion} 🔼 ${entranteCancelacion} entra como titular.`, 'ok', '📋 WhatsApp', copiarListaWhatsApp);
+  } else {
+    notif('Inscripción cancelada.' + mensajeSancion);
+  }
+  } finally {
+    _accionPendiente = false;
+    const b = document.getElementById('pp-btn-cancelar');
+    if (b) { b.disabled = false; b.style.opacity = ''; }
+  }
 }
 
 // Promueve el primer reserva adecuado a titular.
 // Prioridad: reservas dentro de plazo (mayor puntos primero), luego fuera de plazo (cronológico), luego vetados (cronológico).
+// Devuelve el nombre del jugador promovido, o null si no había reservas.
 function promoverPrimerReserva() {
   const pp = state.proximoPartido;
-  if (!pp || !pp.apuntados) return;
+  if (!pp || !pp.apuntados) return null;
   const reservas = pp.apuntados.filter(a => a.rol === 'reserva');
   const vetados = pp.apuntados.filter(a => a.rol === 'vetado');
 
@@ -4396,11 +5560,16 @@ function promoverPrimerReserva() {
 
   if (orden.length > 0) {
     orden[0].rol = 'titular';
+    return orden[0].nombre;
   }
+  return null;
 }
 
 // Cierra inscripción y genera alineación equilibrada
 async function cerrarInscripcionAhora() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
@@ -4419,7 +5588,7 @@ async function cerrarInscripcionAhora() {
   } else {
     mensaje = '¿Cerrar inscripción y generar alineación? Después podrás editar la alineación manualmente.';
   }
-  if (!confirm(mensaje)) return;
+  if (!await confirmar('¿Cerrar inscripción?', mensaje, { aceptar: 'Generar alineación' })) return;
 
   pp.estado = 'alineacion-lista';
 
@@ -4440,29 +5609,41 @@ async function cerrarInscripcionAhora() {
   await guardar();
   renderPartido();
   notif('Alineación generada. Puedes editarla en el campo.');
+  } finally { _accionPendiente = false; }
 }
 
 // Reabre la inscripción (admin puede revertir el cierre)
 async function reabrirInscripcion() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
-  if (!confirm('¿Reabrir inscripción? Se descartará la alineación generada.')) return;
+  if (!await confirmar('¿Reabrir inscripción?', 'Se descartará la alineación generada. Los jugadores seguirán apuntados.', { aceptar: 'Reabrir' })) return;
   pp.estado = 'abierto';
   state.partido = null;
   await guardar();
   renderPartido();
   notif('Inscripción reabierta');
+  } finally { _accionPendiente = false; }
 }
 
 // Cambiar tipo de partido solo para este partido (no toca config liga)
 async function cambiarTipoPartidoPuntual() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
   const opciones = TIPOS_PARTIDO_VALIDOS;
   const actual = pp.tipo || '7vs7';
-  const elegido = prompt(`Tipo de partido para ESTE partido (${opciones.join(', ')}):`, actual);
+  const elegido = await pedirTexto(
+    'Tipo de partido',
+    'Selecciona el formato para este partido concreto.',
+    { seleccion: opciones, valorInicial: actual, aceptar: 'Aplicar' }
+  );
   if (!elegido || !opciones.includes(elegido)) return;
   pp.tipo = elegido;
   // Recalcular roles: si baja el límite, los últimos titulares pasan a reserva
@@ -4476,15 +5657,19 @@ async function cambiarTipoPartidoPuntual() {
   await guardar();
   renderPartido();
   notif(`Tipo de partido cambiado a ${elegido}`);
+  } finally { _accionPendiente = false; }
 }
 
 // Suspender partido (clima, campo cerrado, etc.). Como cancelado pero
 // con motivo distinto. No se aplican sanciones ni puntos.
 async function suspenderPartido() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
-  if (!confirm('¿Suspender el partido?\n\nMotivo: imprevisto externo (clima, campo cerrado, etc.).\nNo se aplicarán puntos ni sanciones a nadie.')) return;
+  if (!await confirmar('¿Suspender partido?', 'Imprevisto externo — clima, campo cerrado, etc.', { aceptar: 'Suspender', peligro: true, detalle: 'No se aplicarán puntos ni sanciones a nadie.' })) return;
 
   pp.estado = 'suspendido';
   state.partidos_jugados = state.partidos_jugados || [];
@@ -4493,6 +5678,7 @@ async function suspenderPartido() {
     apuntados: pp.apuntados.map(a => a.nombre),
     titulares: [], reservas: [], bajas: []
   });
+  if (state.partidos_jugados.length > 200) state.partidos_jugados = state.partidos_jugados.slice(0, 200);
   state.proximoPartido = null;
   state.partido = null;
 
@@ -4501,6 +5687,7 @@ async function suspenderPartido() {
   renderPartido();
   if (typeof renderCalendario === 'function') renderCalendario();
   notif('Partido suspendido');
+  } finally { _accionPendiente = false; }
 }
 
 // Cerrar partido sin resultado válido. Se suma +1 a los titulares (asistencia)
@@ -4508,6 +5695,9 @@ async function suspenderPartido() {
 // estadística de victoria/derrota/empate. Útil cuando el partido se descompensó
 // (lesiones, gente que se fue antes, etc.) y el resultado no refleja la realidad.
 async function cerrarSinResultado() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
@@ -4515,7 +5705,7 @@ async function cerrarSinResultado() {
     notif('Primero hay que cerrar la inscripción y tener alineación', 'error');
     return;
   }
-  if (!confirm('¿Cerrar partido sin resultado válido?\n\nSe sumarán +1 a titulares y +0.5 a reservas (asistencia).\nNO se actualizarán estadísticas de victorias.')) return;
+  if (!await confirmar('¿Cerrar sin resultado?', 'Se sumarán puntos de asistencia (+1 titulares, +0.5 reservas).', { aceptar: 'Cerrar así', detalle: 'NO se actualizarán estadísticas de victorias/derrotas.' })) return;
 
   // Sumar puntos de asistencia
   const pTit = state.partido?.titulares || [];
@@ -4540,7 +5730,10 @@ async function cerrarSinResultado() {
     apuntados: (pp.apuntados || []).map(a => a.nombre),
     bajas: []
   });
+  if (state.partidos_jugados.length > 200) state.partidos_jugados = state.partidos_jugados.slice(0, 200);
   state.config.partidos = (state.config.partidos || 0) + 1;
+  // Levantar vetos al cerrar (ciclo de partido concluido)
+  state.jugadores.forEach(j => { if (j._vetadoSiguiente) j._vetadoSiguiente = false; });
   state.proximoPartido = null;
   state.partido = null;
 
@@ -4550,14 +5743,18 @@ async function cerrarSinResultado() {
   renderRanking();
   if (typeof renderCalendario === 'function') renderCalendario();
   notif('Partido cerrado sin resultado. Puntos de asistencia aplicados.');
+  } finally { _accionPendiente = false; }
 }
 
 // Cancelar el partido (admin, desde calendario)
 async function cancelarPartido() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   if (!pp) return;
-  if (!confirm('¿Cancelar este partido?\n\nNo se aplicará ninguna sanción ni puntos a los apuntados. El partido quedará marcado como cancelado.')) return;
+  if (!await confirmar('¿Cancelar partido?', 'El partido quedará marcado como cancelado.', { aceptar: 'Cancelar partido', peligro: true, detalle: 'No se aplicarán sanciones ni puntos a los apuntados.' })) return;
 
   pp.estado = 'cancelado';
   // Mover a partidos_jugados con flag cancelado
@@ -4567,7 +5764,10 @@ async function cancelarPartido() {
     apuntados: pp.apuntados.map(a => a.nombre),
     titulares: [], reservas: [], bajas: []
   });
+  if (state.partidos_jugados.length > 200) state.partidos_jugados = state.partidos_jugados.slice(0, 200);
   // Resetear próximo partido (se generará uno nuevo automáticamente)
+  // También limpiar vetos: el partido se canceló, no tiene sentido arrastrarlo
+  state.jugadores.forEach(j => { if (j._vetadoSiguiente) j._vetadoSiguiente = false; });
   state.proximoPartido = null;
   state.partido = null;
 
@@ -4576,6 +5776,7 @@ async function cancelarPartido() {
   renderPartido();
   renderCalendario();
   notif('Partido cancelado');
+  } finally { _accionPendiente = false; }
 }
 
 // Algoritmo de equilibrado de equipos.
@@ -4695,7 +5896,30 @@ function generarEquiposEquilibrados(nombres) {
 function renderProximoPartido() {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
-  if (!pp) return;
+
+  // Bloque "crear partido manual" — solo admins, solo cuando no hay partido activo y modo manual ON
+  const bloqueManual = document.getElementById('pp-crear-manual');
+  if (bloqueManual) {
+    const modoManual = !!state.config?.modoFechaManual;
+    const sinPartidoActivo = !pp || pp.estado === 'jugado' || pp.estado === 'cancelado';
+    const esAdmin = esAdminActual(state);
+    bloqueManual.style.display = (modoManual && sinPartidoActivo && esAdmin) ? 'block' : 'none';
+    // Pre-rellenar la fecha con el próximo día laborable si está vacío
+    if (modoManual && sinPartidoActivo && esAdmin) {
+      const inp = document.getElementById('pp-manual-fecha');
+      if (inp && !inp.value) {
+        const manana = new Date(); manana.setDate(manana.getDate() + 1);
+        inp.value = manana.toISOString().slice(0, 10);
+      }
+    }
+  }
+
+  const proximoCard = document.getElementById('proximo-partido-card');
+  if (!pp || pp.estado === 'cancelado') {
+    if (proximoCard) proximoCard.style.display = 'none';
+    return;
+  }
+  if (proximoCard) proximoCard.style.display = 'block';
 
   // Si la inscripción está cerrada (alineación lista), reducimos la card a
   // sólo lo esencial (acciones admin para reabrir/cancelar). El resto se
@@ -4772,9 +5996,9 @@ function renderProximoPartido() {
     const inv = a.esInvitado ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.6rem;padding:1px 5px;border-radius:3px;margin-left:6px;">INV</span>' : '';
     const vet = a.rol === 'vetado' ? '<span style="color:#e74c3c;font-size:0.7rem;margin-left:6px;">🚫</span>' : '';
     const baja = esAdminActual(state)
-      ? `<span class="pbaja" onclick="event.stopPropagation();abrirModalBaja('${a.nombre.replace(/'/g,"\\'")}')" style="margin-left:auto;background:#5a1010;color:#fff;font-size:0.65rem;padding:3px 8px;border-radius:4px;cursor:pointer;">Baja</span>`
+      ? `<span class="pbaja" onclick="event.stopPropagation();abrirModalBaja('${esc(a.nombre)}')" style="margin-left:auto;background:#5a1010;color:#fff;font-size:0.65rem;padding:3px 8px;border-radius:4px;cursor:pointer;">Baja</span>`
       : '';
-    return `<div style="display:flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:6px 10px;font-size:0.85rem;color:#ccc;">${a.nombre}${inv}${vet}${baja}</div>`;
+    return `<div style="display:flex;align-items:center;gap:6px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;padding:6px 10px;font-size:0.85rem;color:#ccc;">${esc(a.nombre)}${inv}${vet}${baja}</div>`;
   };
   titsEl.innerHTML = (pp.apuntados || []).filter(a => a.rol === 'titular').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Aún sin titulares</p>';
   resEl.innerHTML  = (pp.apuntados || []).filter(a => a.rol === 'reserva' || a.rol === 'vetado').map(renderItem).join('') || '<p style="color:#555;font-size:0.78rem;">Sin reservas</p>';
@@ -4808,6 +6032,39 @@ function renderProximoPartido() {
       avisoCerrar.textContent = `⚠️ Faltan ${limite - titularesCount} para completar (${titularesCount}/${limite}). Puedes cerrar igualmente y reabrir luego.`;
     } else {
       avisoCerrar.style.display = 'none';
+    }
+  }
+
+  // Historial personal reciente (últimas 5 acciones del jugador en esta liga)
+  const histBloque = document.getElementById('pp-historial-personal');
+  if (histBloque) {
+    const jugadorActual = usuarioActual ? state.jugadores.find(j => j.uid === usuarioActual.uid) : null;
+    if (jugadorActual && !modoLecturaPublica) {
+      const miHist = (state.historial || []).filter(h => h.jugador === jugadorActual.nombre).slice(0, 5);
+      if (miHist.length > 0) {
+        histBloque.style.display = 'block';
+        histBloque.innerHTML = `
+          <details>
+            <summary style="cursor:pointer;color:#666;font-size:0.78rem;letter-spacing:.3px;padding:2px 0;list-style:none;display:flex;align-items:center;gap:6px;">
+              <span style="font-size:0.9rem;">📋</span>
+              <span>Mis últimas acciones</span>
+              <span style="margin-left:auto;font-size:0.7rem;background:#222;padding:1px 6px;border-radius:10px;">${miHist.length}</span>
+            </summary>
+            <div style="margin-top:8px;display:flex;flex-direction:column;gap:4px;">
+              ${miHist.map(h => `
+                <div style="background:#111;border:1px solid #1e1e1e;border-radius:6px;padding:7px 10px;">
+                  <div style="color:#444;font-size:0.68rem;margin-bottom:2px;">${esc(h.fecha)}</div>
+                  <div style="color:#bbb;font-size:0.8rem;">${esc(h.desc)}</div>
+                </div>
+              `).join('')}
+            </div>
+          </details>
+        `;
+      } else {
+        histBloque.style.display = 'none';
+      }
+    } else {
+      histBloque.style.display = 'none';
     }
   }
 }
@@ -4847,7 +6104,7 @@ async function copiarListaWhatsApp() {
     notif('📋 Lista copiada al portapapeles');
   } catch(e) {
     // Fallback si no hay permiso de portapapeles
-    prompt('Copia el texto manualmente:', texto);
+    await pedirTexto('Copia el texto manualmente', 'Selecciona todo y copia con Ctrl+C / ⌘+C.', { readonly: true, valorInicial: texto });
   }
 }
 
@@ -4898,9 +6155,12 @@ function renderPartido() {
     div.innerHTML = `
       <span class="num">${i+1}</span>
       <span style="width:10px;height:10px;border-radius:2px;background:${j?.portero ? '#27ae60' : esRojo ? '#c0392b' : '#ecf0f1'};border:1px solid #555;flex-shrink:0;display:inline-block;"></span>
-      <span class="pname">${nombre} ${j?.portero ? '🧤' : ''}</span>
-      ${esAdminActual(state) ? `<span class="pbaja" onclick="abrirModalBaja('${nombre.replace(/'/g,"\\'")}')">Baja</span>` : ''}
+      <span class="pname">${esc(nombre)} ${j?.portero ? '🧤' : ''}</span>
+      ${esAdminActual(state) ? `<span class="pbaja">Baja</span>` : ''}
     `;
+    if (esAdminActual(state)) {
+      div.querySelector('.pbaja').addEventListener('click', () => abrirModalBaja(nombre));
+    }
     listaTit.appendChild(div);
   });
 
@@ -4916,9 +6176,12 @@ function renderPartido() {
     div.className = 'partido-player';
     div.innerHTML = `
       <span class="num">${i+1}</span>
-      <span class="pname">${nombre} ${j?.portero ? '🧤' : ''}</span>
-      ${esAdminActual(state) ? `<span class="pbaja" onclick="abrirModalBaja('${nombre.replace(/'/g,"\\'")}')">Baja</span>` : ''}
+      <span class="pname">${esc(nombre)} ${j?.portero ? '🧤' : ''}</span>
+      ${esAdminActual(state) ? `<span class="pbaja">Baja</span>` : ''}
     `;
+    if (esAdminActual(state)) {
+      div.querySelector('.pbaja').addEventListener('click', () => abrirModalBaja(nombre));
+    }
     listaRes.appendChild(div);
   });
 
@@ -4955,8 +6218,9 @@ function abrirModalBaja(nombre) {
   const pp = state.proximoPartido;
   const apt = pp?.apuntados?.find(a => a.nombre === nombre);
   const esInvitado = !!(apt?.esInvitado);
-  const eraTitular = apt ? apt.rol === 'titular' :
-                     state.partido?.titulares?.includes(nombre) || false;
+  // esTitularEnPartidoActual() prioriza state.partido (incluye ediciones del canvas)
+  // y recae en proximoPartido.apuntados solo si no hay alineación generada aún.
+  const eraTitular = esTitularEnPartidoActual(nombre);
 
   // Calcular días de antelación desde hoy hasta la fecha del partido
   let diasHasta = null;
@@ -5054,12 +6318,34 @@ function confirmarBaja() {
 
   const modal = document.getElementById('modalBaja');
   const valorRaw = document.getElementById('baja-tipo').value; // "X|auto"|"X|manual"|"0|invitado"
-  const [pStr] = valorRaw.split('|');
-  const pts = parseInt(pStr) || 0;
+  const [pStr, modo] = valorRaw.split('|');
+  let pts = parseInt(pStr) || 0;
 
   const eraTitular = modal.dataset.eraTitular === '1';
-  const aplicaVeto = modal.dataset.aplicaVeto === '1';
+  let aplicaVeto = modal.dataset.aplicaVeto === '1';
   const esInvitado = modal.dataset.esInvitado === '1';
+
+  // Si el admin usa la opción "auto", recalcular pts y veto en tiempo real
+  // para evitar valores stale (el modal puede llevar tiempo abierto)
+  if (modo === 'auto' && eraTitular && !esInvitado) {
+    const ppAuto = state.proximoPartido;
+    if (ppAuto?.fecha) {
+      const scAuto = getSancionesConfig();
+      const fechaAuto = new Date(ppAuto.fecha + 'T12:00:00');
+      const hoyAuto = new Date(); hoyAuto.setHours(0,0,0,0);
+      const diasAhora = Math.round((fechaAuto - hoyAuto) / (1000*60*60*24));
+      if (scAuto.activas) {
+        if (diasAhora === 0)      pts = scAuto.mismoDia;
+        else if (diasAhora === 1) pts = scAuto.unDiaAntes;
+        else if (diasAhora === 2) pts = scAuto.dosDiasAntes;
+        else                      pts = 0;
+        aplicaVeto = diasAhora === 0 && !!scAuto.vetoSiguiente;
+      } else {
+        pts = 0;
+        aplicaVeto = false;
+      }
+    }
+  }
   const nombre = bajaTemp;
 
   // Aplicar sanción de puntos al jugador (solo si tiene cuenta)
@@ -5082,63 +6368,37 @@ function confirmarBaja() {
     }
   }
 
-  // Sacar al jugador del partido. Hay 3 estados posibles:
-  //  A) Hay state.proximoPartido con apuntados[] → sistema nuevo
-  //  B) Hay state.partido (alineación generada) → titulares/reservas legacy
-  //  C) Ambos a la vez (caso normal cuando hay alineación lista)
-  // Sincronizamos AMBOS por seguridad.
-
+  // Sacar al jugador de proximoPartido (fuente de verdad de roles)
   const pp = state.proximoPartido;
-  if (pp && Array.isArray(pp.apuntados)) {
+  if (pp?.apuntados) {
     pp.apuntados = pp.apuntados.filter(a => a.nombre !== nombre);
   }
 
-  let entrante = null;
-  // Decidir qué modelo aplicar:
-  // - Si la inscripción sigue abierta (estado "abierto"): usar SOLO el modelo
-  //   nuevo (pp.apuntados) y promoverPrimerReserva. state.partido podría estar
-  //   stale de un partido anterior.
-  // - Si la alineación está generada (state.partido válido): usar el modelo
-  //   legacy con titulares/reservas para mantener el orden visual.
-  const inscripcionAbierta = pp && (pp.estado === 'abierto' || !pp.estado);
-  if (state.partido && !inscripcionAbierta) {
-    const erataTit = state.partido.titulares?.includes(nombre);
-    state.partido.titulares = (state.partido.titulares || []).filter(n => n !== nombre);
-    state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== nombre);
+  // Limpiar state.partido del jugador en ambos casos (stale o alineación activa)
+  if (state.partido) {
+    state.partido.titulares   = (state.partido.titulares   || []).filter(n => n !== nombre);
+    state.partido.reservas    = (state.partido.reservas    || []).filter(n => n !== nombre);
     state.partido._equipoRojo = (state.partido._equipoRojo || []).filter(n => n !== nombre);
+  }
 
-    // Si era titular, intentar promover el primer reserva adecuado
-    if (erataTit && state.partido.reservas.length > 0) {
-      entrante = state.partido.reservas.shift();
-      state.partido.titulares.push(entrante);
-
-      // Sincronizar también en proximoPartido (cambiar rol del entrante a titular)
-      if (pp && Array.isArray(pp.apuntados)) {
-        const e = pp.apuntados.find(a => a.nombre === entrante);
-        if (e) e.rol = 'titular';
-      }
+  // Promover reserva si era titular — promoverPrimerReserva() es la única fuente de verdad
+  let entrante = null;
+  if (eraTitular && pp) {
+    entrante = promoverPrimerReserva();
+    // Sincronizar state.partido con el ascenso (si hay alineación generada)
+    if (entrante && state.partido) {
+      state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== entrante);
+      state.partido.titulares = [...(state.partido.titulares || []), entrante];
     }
-  } else if (eraTitular && pp) {
-    // Inscripción abierta o sin state.partido: promover en el modelo nuevo.
-    // También limpiar state.partido stale por si acaso.
-    if (state.partido && inscripcionAbierta) {
-      state.partido.titulares = (state.partido.titulares || []).filter(n => n !== nombre);
-      state.partido.reservas  = (state.partido.reservas  || []).filter(n => n !== nombre);
-    }
-    promoverPrimerReserva();
-    // Detectar quién subió para el mensaje
-    const promovido = pp.apuntados?.find(a => a.rol === 'titular' && a.fechaApunte && a.nombre !== nombre);
-    // No tenemos forma simple de saber quién subió aquí porque pp.apuntados
-    // ya no tiene al baja, pero el mensaje genérico vale igual.
   }
 
   // Historial
   const motivoTxt = esInvitado ? '(invitado)' : (eraTitular ? '(titular)' : '(reserva)');
   if (entrante) {
-    registrarHistorial(`🔄 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto} Entra ${entrante} desde reservas.`, esInvitado ? null : nombre);
-    notif(`${entrante} entra desde reservas`);
+    registrarHistorial(`🔄 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto} Entra ${entrante} desde reservas.`, esInvitado ? null : nombre, 'baja');
+    notif(`🔼 ${entrante} entra desde reservas`, 'ok', '📋 WhatsApp', copiarListaWhatsApp);
   } else {
-    registrarHistorial(`🟥 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto}`, esInvitado ? null : nombre);
+    registrarHistorial(`🟥 ${nombre} dio de baja ${motivoTxt}.${mensajePts ? ' Sanción:' + mensajePts : ''}${mensajeVeto}`, esInvitado ? null : nombre, 'baja');
     notif(`Baja aplicada a ${nombre}.${mensajePts}${mensajeVeto}`, mensajePts || mensajeVeto ? 'ok' : 'error');
   }
 
@@ -5264,6 +6524,11 @@ async function renderAdmin() {
   document.getElementById('configHora').value      = state.config.hora      || '';
   document.getElementById('configPrecio').value    = state.config.precio    || '';
   document.getElementById('configDiaSemana').value = state.config.diaSemana ?? 1;
+  const selManual = document.getElementById('configModoManual');
+  if (selManual) {
+    selManual.value = state.config.modoFechaManual ? 'manual' : 'fijo';
+    toggleModoManualUI();
+  }
 
   // Colores de los equipos
   const selColorA = document.getElementById('configColorA');
@@ -5327,9 +6592,9 @@ async function renderAdmin() {
     div.className = 'apuntados-player';
     const checked = state.partido?.apuntados?.includes(j.nombre) ? 'checked' : '';
     div.innerHTML = `
-      <input type="checkbox" id="ap_${j.id}" value="${j.nombre}" ${checked} style="width:auto;margin:0;">
+      <input type="checkbox" id="ap_${j.id}" value="${esc(j.nombre)}" ${checked} style="width:auto;margin:0;">
       <label for="ap_${j.id}" style="margin:0;cursor:pointer;font-size:0.88rem;text-transform:none;color:var(--blanco);letter-spacing:0;">
-        ${j.nombre} ${j.portero ? '🧤' : ''} <span style="color:#555">(${formatPts(j.puntos)} pts)</span>
+        ${esc(j.nombre)} ${j.portero ? '🧤' : ''} <span style="color:#555">(${formatPts(j.puntos)} pts)</span>
         ${j.sancionado ? '<span style="color:var(--rojo);font-size:0.75rem;"> SANCIONADO</span>' : ''}
       </label>
     `;
@@ -5339,7 +6604,7 @@ async function renderAdmin() {
   // Select sanciones
   const sel = document.getElementById('sancionJugador');
   sel.innerHTML = [...state.jugadores].sort((a,b)=>a.nombre.localeCompare(b.nombre)).map(j =>
-    `<option value="${j.nombre}">${j.nombre} (${formatPts(j.puntos)} pts)</option>`
+    `<option value="${esc(j.nombre)}">${esc(j.nombre)} (${formatPts(j.puntos)} pts)</option>`
   ).join('');
 
   // Render tabla jugadores
@@ -5350,9 +6615,390 @@ async function renderAdmin() {
     const proxDia = proximoLunesDesdeHoy();
     document.getElementById('nuevaFecha').value = proxDia.toISOString().split('T')[0];
   }
+
+  // Solicitudes de acceso (solo ligas públicas)
+  renderSolicitudes();
+  renderBloqueados();
 }
 
-function configurarPartido() {
+async function renderSolicitudes() {
+  const bloque = document.getElementById('admin-solicitudes-bloque');
+  const lista  = document.getElementById('admin-solicitudes-lista');
+  if (!bloque || !lista) return;
+
+  const db = fbDb();
+  if (!db || !ligaActual) { bloque.style.display = 'none'; return; }
+
+  // Solo mostrar si la liga es pública
+  try {
+    const ligaSnap = await db.collection('ligas').doc(ligaActual).get();
+    if (!ligaSnap.exists || !ligaSnap.data().publica) {
+      bloque.style.display = 'none';
+      return;
+    }
+  } catch(e) { bloque.style.display = 'none'; return; }
+
+  bloque.style.display = 'block';
+  lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">Cargando…</div>';
+
+  // Leer directamente de state.solicitudes (ya cargado vía onSnapshot del estado)
+  const solicitudes = Object.entries(state.solicitudes || {})
+    .filter(([_, s]) => s.estado === 'pendiente')
+    .sort((a, b) => (a[1].timestamp || '') < (b[1].timestamp || '') ? -1 : 1);
+
+  if (solicitudes.length === 0) {
+    lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+    return;
+  }
+
+  lista.innerHTML = '';
+  solicitudes.forEach(([uid, d]) => {
+    const ts  = d.timestamp ? new Date(d.timestamp).toLocaleDateString('es-ES') : '—';
+    const row = document.createElement('div');
+    row.id = `solicitud-row-${uid}`;
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 14px;gap:8px;flex-wrap:wrap;';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:700;color:#ddd;font-size:0.9rem;">${esc(d.nick || d.email || uid)}</div>
+        <div style="font-size:0.75rem;color:#777;">${esc(d.email || '')} · ${ts}</div>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;">
+        <button class="btn btn-verde" style="font-size:0.78rem;padding:6px 12px;"
+          data-uid="${esc(uid)}" data-nick="${esc(d.nick||uid)}"
+          onclick="aceptarSolicitud(this.dataset.uid)">✅ Aceptar</button>
+        <button class="btn btn-rojo" style="font-size:0.78rem;padding:6px 12px;"
+          data-uid="${esc(uid)}"
+          onclick="rechazarSolicitud(this.dataset.uid)">❌ Denegar</button>
+        <button class="btn" style="font-size:0.78rem;padding:6px 12px;background:rgba(120,0,0,0.35);border:1px solid rgba(180,0,0,0.4);color:#e57;"
+          data-uid="${esc(uid)}" data-nick="${esc(d.nick||uid)}"
+          onclick="bloquearSolicitud(this.dataset.uid,null,this.dataset.nick)">🚫 Bloquear</button>
+      </div>`;
+    lista.appendChild(row);
+  });
+}
+
+async function aceptarSolicitud(uid) {
+  const db = fbDb();
+  if (!db || !ligaActual) return;
+  const ok = await confirmar('¿Aceptar solicitud?', 'El jugador será añadido a la lista de jugadores de la liga.', { aceptar: '✅ Aceptar', cancelar: 'Cancelar' });
+  if (!ok) return;
+
+  try {
+    const d    = state.solicitudes?.[uid] || {};
+    const nick = d.nick || d.email?.split('@')[0].toUpperCase() || uid;
+    const stateRef = db.collection('ligas').doc(ligaActual).collection('data').doc('state');
+
+    // Limpiar del state doc (puede haber datos legacy) y del mapa en memoria
+    await stateRef.update({ [`solicitudes.${uid}`]: firebase.firestore.FieldValue.delete() }).catch(()=>{});
+    state.solicitudes = state.solicitudes || {};
+    delete state.solicitudes[uid];
+    try {
+      // Actualizar doc del usuario
+      await db.collection('usuarios').doc(uid).set(
+        { solicitudes: { [ligaActual]: { estado: 'aceptada' } } }, { merge: true }
+      );
+    } catch(_) {};
+
+    // ── Vincular la liga al índice personal del usuario aceptado ──
+    // Sin esto, la liga no aparece en su pantalla de inicio.
+    try {
+      await db.collection('usuarios').doc(uid).collection('ligas').doc(ligaActual).set(
+        { unidoEn: new Date().toISOString() }
+      );
+    } catch(e) { console.warn('aceptarSolicitud: no se pudo vincular liga al usuario', e); }
+
+    // Añadir jugador al state si no existe ya
+    const yaExiste = state.jugadores.some(j => j.uid === uid || j.nombre.toUpperCase() === nick.toUpperCase());
+    if (!yaExiste) {
+      state.jugadores.push({
+        id: Date.now(),
+        nombre: nick,
+        uid,
+        puntos: state.config.puntosIniciales ?? 0,
+        totales: 0,
+        portero: false,
+        sancionado: false,
+        posicion: '',
+        posiciones: [],
+        _vetadoSiguiente: false
+      });
+      guardarDebounced();
+    }
+
+    const row = document.getElementById(`solicitud-row-${uid}`);
+    if (row) row.remove();
+    notif(`${nick} añadido a la liga.`, 'ok');
+    _actualizarBadgeContador(-1);
+
+    const lista = document.getElementById('admin-solicitudes-lista');
+    if (lista && lista.children.length === 0) {
+      lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+    }
+  } catch(e) {
+    console.error('aceptarSolicitud:', e);
+    notif('Error al aceptar la solicitud.', 'error');
+  }
+}
+
+async function rechazarSolicitud(uid) {
+  const db = fbDb();
+  if (!db || !ligaActual) return;
+  const ok = await confirmar('¿Rechazar solicitud?', 'Se notificará al usuario que su solicitud fue rechazada.', { aceptar: '❌ Rechazar', cancelar: 'Cancelar' });
+  if (!ok) return;
+
+  try {
+    // Limpiar del state doc (legacy) y del mapa en memoria
+    await db.collection('ligas').doc(ligaActual).collection('data').doc('state')
+      .update({ [`solicitudes.${uid}`]: firebase.firestore.FieldValue.delete() }).catch(()=>{});
+    delete state.solicitudes?.[uid];
+    try {
+      await db.collection('usuarios').doc(uid).set(
+        { solicitudes: { [ligaActual]: { estado: 'rechazada' } } }, { merge: true }
+      );
+    } catch(_) {}
+
+    const row = document.getElementById(`solicitud-row-${uid}`);
+    if (row) row.remove();
+    notif('Solicitud rechazada.', 'ok');
+    _actualizarBadgeContador(-1);
+
+    const lista = document.getElementById('admin-solicitudes-lista');
+    if (lista && lista.children.length === 0) {
+      lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+    }
+  } catch(e) {
+    console.error('rechazarSolicitud:', e);
+    notif('Error al rechazar la solicitud.', 'error');
+  }
+}
+
+// ── Bloquear usuario ──
+async function bloquearSolicitud(uid, docId, nick) {
+  const db = fbDb();
+  if (!db || !ligaActual) return;
+  const ok = await confirmar('¿Bloquear usuario?',
+    `${nick} no podrá enviar más solicitudes a esta liga.`,
+    { aceptar: '🚫 Bloquear', cancelar: 'Cancelar', peligro: true });
+  if (!ok) return;
+
+  try {
+    // Limpiar del state doc (legacy) y del mapa en memoria
+    await db.collection('ligas').doc(ligaActual).collection('data').doc('state')
+      .update({ [`solicitudes.${uid}`]: firebase.firestore.FieldValue.delete() }).catch(()=>{});
+    delete state.solicitudes?.[uid];
+    try {
+      await db.collection('usuarios').doc(uid).set(
+        { solicitudes: { [ligaActual]: { estado: 'bloqueada' } } }, { merge: true }
+      );
+    } catch(_) {}
+
+    // Añadir al listado de bloqueados en state.config
+    if (!Array.isArray(state.config.usuariosBloqueados)) state.config.usuariosBloqueados = [];
+    if (!state.config.usuariosBloqueados.some(b => b.uid === uid)) {
+      state.config.usuariosBloqueados.push({ uid, nick, fecha: new Date().toLocaleString('es-ES') });
+      await guardar();
+    }
+
+    const row = document.getElementById(`solicitud-row-${uid}`);
+    if (row) row.remove();
+    notif(`${nick} bloqueado.`, 'ok');
+    _actualizarBadgeContador(-1);
+
+    const lista = document.getElementById('admin-solicitudes-lista');
+    if (lista && lista.children.length === 0) {
+      lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+    }
+    renderBloqueados();
+  } catch(e) {
+    console.error('bloquearSolicitud:', e);
+    notif('Error al bloquear al usuario.', 'error');
+  }
+}
+
+// ── Listado de usuarios bloqueados ──
+function renderBloqueados() {
+  const bloque = document.getElementById('admin-bloqueados-bloque');
+  const lista  = document.getElementById('admin-bloqueados-lista');
+  if (!bloque || !lista) return;
+
+  const bloqueados = state.config?.usuariosBloqueados || [];
+  if (!esAdminActual(state) || bloqueados.length === 0) {
+    bloque.style.display = 'none';
+    return;
+  }
+
+  bloque.style.display = 'block';
+  lista.innerHTML = '';
+  bloqueados.forEach(b => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:rgba(120,0,0,0.12);border:1px solid rgba(180,0,0,0.2);border-radius:8px;padding:8px 12px;';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:700;color:#ddd;font-size:0.88rem;">🚫 ${esc(b.nick || b.uid)}</div>
+        <div style="font-size:0.72rem;color:#666;">${esc(b.fecha || '')}</div>
+      </div>
+      <button class="btn btn-gris" style="font-size:0.75rem;padding:5px 10px;"
+        data-uid="${esc(b.uid)}" onclick="desbloquearUsuario(this.dataset.uid)">✅ Desbloquear</button>`;
+    lista.appendChild(row);
+  });
+}
+
+async function desbloquearUsuario(uid) {
+  if (!state.config?.usuariosBloqueados) return;
+  const b = state.config.usuariosBloqueados.find(x => x.uid === uid);
+  const nick = b?.nick || uid;
+  const ok = await confirmar('¿Desbloquear?', `${nick} podrá volver a enviar solicitudes.`, { aceptar: 'Desbloquear', cancelar: 'Cancelar' });
+  if (!ok) return;
+
+  state.config.usuariosBloqueados = state.config.usuariosBloqueados.filter(x => x.uid !== uid);
+  // Limpiar estado de solicitud del usuario para que pueda volver a pedir
+  const db = fbDb();
+  if (db) {
+    try {
+      await db.collection('usuarios').doc(uid).set(
+        { solicitudes: { [ligaActual]: firebase.firestore.FieldValue.delete() } }, { merge: true }
+      );
+    } catch(_) {}
+  }
+  await guardar();
+  renderBloqueados();
+  notif(`${nick} desbloqueado.`, 'ok');
+}
+
+// ── Solicitudes en pestaña Perfil (solo admin) ──
+async function renderSolicitudesPerfil() {
+  const bloque = document.getElementById('perfil-solicitudes-bloque');
+  const lista  = document.getElementById('perfil-solicitudes-lista');
+  if (!bloque || !lista) return;
+
+  // Solo mostrar si el usuario es admin de la liga actual
+  if (!esAdminActual(state) || !ligaActual) {
+    bloque.style.display = 'none';
+    return;
+  }
+
+  bloque.style.display = 'block';
+
+  // Leer de state.solicitudes — sin Firestore extra
+  const solicitudes = Object.entries(state.solicitudes || {})
+    .filter(([_, s]) => s.estado === 'pendiente')
+    .sort((a, b) => (a[1].timestamp || '') < (b[1].timestamp || '') ? -1 : 1);
+
+  const badge = document.getElementById('perfil-solicitudes-badge');
+  if (solicitudes.length === 0) {
+    lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+    if (badge) badge.style.display = 'none';
+    return;
+  }
+
+  const n = solicitudes.length;
+  if (badge) { badge.textContent = `${n} pendiente${n > 1 ? 's' : ''}`; badge.style.display = 'inline'; }
+
+  lista.innerHTML = '';
+  solicitudes.forEach(([uid, d]) => {
+    const ts  = d.timestamp ? new Date(d.timestamp).toLocaleDateString('es-ES') : '—';
+    const row = document.createElement('div');
+    row.id = `psolicitud-row-${uid}`;
+    row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;background:rgba(0,0,0,0.2);border-radius:8px;padding:10px 14px;gap:8px;flex-wrap:wrap;';
+    row.innerHTML = `
+      <div>
+        <div style="font-weight:700;color:#ddd;font-size:0.9rem;">${esc(d.nick || d.email || uid)}</div>
+        <div style="font-size:0.75rem;color:#777;">${esc(d.email || '')} · ${ts}</div>
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-verde" style="font-size:0.78rem;padding:6px 12px;"
+          data-uid="${esc(uid)}"
+          onclick="aceptarSolicitudPerfil(this.dataset.uid)">✅ Aceptar</button>
+        <button class="btn btn-rojo" style="font-size:0.78rem;padding:6px 12px;"
+          data-uid="${esc(uid)}"
+          onclick="rechazarSolicitudPerfil(this.dataset.uid)">❌ Rechazar</button>
+      </div>`;
+    lista.appendChild(row);
+  });
+}
+
+// ── Aceptar/rechazar desde Perfil (quita la fila y actualiza badge) ──
+async function aceptarSolicitudPerfil(uid) {
+  await aceptarSolicitud(uid);
+  renderSolicitudesPerfil();
+}
+
+async function rechazarSolicitudPerfil(uid) {
+  await rechazarSolicitud(uid);
+  renderSolicitudesPerfil();
+}
+
+// ── Badge rojo en la tab Perfil ──
+function _actualizarBadgeContador(delta) {
+  const tabBadges = [
+    document.getElementById('badge-solicitudes'),
+    document.getElementById('badge-admin-solicitudes')
+  ];
+  const bell      = document.getElementById('notif-bell-wrap');
+  const bellBadge = document.getElementById('notif-bell-badge');
+  const pBadge    = document.getElementById('perfil-solicitudes-badge');
+  const ref       = tabBadges.find(b => b);
+  if (!ref) return;
+
+  const actual = parseInt(ref.textContent) || 0;
+  const nuevo  = Math.max(0, actual + delta);
+
+  tabBadges.forEach(b => {
+    if (!b) return;
+    if (nuevo === 0) { b.style.display = 'none'; }
+    else             { b.textContent = nuevo; b.style.display = 'inline-block'; }
+  });
+
+  if (bell)      bell.style.display      = nuevo > 0 ? 'block' : 'none';
+  if (bellBadge) bellBadge.textContent   = nuevo;
+  if (pBadge) {
+    if (nuevo === 0) { pBadge.style.display = 'none'; }
+    else             { pBadge.textContent = `${nuevo} pendiente${nuevo > 1 ? 's' : ''}`; pBadge.style.display = 'inline'; }
+  }
+
+  if (nuevo === 0) {
+    ['perfil-solicitudes-lista', 'admin-solicitudes-lista'].forEach(id => {
+      const lista = document.getElementById(id);
+      if (lista && lista.children.length === 0) {
+        lista.innerHTML = '<div style="color:#555;font-size:0.85rem;">No hay solicitudes pendientes.</div>';
+      }
+    });
+  }
+}
+
+// Lee de state.solicitudes (en memoria, actualizado vía onSnapshot del estado)
+function actualizarBadgeSolicitudes() {
+  const tabBadges = [
+    document.getElementById('badge-solicitudes'),
+    document.getElementById('badge-admin-solicitudes')
+  ];
+  const bell      = document.getElementById('notif-bell-wrap');
+  const bellBadge = document.getElementById('notif-bell-badge');
+
+  const n = esAdminActual(state)
+    ? Object.values(state.solicitudes || {}).filter(s => s.estado === 'pendiente').length
+    : 0;
+
+  tabBadges.forEach(b => {
+    if (!b) return;
+    if (n > 0) { b.textContent = n; b.style.display = 'inline-block'; }
+    else        { b.style.display = 'none'; }
+  });
+  if (bell)      bell.style.display    = n > 0 ? 'block' : 'none';
+  if (bellBadge) bellBadge.textContent = n;
+}
+
+// Abre el tab Perfil y hace scroll a las solicitudes
+function abrirNotificaciones() {
+  const tabPerfil = document.querySelector('[data-i18n="tab.perfil"]');
+  if (tabPerfil) { showTab('perfil', tabPerfil); }
+  setTimeout(() => {
+    const el = document.getElementById('perfil-solicitudes-bloque');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }, 150);
+}
+
+async function configurarPartido() {
   const fecha = document.getElementById('nuevaFecha').value;
   if (!fecha) { notif('Selecciona una fecha', 'error'); return; }
 
@@ -5372,21 +7018,25 @@ function configurarPartido() {
         `• Dentro: ${ultimo.nombre} (${formatPts(ultimo.puntos)} pts, ${formatPts(ultimo.totales)} tot)\n` +
         `• Fuera:  ${primeroFuera.nombre} (${formatPts(primeroFuera.puntos)} pts, ${formatPts(primeroFuera.totales)} tot)\n\n` +
         `Mismo puntos Y mismos totales. El criterio es quién se apuntó antes (más arriba en la lista).\n¿Es correcto el orden actual?`;
-      if (!confirm(msg)) return;
+      if (!await confirmar('⚠️ Empate exacto en el límite', msg.split('\n\n').slice(1).join('\n\n'), { aceptar: 'Sí, es correcto', cancelar: 'Revisar', detalle: `• Dentro: ${ultimo.nombre}\n• Fuera: ${primeroFuera.nombre}` })) return;
     }
   }
 
-  state.partido = {
-    fecha,
-    apuntados,
-    titulares: titulares.map(j => j.nombre),
-    reservas: reservas.map(j => j.nombre)
-  };
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
+    state.partido = {
+      fecha,
+      apuntados,
+      titulares: titulares.map(j => j.nombre),
+      reservas: reservas.map(j => j.nombre)
+    };
 
-  registrarHistorial(`📅 Partido configurado para ${fecha}. Apuntados: ${apuntados.length}. Titulares: ${titulares.length}. Reservas: ${reservas.length}.`);
-  guardar();
-  notif('¡Partido configurado!');
-  renderAdmin();
+    registrarHistorial(`📅 Partido configurado para ${fecha}. Apuntados: ${apuntados.length}. Titulares: ${titulares.length}. Reservas: ${reservas.length}.`);
+    await guardar();
+    notif('¡Partido configurado!');
+    renderAdmin();
+  } finally { _accionPendiente = false; }
 }
 
 function limpiarPartido() {
@@ -5401,6 +7051,9 @@ function limpiarPartido() {
 // con resultado:null y abre el modal para anotar quién ganó.
 // Funciona con el modelo nuevo de proximoPartido — limpia ambos estados.
 async function cerrarPartido() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   asegurarProximoPartido();
   const pp = state.proximoPartido;
   const p  = state.partido;
@@ -5417,22 +7070,33 @@ async function cerrarPartido() {
 
   const totalTit = p.titulares.length;
   const totalRes = p.reservas.length;
-  if (!confirm(`¿Confirmas que el partido se jugó?\n\nSe sumarán +1 punto a los ${totalTit} titulares y +0.5 a los ${totalRes} reservas.\nDespués se te pedirá el resultado (gana blanco / gana rojo / empate).\n\nEsta acción no se puede deshacer.`)) return;
+  if (!await confirmar('¿Cerrar partido?', `+1 pt a ${totalTit} titulares · +0.5 pt a ${totalRes} reservas.\nA continuación se pedirá el resultado.`, { aceptar: 'Sí, cerrar partido', detalle: 'Esta acción no se puede deshacer.' })) return;
 
   // +1 a titulares
   p.titulares.forEach(nombre => {
     const j = state.jugadores.find(x => x.nombre === nombre);
-    if (j) { j.puntos += 1; j.totales += 1; registrarHistorial(`✅ Partido jugado +1 pt → ${formatPts(j.puntos)} pts`, nombre); }
+    if (j) {
+      j.puntos  = Math.round((j.puntos  + 1) * 10) / 10;
+      j.totales = Math.round((j.totales + 1) * 10) / 10;
+      registrarHistorial(`✅ Partido jugado +1 pt → ${formatPts(j.puntos)} pts`, nombre);
+    }
   });
 
   // +0.5 a reservas que no entraron
   p.reservas.forEach(nombre => {
     const j = state.jugadores.find(x => x.nombre === nombre);
-    if (j) { j.puntos += 0.5; j.totales += 0.5; registrarHistorial(`⏳ Reserva +0.5 pts → ${formatPts(j.puntos)} pts`, nombre); }
+    if (j) {
+      j.puntos  = Math.round((j.puntos  + 0.5) * 10) / 10;
+      j.totales = Math.round((j.totales + 0.5) * 10) / 10;
+      registrarHistorial(`⏳ Reserva +0.5 pts → ${formatPts(j.puntos)} pts`, nombre);
+    }
   });
 
-  // Levantar sanciones de 1 semana
-  state.jugadores.forEach(j => { if (j.sancionado) j.sancionado = false; });
+  // Levantar sanciones de 1 semana y limpiar vetos (el partido ha concluido)
+  state.jugadores.forEach(j => {
+    if (j.sancionado) j.sancionado = false;
+    if (j._vetadoSiguiente) j._vetadoSiguiente = false;
+  });
 
   // Guardar en historial de partidos (para el calendario y para stats)
   if (!state.partidos_jugados) state.partidos_jugados = [];
@@ -5444,6 +7108,8 @@ async function cerrarPartido() {
     equipoRojo: [...(p._equipoRojo || [])],
     resultado: null   // se rellenará desde el modal de resultado
   });
+  // Limitar a 200 partidos para no superar el límite de 1 MiB del documento Firestore
+  if (state.partidos_jugados.length > 200) state.partidos_jugados = state.partidos_jugados.slice(0, 200);
 
   // Incrementar contador total
   state.config.partidos = (state.config.partidos || 0) + 1;
@@ -5469,6 +7135,7 @@ async function cerrarPartido() {
   // Pedir resultado — el partido se acaba de añadir al inicio (unshift),
   // así que su índice es 0
   abrirModalResultadoIdx(0);
+  } finally { _accionPendiente = false; }
 }
 
 function aplicarSancion() {
@@ -5569,11 +7236,11 @@ function renderTesoreriaCobros() {
     return `
       <div style="display:flex;align-items:center;gap:10px;background:rgba(46,204,113,0.04);border:1px solid rgba(46,204,113,0.15);border-radius:8px;padding:10px 12px;margin-bottom:5px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${c.cobradorNombre || '—'} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}${c.partidoNum ? ' · partido #' + c.partidoNum : ''}</span></div>
+          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${esc(c.cobradorNombre || '—')} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}${c.partidoNum ? ' · partido #' + c.partidoNum : ''}</span></div>
           <div style="font-size:0.72rem;color:#777;margin-top:2px;">
             ${c.jugadores || 0} jugadores · alquiler ${fmtEur(c.alquilerCampo || 0)} · al bote <strong style="color:var(--verde-neon);">${fmtEur(aporte)}</strong>
           </div>
-          ${c.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${c.nota}"</div>` : ''}
+          ${c.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${esc(c.nota)}"</div>` : ''}
         </div>
         <div style="text-align:right;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#ddd;">${fmtEur(c.total)}</div>
@@ -5598,8 +7265,8 @@ function renderTesoreriaGastos() {
     return `
       <div style="display:flex;align-items:center;gap:10px;background:rgba(231,76,60,0.04);border:1px solid rgba(231,76,60,0.15);border-radius:8px;padding:10px 12px;margin-bottom:5px;">
         <div style="flex:1;min-width:0;">
-          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${g.concepto || '—'} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}</span></div>
-          ${g.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${g.nota}"</div>` : ''}
+          <div style="font-size:0.88rem;color:#ddd;font-weight:600;">${esc(g.concepto || '—')} <span style="color:#666;font-weight:400;font-size:0.78rem;">· ${fecha}</span></div>
+          ${g.nota ? `<div style="font-size:0.7rem;color:#888;margin-top:3px;font-style:italic;">"${esc(g.nota)}"</div>` : ''}
         </div>
         <div style="text-align:right;">
           <div style="font-family:'Bebas Neue',sans-serif;font-size:1.1rem;color:#e74c3c;">−${fmtEur(g.importe)}</div>
@@ -5628,7 +7295,7 @@ function abrirModalCobro() {
   const selJug = document.getElementById('cobroJugador');
   const jugadoresOrdenados = [...state.jugadores].sort((a, b) => a.nombre.localeCompare(b.nombre));
   selJug.innerHTML = jugadoresOrdenados
-    .map(j => `<option value="${j.nombre}">${j.nombre}</option>`)
+    .map(j => `<option value="${esc(j.nombre)}">${esc(j.nombre)}</option>`)
     .join('');
 
   // Poblar select de partidos: los partidos jugados, más reciente primero,
@@ -5751,11 +7418,11 @@ function guardarCobro() {
   notif('Cobro registrado correctamente');
 }
 
-function borrarCobro(idx) {
+async function borrarCobro(idx) {
   if (!esAdminActual(state)) return;
   const c = state.cobros[idx];
   if (!c) return;
-  if (!confirm(`¿Borrar el cobro de ${c.cobradorNombre} (${fmtEur(c.total)})?`)) return;
+  if (!await confirmar('¿Borrar cobro?', `Cobro de ${c.cobradorNombre} · ${fmtEur(c.total)}`, { aceptar: 'Borrar', peligro: true })) return;
   state.cobros.splice(idx, 1);
   registrarHistorial(`🗑 Cobro borrado: ${c.cobradorNombre} · ${fmtEur(c.total)}`);
   guardar();
@@ -5803,11 +7470,11 @@ function guardarGasto() {
   notif('Gasto añadido');
 }
 
-function borrarGasto(idx) {
+async function borrarGasto(idx) {
   if (!esAdminActual(state)) return;
   const g = state.gastos[idx];
   if (!g) return;
-  if (!confirm(`¿Borrar el gasto "${g.concepto}" (${fmtEur(g.importe)})?`)) return;
+  if (!await confirmar('¿Borrar gasto?', `"${g.concepto}" · ${fmtEur(g.importe)}`, { aceptar: 'Borrar', peligro: true })) return;
   state.gastos.splice(idx, 1);
   registrarHistorial(`🗑 Gasto borrado: ${g.concepto} · ${fmtEur(g.importe)}`);
   guardar();
@@ -5943,7 +7610,7 @@ function renderGestionJugadores() {
       <div style="flex:1;min-width:0;">
         <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
           ${j.sancionado ? '<span style="color:var(--rojo);font-size:0.75rem;">🚫</span>' : ''}
-          <span style="font-size:0.9rem;font-weight:600;color:var(--blanco);">${j.nombre}</span>
+          <span style="font-size:0.9rem;font-weight:600;color:var(--blanco);">${esc(j.nombre)}</span>
           ${j.portero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.55rem;padding:1px 4px;border-radius:3px;">POR</span>' : ''}
           ${isAdmin ? '<span style="background:#c9910a;color:#fff;font-size:0.55rem;padding:1px 4px;border-radius:3px;font-weight:700;">ADMIN</span>' : ''}
         </div>
@@ -5992,7 +7659,7 @@ function abrirEdicionJugador(id) {
   modal.innerHTML = `
   <div class="modal" style="max-width:420px;max-height:90vh;overflow-y:auto;">
     <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
-      <h2 style="margin:0;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;">${j.nombre}</h2>
+      <h2 style="margin:0;font-family:'Bebas Neue',sans-serif;font-size:1.4rem;letter-spacing:1px;">${esc(j.nombre)}</h2>
       <button onclick="cerrarModalEdJugador()" style="background:none;border:none;color:#888;font-size:1.4rem;cursor:pointer;">✕</button>
     </div>
 
@@ -6038,7 +7705,7 @@ function abrirEdicionJugador(id) {
     <!-- Acciones -->
     <div style="display:flex;flex-wrap:wrap;gap:8px;">
       ${adminBtn}
-      <button onclick="if(confirm('¿Eliminar a ${j.nombre.replace(/'/g,"\\'")}?')){confirmarEliminar(${id});cerrarModalEdJugador()}"
+      <button onclick="confirmarEliminar(${id}).then(()=>{ if(!state.jugadores.find(x=>x.id===${id})) cerrarModalEdJugador(); })"
         class="btn" style="background:#2a1010;border:1px solid #4a1010;color:#e74c3c;font-size:0.82rem;padding:8px 14px;">🗑 Eliminar jugador</button>
     </div>
   </div>`;
@@ -6054,27 +7721,30 @@ function cerrarModalEdJugador() {
 
 // Promueve a un jugador (con cuenta vinculada) al rol de admin de la liga.
 async function promoverAdmin(uid, jugadorId) {
+  if (_accionPendiente) return;
   if (!uid) return;
   const j = state.jugadores.find(x => x.id === jugadorId);
   if (!j) return;
-  if (!confirm(`¿Promover a "${j.nombre}" como admin de la liga?\n\nPodrá hacer todo lo que tú haces, incluyendo eliminar la liga.`)) return;
+  if (!await confirmar('¿Promover a admin?', `${j.nombre} tendrá los mismos permisos que tú, incluyendo eliminar la liga.`, { aceptar: 'Promover' })) return;
+  _accionPendiente = true;
+  try {
+    const adminUids = getAdminUids(state);
+    if (adminUids.includes(uid)) return; // ya es admin
+    adminUids.push(uid);
+    state.adminUids = adminUids;
 
-  const adminUids = getAdminUids(state);
-  if (adminUids.includes(uid)) return; // ya es admin
-  adminUids.push(uid);
-  state.adminUids = adminUids;
-
-  registrarHistorial(`⭐ ${j.nombre} promovido a admin`);
-  await guardar();
-  // También actualizamos el campo metadata de la liga
-  const db = fbDb();
-  if (db) {
-    try {
-      await db.collection('ligas').doc(ligaActual).update({ adminUids });
-    } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
-  }
-  renderGestionJugadores();
-  notif(`${j.nombre} ahora es admin`);
+    registrarHistorial(`⭐ ${j.nombre} promovido a admin`);
+    await guardar();
+    // También actualizamos el campo metadata de la liga
+    const db = fbDb();
+    if (db) {
+      try {
+        await db.collection('ligas').doc(ligaActual).update({ adminUids });
+      } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
+    }
+    renderGestionJugadores();
+    notif(`${j.nombre} ahora es admin`);
+  } finally { _accionPendiente = false; }
 }
 
 // Quita el rol admin a un jugador. No permite quedarse sin admins.
@@ -6088,38 +7758,41 @@ async function quitarAdmin(uid, jugadorId) {
 
   // Validación: no puede quedar la liga sin admin
   if (adminUids.length <= 1) {
-    alert('No puedes quitar el rol de admin: la liga quedaría sin admin.\n\nPromueve a otro jugador como admin primero.');
+    avisar('No puedes quitar el rol de admin: la liga quedaría sin admin. Primero promueve a otro jugador.');
     return;
   }
 
-  // Si te lo estás quitando a ti mismo, doble confirmación
   const esYoMismo = uid === usuarioActual?.uid;
-  const msg = esYoMismo
-    ? `¿Renunciar al rol de admin?\n\nDejarás de tener permisos de gestión en la liga "${state?.config?.campo || ''}".`
-    : `¿Quitar el rol de admin a "${j.nombre}"?`;
-  if (!confirm(msg)) return;
+  const titulo = esYoMismo ? '¿Renunciar a admin?' : '¿Quitar admin?';
+  const cuerpo = esYoMismo
+    ? 'Dejarás de tener permisos de gestión en esta liga.'
+    : `${j.nombre} perderá los permisos de admin.`;
+  if (!await confirmar(titulo, cuerpo, { aceptar: esYoMismo ? 'Renunciar' : 'Quitar admin', peligro: true })) return;
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
+    state.adminUids = adminUids.filter(x => x !== uid);
+    registrarHistorial(`⭐ Rol de admin retirado: ${j.nombre}`);
+    await guardar();
+    // Sincronizar metadata de la liga
+    const db = fbDb();
+    if (db) {
+      try {
+        await db.collection('ligas').doc(ligaActual).update({ adminUids: state.adminUids });
+      } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
+    }
 
-  state.adminUids = adminUids.filter(x => x !== uid);
-  registrarHistorial(`⭐ Rol de admin retirado: ${j.nombre}`);
-  await guardar();
-  // Sincronizar metadata de la liga
-  const db = fbDb();
-  if (db) {
-    try {
-      await db.collection('ligas').doc(ligaActual).update({ adminUids: state.adminUids });
-    } catch(e) { console.warn('No se pudo actualizar adminUids en metadata', e); }
-  }
-
-  // Si te lo has quitado a ti mismo, salir del panel admin
-  if (esYoMismo) {
-    state.adminLoggedIn = false;
-    document.getElementById('admin-login').style.display = 'block';
-    document.getElementById('admin-panel').style.display = 'none';
-    notif('Has dejado de ser admin');
-  } else {
-    renderGestionJugadores();
-    notif(`${j.nombre} ya no es admin`);
-  }
+    // Si te lo has quitado a ti mismo, salir del panel admin
+    if (esYoMismo) {
+      state.adminLoggedIn = false;
+      document.getElementById('admin-login').style.display = 'block';
+      document.getElementById('admin-panel').style.display = 'none';
+      notif('Has dejado de ser admin');
+    } else {
+      renderGestionJugadores();
+      notif(`${j.nombre} ya no es admin`);
+    }
+  } finally { _accionPendiente = false; }
 }
 
 function ajustarPuntos(id, delta) {
@@ -6128,7 +7801,7 @@ function ajustarPuntos(id, delta) {
   j.puntos = Math.round((j.puntos + delta) * 10) / 10;
   if (delta > 0) j.totales = Math.round((j.totales + delta) * 10) / 10;
   registrarHistorial(`✏️ Ajuste manual: ${j.nombre} ${delta > 0 ? '+' : ''}${delta} pts → ${formatPts(j.puntos)} pts`, j.nombre);
-  guardar();
+  guardarDebounced();
   renderGestionJugadores();
   renderRanking();
 }
@@ -6144,7 +7817,7 @@ function setPuntos(id, valor) {
   if (diff > 0) j.totales = Math.round((j.totales + diff) * 10) / 10;
   j.puntos = redondeado;
   registrarHistorial(`✏️ Puntos editados manualmente: ${j.nombre} → ${formatPts(j.puntos)} pts`, j.nombre);
-  guardar();
+  guardarDebounced();
   renderGestionJugadores();
   renderRanking();
 }
@@ -6154,7 +7827,7 @@ function cambiarRol(id, val) {
   if (!j) return;
   j.portero = val === 'true';
   if (j.portero) j.posicion = 'portero';
-  guardar(); renderGestionJugadores(); renderRanking();
+  guardarDebounced(); renderGestionJugadores(); renderRanking();
 }
 
 function cambiarPosicion(id, val) {
@@ -6162,7 +7835,7 @@ function cambiarPosicion(id, val) {
   if (!j) return;
   j.posicion = val;
   if (!j.posiciones) j.posiciones = val ? [val] : [];
-  guardar();
+  guardarDebounced();
 }
 
 function togglePosicion(id, pos) {
@@ -6175,7 +7848,7 @@ function togglePosicion(id, pos) {
     j.posiciones.push(pos);
   }
   j.posicion = j.posiciones[0] || ''; // compatibilidad
-  guardar();
+  guardarDebounced();
   renderGestionJugadores();
 }
 
@@ -6184,13 +7857,13 @@ function toggleSancion(id) {
   if (!j) return;
   j.sancionado = !j.sancionado;
   registrarHistorial(`${j.sancionado ? '🚫 Sancionado' : '✅ Sanción levantada'}: ${j.nombre}`);
-  guardar(); renderGestionJugadores(); renderRanking();
+  guardarDebounced(); renderGestionJugadores(); renderRanking();
 }
 
-function confirmarEliminar(id) {
+async function confirmarEliminar(id) {
   const j = state.jugadores.find(x => x.id === id);
   if (!j) return;
-  if (!confirm(`¿Eliminar a ${j.nombre}? No se puede deshacer.`)) return;
+  if (!await confirmar('¿Eliminar jugador?', `${j.nombre} será eliminado de la liga.`, { aceptar: 'Eliminar', peligro: true, detalle: 'No se puede deshacer.' })) return;
   const uidJugador = j.uid || null;
   state.jugadores = state.jugadores.filter(x => x.id !== id);
   registrarHistorial(`🗑 Jugador eliminado: ${j.nombre}`);
@@ -6209,29 +7882,37 @@ function confirmarEliminar(id) {
   }
 }
 
-function resetPuntos() {
-  if (!confirm('¿Resetear los puntos de TODOS los jugadores a 0?\n\nLos jugadores se mantienen, solo se ponen los puntos a cero.')) return;
-  state.jugadores.forEach(j => { j.puntos = 0; j.totales = 0; j.sancionado = false; });
-  registrarHistorial('🔄 Reset de puntos: todos los jugadores puestos a 0.');
-  guardar();
-  notif('✅ Puntos reseteados a 0');
-  renderAdmin();
-  renderRanking();
+async function resetPuntos() {
+  if (!await confirmar('¿Resetear puntos?', 'Los puntos de TODOS los jugadores se pondrán a 0.', { aceptar: 'Resetear', peligro: true, detalle: 'Los jugadores se mantienen, solo se borran los puntos.' })) return;
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
+    state.jugadores.forEach(j => { j.puntos = 0; j.totales = 0; j.sancionado = false; });
+    registrarHistorial('🔄 Reset de puntos: todos los jugadores puestos a 0.');
+    await guardar();
+    notif('✅ Puntos reseteados a 0');
+    renderAdmin();
+    renderRanking();
+  } finally { _accionPendiente = false; }
 }
 
-function resetTemporada() {
-  if (!confirm('⚠️ ¿Seguro que quieres borrar TODOS los jugadores, puntos e historial?\n\nEsta acción no se puede deshacer. Se recomienda exportar un backup antes.')) return;
-  if (!confirm('¿Confirmas por segunda vez? Se borrarán todos los datos.')) return;
-  state.jugadores = [];
-  state.partido = null;
-  state.historial = [];
-  state.partidos_jugados = [];
-  state.config.partidos = 0;
-  guardar();
-  notif('✅ Temporada reiniciada. ¡Empieza desde cero!');
-  renderAdmin();
-  renderRanking();
-  document.getElementById('totalPartidos').textContent = '0';
+async function resetTemporada() {
+  if (!await confirmar('¿Nueva temporada?', 'Se borrarán TODOS los jugadores, puntos e historial.', { aceptar: 'Continuar', peligro: true, detalle: 'Esta acción no se puede deshacer. Exporta un backup antes.' })) return;
+  if (!await confirmar('Confirmación final', '¿Borrar definitivamente todos los datos de la liga?', { aceptar: 'Sí, borrar todo', peligro: true })) return;
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
+    state.jugadores = [];
+    state.partido = null;
+    state.historial = [];
+    state.partidos_jugados = [];
+    state.config.partidos = 0;
+    await guardar();
+    notif('✅ Temporada reiniciada. ¡Empieza desde cero!');
+    renderAdmin();
+    renderRanking();
+    document.getElementById('totalPartidos').textContent = '0';
+  } finally { _accionPendiente = false; }
 }
 
 // Constantes para tipos de partido y nº de titulares.
@@ -6296,7 +7977,7 @@ function refrescarAvisoPlazo() {
   aviso.style.display = dias.length === 0 ? 'block' : 'none';
 }
 
-function guardarConfig() {
+async function guardarConfig() {
   // Validar colores antes de guardar nada
   const colorA = document.getElementById('configColorA')?.value || 'blanco';
   const colorB = document.getElementById('configColorB')?.value || 'rojo';
@@ -6305,13 +7986,40 @@ function guardarConfig() {
     return;
   }
 
-  state.config.partidos   = parseInt(document.getElementById('configPartidos').value) || 0;
-  state.config.campo      = document.getElementById('configCampo').value.trim();
-  state.config.hora       = document.getElementById('configHora').value.trim();
-  state.config.precio     = document.getElementById('configPrecio').value.trim();
-  state.config.diaSemana  = parseInt(document.getElementById('configDiaSemana').value);
-  state.config.colorA     = colorA;
-  state.config.colorB     = colorB;
+  const nuevoDia   = parseInt(document.getElementById('configDiaSemana').value);
+  const modoManual = document.getElementById('configModoManual')?.value === 'manual';
+
+  // ── Aviso si cambia el día y hay un partido abierto ──
+  const pp = state.proximoPartido;
+  if (!modoManual && pp && pp.estado === 'abierto' && nuevoDia !== (state.config.diaSemana ?? 1)) {
+    const DIAS = ['domingo','lunes','martes','miércoles','jueves','viernes','sábado'];
+    const fechaActual = pp.fecha
+      ? new Date(pp.fecha + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })
+      : pp.fecha;
+    // Calcular la nueva fecha con el nuevo día de semana
+    const hoy = new Date(); hoy.setHours(0,0,0,0);
+    const diff = (nuevoDia - hoy.getDay() + 7) % 7;
+    const proxima = new Date(hoy); proxima.setDate(hoy.getDate() + diff);
+    const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    const nuevaFecha = fmt(proxima);
+    const nuevaFechaLabel = proxima.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+
+    const mover = await confirmar(
+      '⚠️ Cambio de día de partido',
+      `Hay un partido abierto para el ${fechaActual}.\n¿Moverlo al ${nuevaFechaLabel}?`,
+      { aceptar: `Mover al ${DIAS[nuevoDia]}`, cancelar: 'Dejar como está' }
+    );
+    if (mover) pp.fecha = nuevaFecha;
+  }
+
+  state.config.partidos      = parseInt(document.getElementById('configPartidos').value) || 0;
+  state.config.campo         = document.getElementById('configCampo').value.trim();
+  state.config.hora          = document.getElementById('configHora').value.trim();
+  state.config.precio        = document.getElementById('configPrecio').value.trim();
+  state.config.diaSemana     = nuevoDia;
+  state.config.modoFechaManual = modoManual;
+  state.config.colorA        = colorA;
+  state.config.colorB        = colorB;
 
   // Tipo de partido
   const tipoSel = document.getElementById('configTipoPartido')?.value;
@@ -6323,13 +8031,74 @@ function guardarConfig() {
   const plazo = getPlazoDias().filter(d => d !== state.config.diaSemana);
   state.config.plazoDias = plazo;
 
-  guardar();
+  await guardar();
   notif('Configuración guardada');
   renderRanking();
   renderPartido();
   if (typeof renderCanvasPartido === 'function') renderCanvasPartido();
-  // Refrescar chips por si cambió el día del partido (que ahora está bloqueado)
   renderChipsDiasPlazo();
+}
+
+// Muestra u oculta el selector de día fijo según el select de modo
+function toggleModoManualUI() {
+  const manual = document.getElementById('configModoManual')?.value === 'manual';
+  const grupo  = document.getElementById('config-dia-semana-grupo');
+  const desc   = document.getElementById('config-modo-desc');
+  if (grupo) grupo.style.display = manual ? 'none' : 'block';
+  if (desc)  desc.textContent    = manual
+    ? 'El admin crea el partido manualmente cada semana con la fecha que quiera.'
+    : 'El sistema genera automáticamente el partido para el día configurado.';
+}
+
+// Convoca un partido desde el calendario (modo fecha manual, click en día futuro)
+async function convocarPartidoDesdeCalendario() {
+  const panel = document.getElementById('cal-panel-convocar');
+  const fechaStr = panel?.dataset.fecha;
+  if (!fechaStr) { notif('No se encontró la fecha', 'error'); return; }
+
+  if (state.proximoPartido && state.proximoPartido.estado === 'abierto') {
+    if (!await confirmar('Ya hay un partido abierto', `Hay un partido abierto para el ${state.proximoPartido.fecha}. ¿Reemplazarlo por este?`, { aceptar: 'Sí, reemplazar', peligro: true })) return;
+  }
+
+  const tipo = state.config?.tipoPartido || '7vs7';
+  state.proximoPartido = {
+    fecha: fechaStr, hora: state.config?.hora || '',
+    campo: state.config?.campo || '', tipo,
+    estado: 'abierto', apuntados: [], resultado: null
+  };
+  // Auto-plazo: todos los días de la semana excepto el día del partido
+  const diaPart = new Date(fechaStr + 'T12:00:00').getDay();
+  state.config.plazoDias = [0,1,2,3,4,5,6].filter(d => d !== diaPart);
+  registrarHistorial(`📅 Partido convocado para ${fechaStr}`);
+  await guardar();
+  notif(`✅ Partido convocado para el ${new Date(fechaStr + 'T12:00:00').toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' })}`);
+  document.getElementById('cal-panel').style.display = 'none';
+  renderCalendario();
+  renderPartido();
+}
+
+// Crea un partido manual con la fecha elegida por el admin (modo fecha manual)
+async function crearPartidoManual() {
+  const fechaInput = document.getElementById('pp-manual-fecha');
+  const fecha = fechaInput?.value;
+  if (!fecha) { notif('Elige una fecha para el partido', 'error'); return; }
+
+  const hoyStr = new Date().toISOString().slice(0, 10);
+  if (fecha < hoyStr) {
+    if (!await confirmar('Fecha pasada', 'La fecha elegida ya ha pasado. ¿Crear el partido igualmente?', { aceptar: 'Sí, crear' })) return;
+  }
+
+  const tipo = state.config?.tipoPartido || '7vs7';
+  state.proximoPartido = {
+    fecha, hora: state.config?.hora || '',
+    campo: state.config?.campo || '', tipo,
+    estado: 'abierto', apuntados: [], resultado: null
+  };
+  registrarHistorial(`📅 Partido creado manualmente para ${fecha}`);
+  await guardar();
+  notif('Partido creado');
+  renderPartido();
+  if (typeof renderCalendario === 'function') renderCalendario();
 }
 
 // Validación en vivo de los selectores de color (admin config)
@@ -6388,7 +8157,7 @@ function guardarSanciones() {
 // Útil si el código antiguo se ha filtrado o entró alguien indeseado.
 async function regenerarCodigoLiga() {
   if (!ligaActual) return;
-  if (!confirm('¿Regenerar el código? El código actual quedará invalidado y nadie podrá unirse con él.')) return;
+  if (!await confirmar('¿Regenerar código?', 'El código actual quedará invalidado inmediatamente.', { aceptar: 'Regenerar', peligro: true, detalle: 'Nadie podrá unirse con el código antiguo.' })) return;
 
   const nuevoCodigo = generarCodigo();
   const db = fbDb();
@@ -6585,7 +8354,7 @@ function mostrarPreviewImport(rows) {
   document.getElementById('import-preview-lista').innerHTML = importPreviewData.map((j, i) => `
     <div style="display:flex;align-items:center;gap:8px;padding:6px 10px;background:var(--gris-oscuro);border-radius:7px;margin-bottom:4px;border:1px solid #222;">
       <span style="font-size:0.82rem;font-weight:600;flex:1;color:${j.portero ? 'var(--azul)' : 'var(--blanco)'};">
-        ${j.portero ? '🧤 ' : ''}${j.nombre}
+        ${j.portero ? '🧤 ' : ''}${esc(j.nombre)}
       </span>
       <span style="font-size:0.78rem;color:#888;">${posLabel[j.posicion] || ''} ${j.posicion || '—'}</span>
       <span style="font-family:'Bebas Neue',sans-serif;font-size:0.95rem;color:var(--verde-neon);min-width:36px;text-align:right;">${formatPts(j.puntos)}</span>
@@ -6596,13 +8365,15 @@ function mostrarPreviewImport(rows) {
   notif(`${importPreviewData.length} jugadores detectados — revisa y confirma`);
 }
 
-function confirmarImportJugadores() {
+async function confirmarImportJugadores() {
   if (importPreviewData.length === 0) return;
 
   const modo = state.jugadores.length > 0
-    ? confirm(`Ya hay ${state.jugadores.length} jugadores en la liga.\n\n` +
-        '• Pulsa ACEPTAR para AÑADIR los nuevos jugadores a los existentes\n' +
-        '• Pulsa CANCELAR para REEMPLAZAR todos los jugadores actuales')
+    ? await confirmar(
+        `Importar jugadores`,
+        `Ya hay ${state.jugadores.length} jugadores en la liga. ¿Qué quieres hacer?`,
+        { aceptar: 'Añadir a los existentes', cancelar: 'Reemplazar todos' }
+      )
     : false; // false = reemplazar (no hay existentes)
 
   let maxId = Math.max(...state.jugadores.map(j => j.id), 0);
@@ -6696,9 +8467,12 @@ function renderCalendario() {
     const fecha = new Date(calAnio, calMes, dia); fecha.setHours(0,0,0,0);
     const fechaStr = `${calAnio}-${String(calMes+1).padStart(2,'0')}-${String(dia).padStart(2,'0')}`;
     const diaPart = state.config.diaSemana ?? 1; // día de partido de esta liga
-    const esDiaPartido = fecha.getDay() === diaPart;
     const esHoy = fecha.getTime() === hoy.getTime();
     const esPasado = fecha < hoy;
+    // Solo marcar como "día de partido" si es hoy o futuro: los días pasados sin
+    // registro real no deben colorearse aunque coincidan con el día configurado.
+    // En modo manual no hay "día de partido fijo", así que no se colorea ningún día futuro
+    const esDiaPartido = !state.config?.modoFechaManual && fecha.getDay() === diaPart && !esPasado;
     const partidoReg = pjMap[fechaStr] || null;
     const jugado = !!partidoReg && !partidoReg.cancelado && !partidoReg.suspendido;
     const cancelado = !!partidoReg?.cancelado;
@@ -6720,12 +8494,18 @@ function renderCalendario() {
     // ADEMÁS, los admins pueden clicar en cualquier día pasado o de hoy que esté libre,
     // para añadir un partido manualmente.
     const eresAdmin = esAdminActual(state);
+    const esFuturo = !esPasado && !esHoy;
+    // Días pasados/hoy libres: admin puede añadir partido manual
     const diaLibreEditable = !partidoReg && !pendiente && (esPasado || esHoy) && eresAdmin;
-    const clickable = jugado || cancelado || suspendido || pendiente || esDiaPartido || diaLibreEditable;
+    // Modo manual: admin puede clicar días futuros libres para convocar partido
+    const diaFuturoConvocable = state.config?.modoFechaManual && esFuturo && !partidoReg && !pendiente && eresAdmin;
+    const clickable = jugado || cancelado || suspendido || pendiente || esDiaPartido || diaLibreEditable || diaFuturoConvocable;
 
     // Para días libres editables que no tengan otro estilo, subir un poco el color
     // para que el admin vea que son clicables (sin cambiar el fondo, para no saturar).
     if (diaLibreEditable && color === '#444') color = '#666';
+    // Modo manual: días futuros convocables — resaltar sutilmente en verde
+    if (diaFuturoConvocable && color === '#444') { color = 'rgba(46,204,113,0.55)'; }
     cell.style.cssText = `
       height:44px; border-radius:8px; display:flex; align-items:center; justify-content:center;
       font-size:0.88rem; font-weight:${clickable ? '700' : '400'};
@@ -6797,6 +8577,24 @@ function renderCalendario() {
     avisoFaltan.style.display = 'none';
     accAdmin.style.display = 'none';
   }
+
+  // ── Info del próximo partido en la card superior del calendario ──
+  const infoCard = document.getElementById('cal-partido-info');
+  if (infoCard) {
+    const ppActivo = pp && pp.estado !== 'cancelado' && pp.estado !== 'jugado';
+    infoCard.style.display = ppActivo ? 'block' : 'none';
+    if (ppActivo) {
+      const cfg = state.config || {};
+      const total = (pp.apuntados || []).length;
+      const limite = titularesProximoPartido();
+      document.getElementById('cal-pp-campo').textContent     = cfg.campo  || '—';
+      document.getElementById('cal-pp-hora').textContent      = cfg.hora   || '—';
+      document.getElementById('cal-pp-precio').textContent    = cfg.precio ? cfg.precio + ' €' : '—';
+      document.getElementById('cal-pp-tipo').textContent      = pp.tipo || cfg.tipoPartido || '—';
+      document.getElementById('cal-pp-apuntados').textContent = `${total} / ${limite}`;
+      document.getElementById('cal-pp-plazo').textContent     = descripcionPlazo();
+    }
+  }
 }
 
 function proximoLunesDesdeHoy() {
@@ -6808,7 +8606,7 @@ function proximoLunesDesdeHoy() {
   return proximo;
 }
 
-function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
+async function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
   calFechaSeleccionada = fechaStr;
   calWaDetectados = [];
 
@@ -6820,9 +8618,11 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
   const fechaLabel = fechaObj.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long', year:'numeric' }).toUpperCase();
 
   // Helper: ocultar todos los sub-paneles antes de mostrar el correcto
-  const panelManual = document.getElementById('cal-panel-manual');
+  const panelManual    = document.getElementById('cal-panel-manual');
+  const panelConvocar  = document.getElementById('cal-panel-convocar');
   panelPasado.style.display = 'none';
-  if (panelManual) panelManual.style.display = 'none';
+  if (panelManual)   panelManual.style.display   = 'none';
+  if (panelConvocar) panelConvocar.style.display = 'none';
 
   // Si hay registro en partidos_jugados (jugado, cancelado o suspendido) →
   // mostrar el panel "pasado" con sus controles, sea fecha pasada o futura.
@@ -6835,6 +8635,20 @@ function seleccionarLunes(fechaStr, esPasado, jugado, pendiente) {
   const esProximoPendiente = state.proximoPartido?.fecha === fechaStr
                               && state.proximoPartido?.estado !== 'jugado'
                               && state.proximoPartido?.estado !== 'cancelado';
+  // Modo fecha manual + día futuro libre + admin + sin partido pendiente → panel convocar
+  const hoyStr2 = new Date().toISOString().slice(0, 10);
+  const esFuturo = fechaStr > hoyStr2;
+  if (state.config?.modoFechaManual && esFuturo && !tieneRegistro && !esProximoPendiente && eresAdmin) {
+    if (panelConvocar) {
+      panelConvocar.style.display = 'block';
+      const el = document.getElementById('cal-convocar-fecha');
+      if (el) el.textContent = fechaLabel;
+      panelConvocar.dataset.fecha = fechaStr;
+      panel.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    return;
+  }
+
   if (!tieneRegistro && (esPasado || fechaStr === new Date().toISOString().slice(0,10)) && !esProximoPendiente && eresAdmin) {
     if (panelManual) {
       panelManual.style.display = 'block';
@@ -7156,7 +8970,7 @@ function calVolverPaso1() {
   document.getElementById('cal-wa-paso2').style.display = 'none';
 }
 
-function confirmarCalendario() {
+async function confirmarCalendario() {
   if (!calFechaSeleccionada) return;
 
   const seleccionados = calWaDetectados.filter(d => d.incluir);
@@ -7186,7 +9000,7 @@ function confirmarCalendario() {
   if (titulares.length >= 16 && reservas.length > 0) {
     const ultimo = titulares[titulares.length-1], primero = reservas[0];
     if (!ultimo.esInvitado && !primero.esInvitado && ultimo.puntos === primero.puntos && ultimo.totales === primero.totales) {
-      if (!confirm(`⚠️ EMPATE en puesto 16:\n• Dentro: ${ultimo.nombre}\n• Fuera: ${primero.nombre}\n\n¿Es correcto el orden?`)) return;
+      if (!await confirmar('⚠️ Empate en puesto 16', '¿Es correcto el orden?', { aceptar: 'Sí, es correcto', cancelar: 'Revisar', detalle: `• Dentro: ${esc(ultimo.nombre)}\n• Fuera: ${esc(primero.nombre)}` })) return;
     }
   }
 
@@ -7217,12 +9031,10 @@ function cerrarCalPanel() {
 //  HISTORIAL + FICHAS JUGADOR
 // ═══════════════════════════════════════════════
 
-function registrarHistorial(desc, jugadorNombre = null) {
-  state.historial.unshift({
-    fecha: new Date().toLocaleString('es-ES'),
-    desc,
-    jugador: jugadorNombre
-  });
+function registrarHistorial(desc, jugadorNombre = null, tipo = null) {
+  const entry = { fecha: new Date().toLocaleString('es-ES'), desc, jugador: jugadorNombre };
+  if (tipo) entry.tipo = tipo;
+  state.historial.unshift(entry);
   if (state.historial.length > 500) state.historial.pop();
 }
 
@@ -7232,7 +9044,7 @@ function renderHistorial() {
   const actual = sel.value;
   sel.innerHTML = '<option value="">— Selecciona un jugador —</option>' +
     [...state.jugadores].sort((a,b) => a.nombre.localeCompare(b.nombre))
-      .map(j => `<option value="${j.id}" ${j.id == actual ? 'selected' : ''}>${j.nombre}</option>`).join('');
+      .map(j => `<option value="${j.id}" ${j.id == actual ? 'selected' : ''}>${esc(j.nombre)}</option>`).join('');
 
   renderFicha();
 
@@ -7244,8 +9056,8 @@ function renderHistorial() {
   }
   lista.innerHTML = state.historial.map(h => `
     <div class="historial-item">
-      <div class="historial-fecha">${h.fecha}</div>
-      <div class="historial-desc">${h.desc}</div>
+      <div class="historial-fecha">${esc(h.fecha)}</div>
+      <div class="historial-desc">${esc(h.desc)}</div>
     </div>
   `).join('');
 }
@@ -7291,12 +9103,14 @@ function _construirStatsCache() {
   });
 
   // Un solo recorrido sobre historial para contar bajas
+  // Usa h.tipo === 'baja' si existe (entradas nuevas), o fallback a texto para entradas antiguas
   (state.historial || []).forEach(h => {
     if (!h.jugador) return;
     if (!cache[h.jugador]) cache[h.jugador] = { jugados: 0, victorias: 0, derrotas: 0, empates: 0, bajas: 0, pct: null };
-    if (h.desc.includes('dio de baja') || h.desc.includes('Sanción a') || h.desc.includes('🟥')) {
-      cache[h.jugador].bajas++;
-    }
+    const esBaja = h.tipo === 'baja' ||
+      (!h.tipo && (h.desc.includes('dio de baja') || h.desc.includes('Sanción a') ||
+                   h.desc.includes('🟥') || h.desc.includes('🟡 Baja titular')));
+    if (esBaja) cache[h.jugador].bajas++;
   });
 
   // Calcular % victorias
@@ -7315,10 +9129,9 @@ function calcularStatsJugador(nombre) {
 function renderFichaStats(j, statsId) {
   const stats = calcularStatsJugador(j.nombre);
 
-  // Partidos apuntados = jugados + reservas (+0.5)
-  const histPersonal  = state.historial.filter(h => h.jugador === j.nombre);
-  const comoReserva   = histPersonal.filter(h => h.desc.includes('+0.5')).length;
-  const apuntados     = stats.jugados + comoReserva;
+  // Partidos apuntados = jugados como titular + jugados como reserva (desde partidos_jugados, no texto)
+  const comoReserva = (state.partidos_jugados || []).filter(p => (p.reservas || []).includes(j.nombre)).length;
+  const apuntados   = stats.jugados + comoReserva;
 
   const pctTxt = stats.pct !== null ? `${stats.pct}%` : '—';
 
@@ -7546,6 +9359,137 @@ function asignarPosicionesWA(titulares, lineas) {
   return grupos;
 }
 
+// ── Modal de confirmación estilizado (reemplaza confirm() nativo) ──
+// Uso: if (!await confirmar('Título', 'Mensaje')) return;
+// Acepta opciones: { aceptar: 'Sí', cancelar: 'No', peligro: true, detalle: 'texto secundario' }
+function confirmar(titulo, cuerpo, opciones = {}) {
+  return new Promise(resolve => {
+    const overlay   = document.getElementById('modalConfirm');
+    const elTitulo  = document.getElementById('confirm-titulo');
+    const elCuerpo  = document.getElementById('confirm-cuerpo');
+    const elDetalle = document.getElementById('confirm-detalle');
+    const btnOk     = document.getElementById('confirm-btn-aceptar');
+    const btnCancel = document.getElementById('confirm-btn-cancelar');
+
+    elTitulo.textContent  = titulo;
+    elCuerpo.textContent  = cuerpo;
+    elDetalle.textContent = opciones.detalle || '';
+    elDetalle.style.display = opciones.detalle ? 'block' : 'none';
+    btnOk.textContent     = opciones.aceptar   || 'Aceptar';
+    btnCancel.textContent = opciones.cancelar  || 'Cancelar';
+    btnOk.style.background    = opciones.peligro ? 'var(--rojo-oscuro)' : 'var(--verde)';
+    btnOk.style.borderColor   = opciones.peligro ? 'var(--rojo)' : 'var(--verde-neon)';
+    btnOk.style.color         = '#fff';
+
+    overlay.classList.add('show');
+
+    const cleanup = (result) => {
+      overlay.classList.remove('show');
+      btnOk.onclick     = null;
+      btnCancel.onclick = null;
+      overlay.onclick   = null;
+      resolve(result);
+    };
+
+    btnOk.onclick     = () => cleanup(true);
+    btnCancel.onclick = () => cleanup(false);
+    overlay.onclick   = (e) => { if (e.target === overlay) cleanup(false); };
+  });
+}
+
+// ── Aviso estilizado (reemplaza alert() nativo) ──
+function avisar(msg) { notif(msg, 'error'); }
+
+// ── Entrada de texto / selección estilizada (reemplaza prompt() nativo) ──
+// opciones: { placeholder, valorInicial, tipo ('text'|'email'…), seleccion: [],
+//             readonly (textarea), aceptar, cancelar, detalle }
+// Devuelve Promise<string|null> — null si cancela o cierra
+function pedirTexto(titulo, cuerpo = '', opciones = {}) {
+  return new Promise(resolve => {
+    const overlay   = document.getElementById('modalInput');
+    const elTitulo  = document.getElementById('input-titulo');
+    const elCuerpo  = document.getElementById('input-cuerpo');
+    const elDetalle = document.getElementById('input-detalle');
+    const campo     = document.getElementById('input-campo');
+    const selectEl  = document.getElementById('input-select');
+    const taEl      = document.getElementById('input-textarea');
+    const btnOk     = document.getElementById('input-btn-aceptar');
+    const btnCancel = document.getElementById('input-btn-cancelar');
+
+    elTitulo.textContent = titulo;
+    elCuerpo.textContent = cuerpo;
+    elDetalle.textContent = opciones.detalle || '';
+    elDetalle.style.display = opciones.detalle ? 'block' : 'none';
+
+    // Ocultar todo, luego mostrar el elemento correcto
+    campo.style.display    = 'none';
+    selectEl.style.display = 'none';
+    taEl.style.display     = 'none';
+
+    let activoEl;
+    if (opciones.readonly) {
+      taEl.value = opciones.valorInicial || '';
+      taEl.style.display = 'block';
+      btnCancel.style.display = 'none';
+      btnOk.textContent = 'Cerrar';
+      activoEl = taEl;
+    } else if (Array.isArray(opciones.seleccion)) {
+      selectEl.innerHTML = opciones.seleccion
+        .map(v => `<option value="${esc(v)}"${v === opciones.valorInicial ? ' selected' : ''}>${esc(v)}</option>`)
+        .join('');
+      selectEl.style.display = 'block';
+      btnCancel.style.display = '';
+      btnOk.textContent = opciones.aceptar || 'Aceptar';
+      activoEl = selectEl;
+    } else {
+      campo.type        = opciones.tipo || 'text';
+      campo.value       = opciones.valorInicial || '';
+      campo.placeholder = opciones.placeholder || '';
+      campo.style.display = 'block';
+      btnCancel.style.display = '';
+      btnOk.textContent = opciones.aceptar || 'Aceptar';
+      activoEl = campo;
+    }
+
+    btnOk.style.background  = 'var(--verde)';
+    btnOk.style.borderColor = 'var(--verde-neon)';
+    btnOk.style.color       = '#fff';
+    btnCancel.textContent   = opciones.cancelar || 'Cancelar';
+
+    overlay.classList.add('show');
+    setTimeout(() => {
+      activoEl.focus();
+      if (opciones.readonly) taEl.select();
+    }, 50);
+
+    const cleanup = (valor) => {
+      overlay.classList.remove('show');
+      btnOk.onclick      = null;
+      btnCancel.onclick  = null;
+      overlay.onclick    = null;
+      campo.onkeydown    = null;
+      resolve(valor);
+    };
+
+    btnOk.onclick = () => {
+      if (opciones.readonly) { cleanup(null); return; }
+      const val = Array.isArray(opciones.seleccion) ? selectEl.value : campo.value.trim();
+      cleanup(val || null);
+    };
+    btnCancel.onclick = () => cleanup(null);
+    overlay.onclick   = (e) => { if (e.target === overlay) cleanup(null); };
+    campo.onkeydown   = (e) => {
+      if (e.key === 'Enter')  btnOk.click();
+      if (e.key === 'Escape') cleanup(null);
+    };
+  });
+}
+
+// ── Escapar HTML para prevenir XSS al insertar datos en innerHTML ──
+function esc(s) {
+  return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
+}
+
 // ── Normalizar texto para comparación ──
 function normalizar(s) {
   return s.toLowerCase()
@@ -7635,11 +9579,11 @@ function renderRevision() {
       <input type="checkbox" id="wa_chk_${i}" ${d.incluir ? 'checked' : ''} onchange="waDetectados[${i}].incluir=this.checked" style="width:auto;flex-shrink:0;">
       <div style="flex:1;min-width:0;">
         <div style="font-size:0.88rem;font-weight:600;color:${d.jugador ? 'var(--verde-neon)' : 'var(--amarillo)'};">
-          ${d.nombreMostrar}
+          ${esc(d.nombreMostrar)}
           ${d.esPortero ? '<span style="background:#1a5276;color:#aed6f1;font-size:0.65rem;padding:1px 5px;border-radius:3px;margin-left:4px;">POR</span>' : ''}
           ${!d.jugador ? '<span style="background:#3a3000;color:#f1c40f;font-size:0.65rem;padding:1px 5px;border-radius:3px;margin-left:4px;">INVITADO</span>' : ''}
         </div>
-        ${d.jugador ? `<div style="font-size:0.75rem;color:#555;">${formatPts(d.jugador.puntos)} pts · ${d.jugador.posicion || 'sin posición'}</div>` : `<div style="font-size:0.75rem;color:#555;">Texto: "${d.textoOriginal}"</div>`}
+        ${d.jugador ? `<div style="font-size:0.75rem;color:#555;">${formatPts(d.jugador.puntos)} pts · ${esc(d.jugador.posicion || 'sin posición')}</div>` : `<div style="font-size:0.75rem;color:#555;">Texto: "${esc(d.textoOriginal)}"</div>`}
       </div>
       <select onchange="waDetectados[${i}].esPortero=this.value==='portero'" style="background:var(--gris);border:1px solid #333;border-radius:6px;padding:4px 6px;color:var(--blanco);font-size:0.78rem;width:auto;">
         <option value="campo" ${!d.esPortero ? 'selected' : ''}>⚽ Campo</option>
@@ -7655,6 +9599,9 @@ function renderRevision() {
 //  - Si NO es jugador de la liga → invitado (esInvitado: true).
 // Avisa de duplicados (ya apuntados) sin error.
 async function añadirListaAlPartido() {
+  if (_accionPendiente) return;
+  _accionPendiente = true;
+  try {
   const seleccionados = waDetectados.filter(d => d.incluir);
   if (seleccionados.length === 0) { notif('Selecciona al menos un jugador', 'error'); return; }
 
@@ -7720,6 +9667,8 @@ async function añadirListaAlPartido() {
         rol,
         equipo: null
       });
+      // Consumir el veto (ya fue asignado al campo vetado del apuntado)
+      if (d.jugador._vetadoSiguiente) d.jugador._vetadoSiguiente = false;
       nuevos++;
     } else {
       // Invitado
@@ -7754,6 +9703,7 @@ async function añadirListaAlPartido() {
   if (duplicados) msg += ` · ${duplicados} ya estaban apuntados`;
   if (desplazados) msg += ` · ${desplazados} invitados desplazados a reserva`;
   notif(msg);
+  } finally { _accionPendiente = false; }
 }
 
 function confirmarListaWA() {
@@ -7831,7 +9781,7 @@ function dibujarDesdeWA() {
     : reservas.map((j,i) => `
         <div style="display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid #222;">
           <span style="font-family:'Bebas Neue',sans-serif;color:#555;font-size:0.9rem;width:18px;">${i+1}</span>
-          <span style="font-size:0.83rem;flex:1;">${j.nombre} ${j.portero||j.esPorteroPartido ? '🧤' : ''} ${j.esInvitado ? '<span style="color:#f1c40f;font-size:0.7rem;">★</span>' : ''}</span>
+          <span style="font-size:0.83rem;flex:1;">${esc(j.nombre)} ${j.portero||j.esPorteroPartido ? '🧤' : ''} ${j.esInvitado ? '<span style="color:#f1c40f;font-size:0.7rem;">★</span>' : ''}</span>
           ${!j.esInvitado ? `<span style="font-size:0.72rem;color:#888;">${formatPts(j.puntos)}p</span>` : ''}
         </div>`).join('');
 
@@ -7843,7 +9793,7 @@ function dibujarDesdeWA() {
     extBox.style.display = 'block';
     extLista.innerHTML = externos.map(j => `
       <div style="padding:5px 0;border-bottom:1px solid #222;font-size:0.83rem;color:var(--amarillo);">
-        ${j.nombre} ${j.portero ? '🧤' : ''}
+        ${esc(j.nombre)} ${j.portero ? '🧤' : ''}
       </div>`).join('');
   } else { extBox.style.display = 'none'; }
 }
@@ -8329,7 +10279,7 @@ function renderPanelEquipos(titulares, equipoRojo) {
       const inv = esInvitadoNombre(j.nombre)
         ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.5px;flex-shrink:0;">INV</span>'
         : '';
-      const nombreEsc = j.nombre.replace(/'/g,"\\'");
+      const nombreData = esc(j.nombre); // seguro para atributo HTML data-*
 
       // Controles admin (en segunda fila para que respiren):
       // - ↓ amarilla: a reservas
@@ -8337,17 +10287,17 @@ function renderPanelEquipos(titulares, equipoRojo) {
       // - BAJA: rojo, abrir modal de baja
       let controlesAdmin = '';
       if (esAdmin) {
-        const flechaReserva = `<button onclick="moverAReserva('${nombreEsc}',event)"
+        const flechaReserva = `<button data-nombre="${nombreData}" onclick="moverAReserva(this.dataset.nombre,event)"
           style="background:rgba(241,196,15,0.12);border:1px solid rgba(241,196,15,0.35);color:#f1c40f;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
           title="Mover a reservas">↓</button>`;
         const flechaCambio = esRojoEquipo
-          ? `<button onclick="moverAEquipo('${nombreEsc}','blanco',event)"
+          ? `<button data-nombre="${nombreData}" onclick="moverAEquipo(this.dataset.nombre,'blanco',event)"
               style="background:rgba(240,240,240,0.08);border:1px solid rgba(240,240,240,0.3);color:#f0f0f0;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
               title="Mover al equipo blanco">⇆</button>`
-          : `<button onclick="moverAEquipo('${nombreEsc}','rojo',event)"
+          : `<button data-nombre="${nombreData}" onclick="moverAEquipo(this.dataset.nombre,'rojo',event)"
               style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.4);color:#e74c3c;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
               title="Mover al equipo rojo">⇆</button>`;
-        const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+        const botonBaja = `<button data-nombre="${nombreData}" onclick="event.stopPropagation();abrirModalBaja(this.dataset.nombre)"
           style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.65rem;padding:2px 7px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;margin-left:auto;"
           title="Dar de baja con sanción">BAJA</button>`;
         controlesAdmin = `<div style="display:flex;gap:4px;align-items:center;margin-top:5px;">${flechaReserva}${flechaCambio}${botonBaja}</div>`;
@@ -8378,20 +10328,20 @@ function renderPanelEquipos(titulares, equipoRojo) {
     reservasLista.innerHTML = state.partido.reservas.map(nombre => {
       const j = state.jugadores.find(x => x.nombre === nombre);
       const short = nombre.length > 16 ? nombre.substring(0,15)+'…' : nombre;
-      const nombreEsc = nombre.replace(/'/g,"\\'");
+      const nombreData = esc(nombre);
       const inv = esInvitadoNombre(nombre)
         ? '<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.58rem;font-weight:700;padding:1px 5px;border-radius:3px;letter-spacing:.5px;flex-shrink:0;">INV</span>'
         : '';
 
       let controlesAdmin = '';
       if (esAdmin) {
-        const subirBlanco = `<button onclick="moverATitular('${nombreEsc}',event,'blanco')"
+        const subirBlanco = `<button data-nombre="${nombreData}" onclick="moverATitular(this.dataset.nombre,event,'blanco')"
           style="background:rgba(240,240,240,0.08);border:1px solid rgba(240,240,240,0.3);color:#f0f0f0;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
           title="Subir como titular del equipo blanco">↑⚪</button>`;
-        const subirRojo = `<button onclick="moverATitular('${nombreEsc}',event,'rojo')"
+        const subirRojo = `<button data-nombre="${nombreData}" onclick="moverATitular(this.dataset.nombre,event,'rojo')"
           style="background:rgba(192,57,43,0.12);border:1px solid rgba(192,57,43,0.4);color:#e74c3c;cursor:pointer;font-size:0.85rem;padding:2px 8px;line-height:1;border-radius:5px;"
           title="Subir como titular del equipo rojo">↑🔴</button>`;
-        const botonBaja = `<button onclick="event.stopPropagation();abrirModalBaja('${nombreEsc}')"
+        const botonBaja = `<button data-nombre="${nombreData}" onclick="event.stopPropagation();abrirModalBaja(this.dataset.nombre)"
           style="background:rgba(231,76,60,0.15);border:1px solid rgba(231,76,60,0.4);color:#e74c3c;cursor:pointer;font-size:0.65rem;padding:2px 7px;line-height:1;border-radius:5px;font-weight:700;letter-spacing:.3px;margin-left:auto;"
           title="Dar de baja del partido">BAJA</button>`;
         controlesAdmin = `<div style="display:flex;gap:4px;align-items:center;margin-top:5px;">${subirBlanco}${subirRojo}${botonBaja}</div>`;
@@ -8464,6 +10414,7 @@ function moverAReserva(nombre, event) {
   p.titulares = p.titulares.filter(n => n !== nombre);
   p._equipoRojo = (p._equipoRojo || []).filter(n => n !== nombre);
   if (!p.reservas.includes(nombre)) p.reservas.push(nombre);
+  _syncRolPartido(nombre, 'reserva'); // mantener proximoPartido sincronizado
   guardar();
   renderPartido();
   notif(`${nombre} → reserva`);
@@ -8477,6 +10428,7 @@ function moverATitular(nombre, event, equipoDestino) {
   if (!p) return;
   p.reservas = p.reservas.filter(n => n !== nombre);
   if (!p.titulares.includes(nombre)) p.titulares.push(nombre);
+  _syncRolPartido(nombre, 'titular'); // mantener proximoPartido sincronizado
   // Si especificaron equipo destino, asignarlo. Si no, queda en blanco por defecto.
   if (equipoDestino === 'rojo') {
     p._equipoRojo = p._equipoRojo || [];
@@ -8593,7 +10545,7 @@ function guardarResultado(resultado) {
 }
 
 // Ventana que sugiere registrar el cobro tras anotar resultado de un partido.
-function abrirSugerenciaCobro(partidoIdx) {
+async function abrirSugerenciaCobro(partidoIdx) {
   const p = state.partidos_jugados[partidoIdx];
   if (!p) return;
   const numTit = (p.titulares || []).length;
@@ -8602,19 +10554,17 @@ function abrirSugerenciaCobro(partidoIdx) {
   const precio = parseFloat(state.config.precio) || 0;
   const totalEur = total * precio;
   const fechaTxt = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short'}) : '';
-  const detalle = (precio > 0 && total > 0)
-    ? `\n\n${total} jugadores × ${precio}€ = ${fmtEur(totalEur)}`
-    : '';
-  const msg = `✅ Resultado guardado.\n\n¿Quieres registrar ahora el cobro del partido del ${fechaTxt}?${detalle}\n\nPuedes hacerlo más tarde desde Admin → Tesorería.`;
-  if (confirm(msg)) {
+  const detalle = (precio > 0 && total > 0) ? `${total} jugadores × ${precio}€ = ${fmtEur(totalEur)}` : '';
+  const ok = await confirmar(
+    '¿Registrar cobro?',
+    `¿Quieres registrar ahora el cobro del partido del ${fechaTxt}?\n\nPuedes hacerlo más tarde desde Admin → Tesorería.`,
+    { aceptar: 'Registrar cobro', cancelar: 'Ahora no', detalle }
+  );
+  if (ok) {
     abrirModalCobro();
-    // Preseleccionar este partido en el modal
     setTimeout(() => {
       const selPart = document.getElementById('cobroPartido');
-      if (selPart) {
-        selPart.value = String(partidoIdx);
-        selPart.onchange?.(); // dispara el autorrelleno
-      }
+      if (selPart) { selPart.value = String(partidoIdx); selPart.onchange?.(); }
     }, 60);
   }
 }
@@ -8635,7 +10585,7 @@ async function restaurarPartidoIdx(idx) {
 
   const tipoTxt = p.cancelado ? 'cancelado' : 'suspendido';
   const fechaTxt = p.fecha ? new Date(p.fecha + 'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}) : '—';
-  if (!confirm(`¿Restaurar el partido ${tipoTxt} del ${fechaTxt}?\n\nEl registro se eliminará y la fecha quedará libre para volver a abrir inscripción.`)) return;
+  if (!await confirmar('¿Restaurar partido?', `Partido ${tipoTxt} del ${fechaTxt}.`, { aceptar: 'Restaurar', detalle: 'El registro se eliminará y la fecha quedará libre para reabrir inscripción.' })) return;
 
   // Quitar del histórico
   state.partidos_jugados.splice(idx, 1);
@@ -8682,9 +10632,8 @@ async function borrarPartidoIdx(idx) {
   } else {
     mensajeBase += `Era un partido ${p.cancelado ? 'cancelado' : 'suspendido'} (no se habían sumado puntos).\nSolo se eliminará el registro.\nEsta acción no se puede deshacer.`;
   }
-  if (!confirm(mensajeBase)) return;
-  // Doble confirmación para reforzar
-  if (!confirm('CONFIRMACIÓN FINAL: borrar este partido y revertir cambios. ¿Seguro?')) return;
+  if (!await confirmar('¿Borrar partido?', mensajeBase, { aceptar: 'Continuar', peligro: true })) return;
+  if (!await confirmar('Confirmación final', `¿Borrar definitivamente el partido del ${fechaTxt}?`, { aceptar: 'Sí, borrar', peligro: true })) return;
 
   // Revertir puntos si aplica
   if (tipoSumaPuntos) {
@@ -8773,7 +10722,7 @@ async function guardarPartidoManual() {
                    valorRes === 'empate' ? '🤝 Empate' :
                                            '⚠️ Sin resultado válido';
   const conPuntos = sumarPuntos ? `\n\n✅ Se sumarán +1 a ${titulares.length} titulares y +0.5 a ${reservas.length} reservas.` : '\n\n⚠️ NO se sumarán puntos a los jugadores.';
-  if (!confirm(`Guardar partido manual del ${fechaTxt}\n\nResultado: ${labelRes}\nTitulares: ${titulares.length} (B:${blancos.length} / R:${rojos.length})\nReservas: ${reservas.length}${conPuntos}\n\n¿Confirmar?`)) return;
+  if (!await confirmar('¿Guardar partido manual?', `${fechaTxt} · ${labelRes}\n${titulares.length} titulares (B:${blancos.length} / R:${rojos.length}) · ${reservas.length} reservas`, { aceptar: 'Guardar', detalle: sumarPuntos ? `+1 a titulares, +0.5 a reservas.` : 'Sin puntos.' })) return;
 
   // Sumar puntos si el toggle está activo
   if (sumarPuntos) {
@@ -8839,12 +10788,22 @@ function togglePass(inputId, btn) {
 }
 
 let notifTimer;
-function notif(msg, tipo = 'ok') {
+function notif(msg, tipo = 'ok', btnLabel = null, btnCb = null) {
   const el = document.getElementById('notif');
-  el.textContent = msg;
+  el.innerHTML = '';
+  const span = document.createElement('span');
+  span.textContent = msg;
+  el.appendChild(span);
+  if (btnLabel && btnCb) {
+    const btn = document.createElement('button');
+    btn.textContent = btnLabel;
+    btn.style.cssText = 'margin-left:10px;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.25);color:#fff;padding:3px 10px;border-radius:4px;cursor:pointer;font-size:0.78rem;font-weight:600;vertical-align:middle;';
+    btn.onclick = (e) => { e.stopPropagation(); btnCb(); };
+    el.appendChild(btn);
+  }
   el.className = 'notif show' + (tipo === 'error' ? ' error' : '');
   clearTimeout(notifTimer);
-  notifTimer = setTimeout(() => el.classList.remove('show'), 3000);
+  notifTimer = setTimeout(() => el.classList.remove('show'), btnLabel ? 5000 : 3000);
 }
 
 // ═══════════════════════════════════════════════
