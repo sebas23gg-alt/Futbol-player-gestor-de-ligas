@@ -1262,12 +1262,12 @@ window.addEventListener('error', function(e) {
     </div>
   </div>
   <div class="tabs">
-    <div class="tab active" data-i18n="tab.ranking" onclick="showTab('ranking', this)"><span class="tab-emoji">🏆</span><span class="tab-text">Ranking</span></div>
-    <div class="tab" data-i18n="tab.partido" onclick="showTab('partido', this)"><span class="tab-emoji">⚽</span><span class="tab-text">Partido</span></div>
+    <div class="tab active" data-i18n="tab.partido" onclick="showTab('partido', this)"><span class="tab-emoji">⚽</span><span class="tab-text">Partido</span></div>
     <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)"><span class="tab-emoji">📅</span><span class="tab-text">Calendario</span></div>
-    <div class="tab" data-i18n="tab.admin" onclick="showTab('admin', this)" style="position:relative;"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span><span id="badge-admin-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
+    <div class="tab" data-i18n="tab.ranking" onclick="showTab('ranking', this)"><span class="tab-emoji">🏆</span><span class="tab-text">Ranking</span></div>
     <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)"><span class="tab-emoji">📋</span><span class="tab-text">Historial</span></div>
     <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)" style="position:relative;"><span class="tab-emoji">👤</span><span class="tab-text">Perfil</span><span id="badge-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
+    <div class="tab" id="tab-admin" data-i18n="tab.admin" onclick="showTab('admin', this)" style="position:relative;display:none;"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span><span id="badge-admin-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
   </div>
 </header>
 
@@ -1380,6 +1380,36 @@ window.addEventListener('error', function(e) {
       <p style="color:#555;font-size:0.9rem;">Ve al panel Admin para configurar el próximo partido</p>
     </div>
 
+    <!-- Card siguiente partido (siempre visible, muestra cuenta atrás de inscripción) -->
+    <div id="siguiente-partido-card" class="card" style="display:none;border:1px solid rgba(52,152,219,0.25);background:rgba(52,152,219,0.04);margin-bottom:16px;">
+      <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px;">
+        <div>
+          <div style="font-size:0.62rem;color:#3498db;text-transform:uppercase;letter-spacing:1.2px;font-weight:700;margin-bottom:2px;">📆 SIGUIENTE PARTIDO</div>
+          <div id="sig-fecha" style="font-family:'Bebas Neue',sans-serif;font-size:1.15rem;letter-spacing:2px;color:#5dade2;">—</div>
+        </div>
+        <div id="sig-inscripcion-badge" style="font-size:0.68rem;font-weight:700;padding:4px 10px;border-radius:6px;background:rgba(52,152,219,0.12);color:#5dade2;border:1px solid rgba(52,152,219,0.25);white-space:nowrap;">—</div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(90px,1fr));gap:6px;font-size:0.78rem;margin-bottom:10px;">
+        <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:6px 8px;">
+          <div style="color:#555;font-size:0.6rem;text-transform:uppercase;letter-spacing:.4px;">Campo</div>
+          <div id="sig-campo" style="color:#aaa;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:6px 8px;">
+          <div style="color:#555;font-size:0.6rem;text-transform:uppercase;letter-spacing:.4px;">Hora</div>
+          <div id="sig-hora" style="color:#aaa;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:6px 8px;">
+          <div style="color:#555;font-size:0.6rem;text-transform:uppercase;letter-spacing:.4px;">Precio</div>
+          <div id="sig-precio" style="color:#aaa;margin-top:2px;font-weight:600;">—</div>
+        </div>
+        <div style="background:#1a1a1a;border:1px solid #252525;border-radius:6px;padding:6px 8px;">
+          <div style="color:#555;font-size:0.6rem;text-transform:uppercase;letter-spacing:.4px;">Tipo</div>
+          <div id="sig-tipo" style="color:#aaa;margin-top:2px;font-weight:600;">—</div>
+        </div>
+      </div>
+      <div id="sig-aviso-abre" style="display:none;padding:8px 12px;border-radius:6px;background:rgba(52,152,219,0.1);border:1px solid rgba(52,152,219,0.25);font-size:0.8rem;color:#7fb3d3;text-align:center;"></div>
+    </div>
+
     <!-- Bloque crear partido manual (solo admins en modo fecha manual) -->
     <div id="pp-crear-manual" class="card" style="display:none;border:1px solid rgba(46,204,113,0.35);background:rgba(46,204,113,0.05);text-align:center;padding:32px 24px;">
       <div style="font-size:2.8rem;margin-bottom:10px;">📅</div>
@@ -1414,6 +1444,33 @@ window.addEventListener('error', function(e) {
         <div class="partido-lista reservas">
           <h3>⏳ RESERVAS</h3>
           <div id="lista-reservas"></div>
+        </div>
+      </div>
+
+      <!-- ── CONVOCADOS PREVIEW (visible durante inscripción abierta) ── -->
+      <div id="convocados-preview-wrap" style="display:none;margin-top:4px;">
+        <div class="card" style="padding:14px;">
+          <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;">
+            <div class="card-title" style="margin:0;">⚽ Campo</div>
+            <div id="conv-estado-info" style="display:flex;align-items:center;gap:4px;text-align:right;"></div>
+          </div>
+          <div style="display:flex;gap:14px;align-items:flex-start;flex-wrap:wrap;">
+            <!-- Canvas campo -->
+            <div style="flex:1;min-width:200px;overflow-x:auto;">
+              <canvas id="convocados-canvas" style="display:block;width:100%;border-radius:10px;"></canvas>
+            </div>
+            <!-- Panel listas -->
+            <div style="width:190px;flex-shrink:0;">
+              <div style="margin-bottom:12px;">
+                <div style="font-size:0.65rem;color:#aaa;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:5px;">✅ Titulares (<span id="conv-cnt-tit">0</span>/<span id="conv-limit">0</span>)</div>
+                <div id="conv-lista-tit" style="display:flex;flex-direction:column;gap:2px;"></div>
+              </div>
+              <div>
+                <div style="font-size:0.65rem;color:#888;text-transform:uppercase;letter-spacing:1px;font-weight:700;margin-bottom:5px;">⏳ Reservas (<span id="conv-cnt-res">0</span>)</div>
+                <div id="conv-lista-res" style="display:flex;flex-direction:column;gap:2px;"></div>
+              </div>
+            </div>
+          </div>
         </div>
       </div>
 
@@ -3423,9 +3480,20 @@ function aplicarModoLecturaPublica() {
     if (enLectura) {
       t.style.display = esRankingOCalendario ? '' : 'none';
     } else {
+      // Al salir del modo lectura, la pestaña Admin la gestiona _refrescarVista
+      if (t.id === 'tab-admin') return;
       t.style.display = '';
     }
   });
+
+  // En modo lectura, si la pestaña activa no es ranking/calendario, cambiar a ranking
+  if (enLectura) {
+    const activaKey = document.querySelector('.page.active')?.id || '';
+    if (activaKey !== 'page-ranking' && activaKey !== 'page-calendario') {
+      const tabRanking = document.querySelector('[data-i18n="tab.ranking"]');
+      showTab('ranking', tabRanking);
+    }
+  }
 
   // Banner indicador
   let banner = document.getElementById('banner-lectura-publica');
@@ -3882,9 +3950,8 @@ async function wizEntrar() {
       const panelEl = document.getElementById('admin-panel');
       if (loginEl) loginEl.style.display = 'none';
       if (panelEl) panelEl.style.display = 'block';
-      const tabs = document.querySelectorAll('.tab-btn');
-      const adminTab = [...tabs].find(t => t.dataset.i18n === 'tab.admin' || t.textContent.includes('Admin'));
-      if (adminTab) showTab('admin', adminTab);
+      const adminTab = document.getElementById('tab-admin');
+      if (adminTab) { adminTab.style.display = ''; showTab('admin', adminTab); }
       renderAdmin();
     }
   }, 500);
@@ -4285,6 +4352,18 @@ function colorPorSlot(slot) {
 }
 
 function _refrescarVista() {
+  // Mostrar pestaña Admin solo a admins
+  const tabAdmin = document.getElementById('tab-admin');
+  if (tabAdmin) {
+    const esAdmin = esAdminActual(state);
+    tabAdmin.style.display = esAdmin ? '' : 'none';
+    // Si el admin cerró sesión o perdió el rol mientras estaba en Admin, redirigir a Partido
+    if (!esAdmin && document.querySelector('.page.active')?.id === 'page-admin') {
+      showTab('partido', document.querySelector('[data-i18n="tab.partido"]'));
+      return;
+    }
+  }
+
   const activa = document.querySelector('.page.active')?.id;
   if      (activa === 'page-ranking')    renderRanking();
   else if (activa === 'page-partido')    renderPartido();
@@ -4343,13 +4422,17 @@ async function entrarLiga(id) {
 
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.tab').forEach(t  => t.classList.remove('active'));
-  document.getElementById('page-ranking').classList.add('active');
-  document.querySelector('.tab').classList.add('active');
+  document.getElementById('page-partido').classList.add('active');
+  document.querySelector('[data-i18n="tab.partido"]').classList.add('active');
 
   // Aplicar modo lectura pública si corresponde (oculta pestañas Partido/Admin/Historial)
   aplicarModoLecturaPublica();
 
-  renderRanking();
+  // Mostrar pestaña Admin solo a admins (sincronía con el estado ya cargado)
+  const tabAdminEl = document.getElementById('tab-admin');
+  if (tabAdminEl && !modoLecturaPublica) tabAdminEl.style.display = esAdminActual(state) ? '' : 'none';
+
+  renderPartido();
   // Cargar avatares en segundo plano (re-renderiza el ranking cuando termina)
   precargarAvatares();
 
@@ -5317,6 +5400,179 @@ function asegurarProximoPartido() {
   return state.proximoPartido;
 }
 
+// ── Calcula info del partido siguiente al próximo (para mostrar cuenta atrás) ──
+function infoSiguientePartido() {
+  if (!state || state.config?.modoFechaManual) return null;
+  const plazoDias = getPlazoDias();
+  if (plazoDias.length === 0) return null;
+
+  // Fecha base: el próximo partido (ya calculado) o calcularFechaProximoPartido()
+  const proxFecha = state.proximoPartido?.fecha || calcularFechaProximoPartido();
+  const proxDate = new Date(proxFecha + 'T12:00:00');
+
+  // Siguiente = 7 días después, saltando fechas ya jugadas
+  const sigDate = new Date(proxDate);
+  sigDate.setDate(sigDate.getDate() + 7);
+  const jugadas = new Set((state.partidos_jugados || []).map(p => p.fecha));
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  let intentos = 0;
+  while (jugadas.has(fmt(sigDate)) && intentos < 53) { sigDate.setDate(sigDate.getDate() + 7); intentos++; }
+
+  const sigFecha = fmt(sigDate);
+  const diaSig = sigDate.getDay();
+
+  // Primer día del plazo de inscripción para ese partido
+  // Los plazoDias son días de la semana (0-6) que caen en la misma semana que el partido,
+  // ANTES del día del partido. Calculamos la fecha concreta del día más temprano del plazo.
+  const plazOrdenados = plazoDias.slice().sort((a, b) => a - b);
+  let primerDiaPlazoDate = null;
+  for (const d of plazOrdenados) {
+    // Offset: d - diaSig puede ser negativo (día anterior al partido en esa semana)
+    const offset = d - diaSig;
+    if (offset >= 0) continue; // mismo día o posterior — no es un día de plazo válido
+    const plazoDate = new Date(sigDate);
+    plazoDate.setDate(sigDate.getDate() + offset);
+    primerDiaPlazoDate = plazoDate;
+    break;
+  }
+  if (!primerDiaPlazoDate) return null;
+
+  const hoy = new Date(); hoy.setHours(0,0,0,0);
+  primerDiaPlazoDate.setHours(0,0,0,0);
+  const diasHasta = Math.round((primerDiaPlazoDate - hoy) / (1000*60*60*24));
+
+  return { fecha: sigFecha, primerDiaPlazoDate, diasHasta };
+}
+
+function renderSiguientePartido() {
+  const card = document.getElementById('siguiente-partido-card');
+  if (!card) return;
+
+  const info = infoSiguientePartido();
+  if (!info) { card.style.display = 'none'; return; }
+
+  card.style.display = 'block';
+
+  // Fecha formateada
+  try {
+    const d = new Date(info.fecha + 'T12:00:00');
+    document.getElementById('sig-fecha').textContent =
+      d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' }).toUpperCase();
+  } catch { document.getElementById('sig-fecha').textContent = info.fecha; }
+
+  // Datos del partido (del config — no cambian entre semanas habitualmente)
+  document.getElementById('sig-campo').textContent  = state.config?.campo  || '—';
+  document.getElementById('sig-hora').textContent   = state.config?.hora   || '—';
+  document.getElementById('sig-precio').textContent = state.config?.precio ? state.config.precio + '€' : '—';
+  document.getElementById('sig-tipo').textContent   = state.config?.tipoPartido || '7vs7';
+
+  // Badge e info de inscripción
+  const badge  = document.getElementById('sig-inscripcion-badge');
+  const aviso  = document.getElementById('sig-aviso-abre');
+  const labels = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+  const diaLabel = labels[info.primerDiaPlazoDate.getDay()];
+  const fechaLabel = info.primerDiaPlazoDate.toLocaleDateString('es-ES', { day:'numeric', month:'short' });
+
+  if (info.diasHasta <= 0) {
+    badge.textContent = '✅ INSCRIPCIÓN ABIERTA';
+    badge.style.background = 'rgba(46,204,113,0.12)';
+    badge.style.color = 'var(--verde-neon)';
+    badge.style.borderColor = 'rgba(46,204,113,0.3)';
+    aviso.style.display = 'none';
+  } else if (info.diasHasta === 1) {
+    badge.textContent = '⏰ ABRE MAÑANA';
+    badge.style.background = 'rgba(245,166,35,0.12)';
+    badge.style.color = '#f5a623';
+    badge.style.borderColor = 'rgba(245,166,35,0.3)';
+    aviso.style.display = 'block';
+    aviso.textContent = `📅 La inscripción abre mañana ${diaLabel} ${fechaLabel}`;
+  } else {
+    badge.textContent = `ABRE EN ${info.diasHasta} DÍAS`;
+    badge.style.background = 'rgba(52,152,219,0.12)';
+    badge.style.color = '#5dade2';
+    badge.style.borderColor = 'rgba(52,152,219,0.25)';
+    aviso.style.display = 'block';
+    aviso.textContent = `📅 La inscripción abre el ${diaLabel} ${fechaLabel}`;
+  }
+}
+
+// ── Preview de convocados durante inscripción abierta ──
+function renderConvocadosPreview() {
+  const wrap = document.getElementById('convocados-preview-wrap');
+  if (!wrap) return;
+
+  const pp = state.proximoPartido;
+  // Solo durante inscripción abierta
+  if (!pp || pp.estado !== 'abierto') { wrap.style.display = 'none'; return; }
+
+  wrap.style.display = 'block';
+
+  const limite     = titularesProximoPartido();
+  const apuntados  = pp.apuntados || [];
+  const titulares  = apuntados.filter(a => a.rol === 'titular');
+  const reservas   = apuntados.filter(a => a.rol === 'reserva' || a.rol === 'vetado');
+
+  document.getElementById('conv-cnt-tit').textContent = titulares.length;
+  document.getElementById('conv-limit').textContent   = limite;
+  document.getElementById('conv-cnt-res').textContent = reservas.length;
+  const infoEl = document.getElementById('conv-estado-info');
+  const faltan = limite - titulares.length;
+  if (infoEl) {
+    if (faltan <= 0) {
+      infoEl.innerHTML = '<span style="color:var(--verde-neon);font-size:1rem;font-weight:800;letter-spacing:1px;">✅ COMPLETO</span>';
+    } else {
+      infoEl.innerHTML = `<span style="font-size:2rem;font-weight:900;color:#e74c3c;line-height:1;">${faltan}</span><span style="font-size:0.7rem;color:#888;margin-left:4px;display:block;text-transform:uppercase;letter-spacing:.5px;">faltan</span>`;
+    }
+  }
+
+  // Lista titulares: slots numerados, rellenos o vacíos
+  const litEl = document.getElementById('conv-lista-tit');
+  litEl.innerHTML = '';
+  for (let i = 0; i < limite; i++) {
+    const j = titulares[i];
+    const div = document.createElement('div');
+    if (j) {
+      const esPortero = !!(state.jugadores?.find(jj => jj.nombre === j.nombre)?.portero);
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#141f14;border:1px solid #2a3d2a;font-size:0.9rem;color:#ddd;';
+      div.innerHTML = `<span style="color:#4a8a4a;min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;">${i+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">${esc(j.nombre)}</span>${esPortero ? '<span style="font-size:0.8rem;">🧤</span>' : ''}`;
+    } else {
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#111;border:1px dashed #222;font-size:0.9rem;color:#333;';
+      div.innerHTML = `<span style="min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;color:#2a2a2a;">${i+1}</span><span>— libre —</span>`;
+    }
+    litEl.appendChild(div);
+  }
+
+  // Lista reservas
+  const lirEl = document.getElementById('conv-lista-res');
+  lirEl.innerHTML = '';
+  if (reservas.length === 0) {
+    lirEl.innerHTML = '<div style="color:#333;font-size:0.82rem;padding:6px 10px;">Sin reservas</div>';
+  } else {
+    reservas.forEach((j, i) => {
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#111520;border:1px solid #1a1f2a;font-size:0.9rem;color:#888;';
+      div.innerHTML = `<span style="color:#3a3a6a;min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;">${i+1}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(j.nombre)}</span>`;
+      lirEl.appendChild(div);
+    });
+  }
+
+  // Canvas del campo con los convocados actuales
+  setTimeout(() => {
+    const canvas = document.getElementById('convocados-canvas');
+    if (!canvas) return;
+    const tipoStr = pp.tipo || state.config?.tipoPartido || '7vs7';
+    const tipoMap = {'5vs5':5,'6vs6':6,'7vs7':7,'8vs8':8,'11vs11':11};
+    const tipoNum = tipoMap[tipoStr] || 7;
+    const forms   = FORMACIONES_POR_TIPO[tipoNum] || FORMACIONES_POR_TIPO[7];
+    const lineas  = forms[0].lineas;
+    // Mapear convocados a objetos jugador con posiciones (para colocarlos bien en el campo)
+    const jugadoresCampo = titulares.map(a =>
+      state.jugadores?.find(j => j.nombre === a.nombre) || { nombre: a.nombre }
+    );
+    dibujarCampoEnCanvas(canvas, jugadoresCampo, lineas, null, null);
+  }, 80);
+}
+
 // ── Fuente de verdad unificada para el rol del jugador en el partido actual ──
 // state.partido tiene prioridad porque incluye ediciones del canvas (moverATitular/moverAReserva).
 // Si no existe state.partido (inscripción aún abierta), se lee de proximoPartido.apuntados.
@@ -5981,6 +6237,25 @@ function renderProximoPartido() {
       avFP.style.display = !dentro ? 'block' : 'none';
       const jugador = state.jugadores.find(j => j.uid === usuarioActual.uid);
       avVet.style.display = jugador?._vetadoSiguiente ? 'block' : 'none';
+
+      // Banner "¡Hoy abre la inscripción!" — mostrar una vez por sesión el día de apertura
+      if (dentro) {
+        const hoyDia = new Date().getDay();
+        const ayerDia = (hoyDia - 1 + 7) % 7;
+        const plazoDias = getPlazoDias();
+        const esApertura = !plazoDias.includes(ayerDia); // hoy es el primer día del plazo
+        if (esApertura) {
+          const avisoKey = `futbolplayer_abre_${ligaActual}_${new Date().toISOString().slice(0,10)}`;
+          if (!sessionStorage.getItem(avisoKey)) {
+            sessionStorage.setItem(avisoKey, '1');
+            try {
+              const d = new Date(pp.fecha + 'T12:00:00');
+              const fechaStr = d.toLocaleDateString('es-ES', { weekday:'long', day:'numeric', month:'long' });
+              notif(`⚽ ¡Hoy abre la inscripción para el partido del ${fechaStr}!`, 'ok');
+            } catch(_) {}
+          }
+        }
+      }
     }
   } else {
     accJug.style.display = 'none';
@@ -6111,14 +6386,25 @@ async function copiarListaWhatsApp() {
 function renderPartido() {
   // Bloque 4: render del nuevo bloque "próximo partido"
   renderProximoPartido();
+  // Card del siguiente partido (cuenta atrás de inscripción)
+  renderSiguientePartido();
+  // Preview de convocados en el campo (solo durante inscripción abierta)
+  renderConvocadosPreview();
 
-  // Solo mostramos el bloque viejo (canvas con campo) si la inscripción
-  // está cerrada y hay alineación generada. Si no, lo escondemos para
-  // evitar que aparezcan dos secciones de partido duplicadas.
   const ppEstado = state.proximoPartido?.estado;
-  const debeMostrarse = ppEstado === 'alineacion-lista' || ppEstado === 'jugado';
+  const tieneAlineacion = ppEstado === 'alineacion-lista' || ppEstado === 'jugado';
+  const estaAbierto     = ppEstado === 'abierto';
 
-  if (!debeMostrarse) {
+  // Durante inscripción abierta mostramos partido-activo para que se vea
+  // el canvas de convocados; el canvas de alineación sigue oculto.
+  if (estaAbierto) {
+    document.getElementById('no-partido-msg').style.display = 'none';
+    document.getElementById('partido-activo').style.display = 'block';
+    return;
+  }
+
+  // Sin alineación generada: ocultar todo
+  if (!tieneAlineacion) {
     document.getElementById('no-partido-msg').style.display = 'none';
     document.getElementById('partido-activo').style.display = 'none';
     return;
