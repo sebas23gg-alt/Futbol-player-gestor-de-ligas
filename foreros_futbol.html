@@ -98,38 +98,41 @@ window.addEventListener('error', function(e) {
 </script>
 <style>
   :root {
-    --verde: #1a7a3c;
-    --verde-claro: #27ae60;
-    --verde-neon: #2ecc71;
+    --verde: #1a8a42;
+    --verde-claro: #30d158;  /* iOS green */
+    --verde-neon: #30d158;
     --cesped: #0d5c2e;
-    --negro: #0a0a0a;
-    --gris-oscuro: #141414;
-    --gris: #1e1e1e;
-    --gris-medio: #2a2a2a;
-    --gris-claro: #3a3a3a;
-    --blanco: #f0f0f0;
-    --amarillo: #f1c40f;
-    --rojo: #e74c3c;
-    --rojo-oscuro: #c0392b;
-    --azul: #3498db;
-    --naranja: #e67e22;
+    --negro: #000000;
+    --gris-oscuro: #111111;
+    --gris: #1c1c1e;          /* iOS system gray 6 */
+    --gris-medio: #2c2c2e;    /* iOS system gray 5 */
+    --gris-claro: #3a3a3c;    /* iOS system gray 4 */
+    --blanco: #f2f2f7;        /* iOS label */
+    --amarillo: #ffd60a;      /* iOS yellow */
+    --rojo: #ff453a;          /* iOS red */
+    --rojo-oscuro: #d70015;
+    --azul: #0a84ff;          /* iOS blue */
+    --naranja: #ff9f0a;       /* iOS orange */
   }
 
   * { margin: 0; padding: 0; box-sizing: border-box; }
 
   body {
-    font-family: 'DM Sans', sans-serif;
+    font-family: system-ui, -apple-system, 'DM Sans', sans-serif;
     background: var(--negro);
     color: var(--blanco);
     min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
   }
 
   /* ── HEADER ── */
   header {
-    background: linear-gradient(135deg, var(--cesped) 0%, var(--negro) 100%);
+    background: rgba(0,0,0,0.92);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
     padding: 0;
     padding-top: env(safe-area-inset-top, 0px);
-    border-bottom: 2px solid var(--verde);
+    border-bottom: 0.5px solid rgba(255,255,255,0.1);
     position: sticky;
     top: 0;
     z-index: 100;
@@ -175,11 +178,13 @@ window.addEventListener('error', function(e) {
   /* ── TABS ── */
   .tabs {
     display: flex;
-    background: var(--gris-oscuro);
-    border-bottom: 1px solid #222;
+    background: rgba(0,0,0,0.88);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+    border-bottom: 0.5px solid rgba(255,255,255,0.08);
     max-width: 1100px;
     margin: 0 auto;
-    padding: 0 4px;
+    padding: 0;
     gap: 0;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
@@ -191,47 +196,47 @@ window.addEventListener('error', function(e) {
   .tabs::-webkit-scrollbar { display: none; }
 
   .tab {
-    padding: 11px 14px;
+    padding: 10px 16px 8px;
     cursor: pointer;
     font-size: 0.82rem;
     font-weight: 500;
-    color: #666;
-    border-bottom: 3px solid transparent;
-    transition: all 0.2s;
+    color: rgba(255,255,255,0.35);
+    border-bottom: 2px solid transparent;
+    transition: color 0.18s, border-color 0.18s;
     user-select: none;
     white-space: nowrap;
     flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 2px;
   }
-  .tab .tab-emoji { margin-right: 4px; }
+  .tab .tab-emoji {
+    font-size: 1.25rem;
+    line-height: 1;
+    transition: transform 0.18s;
+  }
+  .tab .tab-text {
+    font-size: 0.58rem;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+    font-weight: 600;
+    line-height: 1;
+  }
 
-  /* ── Móvil: tabs tipo bottom nav (emoji arriba, texto debajo) ── */
-  @media (max-width: 600px) {
-    .tabs { padding: 0; }
+  /* Escritorio: tabs en horizontal con texto inline */
+  @media (min-width: 601px) {
     .tab {
-      padding: 6px 0 4px;
-      flex: 1 1 0;
-      text-align: center;
-      flex-shrink: 1;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 1px;
-      border-bottom-width: 2px;
-      font-size: 0.72rem;
+      flex-direction: row;
+      padding: 13px 18px;
+      gap: 6px;
     }
-    .tab .tab-emoji {
-      display: block;
-      font-size: 1.15rem;
-      margin-right: 0;
-      line-height: 1.2;
-    }
-    .tab .tab-text {
-      display: block;
-      font-size: 0.55rem;
-      letter-spacing: 0.3px;
-      text-transform: uppercase;
-      line-height: 1;
-    }
+    .tab .tab-emoji { font-size: 1rem; }
+    .tab .tab-text { font-size: 0.82rem; text-transform: none; letter-spacing: 0; }
+  }
+
+  @media (max-width: 600px) {
+    .tab { flex: 1 1 0; }
     /* Panel lateral de equipos: colapsar debajo del campo */
     .panel-editor-equipos {
       width: 100% !important;
@@ -239,11 +244,12 @@ window.addEventListener('error', function(e) {
     }
   }
 
-  .tab:hover { color: #aaa; }
+  .tab:hover { color: rgba(255,255,255,0.6); }
   .tab.active { color: var(--verde-neon); border-bottom-color: var(--verde-neon); }
+  .tab.active .tab-emoji { transform: scale(1.1); }
 
   /* ── MAIN ── */
-  .container { max-width: 1100px; margin: 0 auto; padding: 16px; }
+  .container { max-width: 1100px; margin: 0 auto; padding: 20px 16px; }
 
   .page { display: none; }
   .page.active { display: block; }
@@ -251,10 +257,11 @@ window.addEventListener('error', function(e) {
   /* ── CARDS ── */
   .card {
     background: var(--gris);
-    border: 1px solid #2a2a2a;
-    border-radius: 12px;
+    border: none;
+    border-radius: 16px;
     padding: 20px;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
+    box-shadow: 0 1px 0 rgba(255,255,255,0.04), 0 4px 20px rgba(0,0,0,0.3);
   }
 
   .card-title {
@@ -336,11 +343,11 @@ window.addEventListener('error', function(e) {
     display: flex;
     align-items: center;
     gap: 12px;
-    padding: 10px 14px;
-    border-radius: 8px;
-    background: var(--gris-oscuro);
-    border: 1px solid #222;
-    transition: border-color 0.2s;
+    padding: 12px 14px;
+    border-radius: 12px;
+    background: var(--gris-medio);
+    border: none;
+    transition: background 0.18s;
     position: relative;
     overflow: hidden;
   }
@@ -577,46 +584,51 @@ window.addEventListener('error', function(e) {
 
   input, select {
     width: 100%;
-    background: var(--gris-oscuro);
-    border: 1px solid #333;
-    border-radius: 8px;
-    padding: 10px 14px;
+    background: var(--gris-medio);
+    border: none;
+    border-radius: 12px;
+    padding: 13px 16px;
     color: var(--blanco);
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.9rem;
+    font-family: system-ui, -apple-system, 'DM Sans', sans-serif;
+    font-size: 1rem;
     outline: none;
-    transition: border-color 0.2s;
+    transition: box-shadow 0.18s;
   }
 
-  input:focus, select:focus { border-color: var(--verde); }
+  input:focus, select:focus {
+    box-shadow: 0 0 0 3px rgba(48,209,88,0.25);
+  }
 
   select option { background: var(--gris-oscuro); }
 
   .btn {
     display: inline-flex;
     align-items: center;
+    justify-content: center;
     gap: 8px;
-    padding: 10px 20px;
+    padding: 13px 22px;
     border: none;
-    border-radius: 8px;
+    border-radius: 14px;
     cursor: pointer;
-    font-family: 'DM Sans', sans-serif;
-    font-size: 0.88rem;
+    font-family: system-ui, -apple-system, 'DM Sans', sans-serif;
+    font-size: 0.92rem;
     font-weight: 600;
-    transition: all 0.2s;
-    letter-spacing: 0.3px;
+    transition: opacity 0.15s, transform 0.1s;
+    letter-spacing: 0.1px;
+    -webkit-tap-highlight-color: transparent;
   }
+  .btn:active { opacity: 0.75; transform: scale(0.97); }
 
   .btn-verde { background: var(--verde); color: white; }
   .btn-verde:hover { background: var(--verde-claro); }
-  .btn-rojo { background: var(--rojo-oscuro); color: white; }
-  .btn-rojo:hover { background: var(--rojo); }
-  .btn-amarillo { background: #c9910a; color: white; }
-  .btn-amarillo:hover { background: var(--amarillo); color: #000; }
-  .btn-gris { background: #333; color: #aaa; }
-  .btn-gris:hover { background: #444; color: var(--blanco); }
-  .btn-azul { background: #1a5276; color: white; }
-  .btn-azul:hover { background: var(--azul); }
+  .btn-rojo { background: var(--rojo); color: white; }
+  .btn-rojo:hover { opacity: 0.85; }
+  .btn-amarillo { background: #b8790a; color: white; }
+  .btn-amarillo:hover { opacity: 0.85; }
+  .btn-gris { background: var(--gris-claro); color: rgba(255,255,255,0.7); }
+  .btn-gris:hover { background: #48484a; }
+  .btn-azul { background: rgba(10,132,255,0.18); color: var(--azul); border: 1px solid rgba(10,132,255,0.3); }
+  .btn-azul:hover { background: rgba(10,132,255,0.28); }
   .btn-full { width: 100%; justify-content: center; }
 
   /* ── ADMIN ── */
@@ -643,13 +655,13 @@ window.addEventListener('error', function(e) {
   .modal-overlay.show { display: flex; }
 
   .modal {
-    background: var(--gris);
-    border: 1px solid #333;
-    border-radius: 16px;
+    background: var(--gris-medio);
+    border: none;
+    border-radius: 20px;
     padding: 28px;
     max-width: 420px;
     width: 100%;
-    box-shadow: 0 20px 60px rgba(0,0,0,0.8);
+    box-shadow: 0 30px 80px rgba(0,0,0,0.9);
   }
 
   .modal h2 {
@@ -669,11 +681,11 @@ window.addEventListener('error', function(e) {
 
   /* ── HISTORIAL ── */
   .historial-item {
-    background: var(--gris-oscuro);
-    border-radius: 8px;
-    padding: 14px;
-    margin-bottom: 8px;
-    border-left: 3px solid var(--verde);
+    background: var(--gris-medio);
+    border-radius: 12px;
+    padding: 14px 16px;
+    margin-bottom: 6px;
+    border-left: 3px solid var(--verde-neon);
   }
 
   .historial-fecha {
@@ -1265,7 +1277,7 @@ window.addEventListener('error', function(e) {
     <div class="tab active" data-i18n="tab.partido" onclick="showTab('partido', this)"><span class="tab-emoji">⚽</span><span class="tab-text">Partido</span></div>
     <div class="tab" data-i18n="tab.calendario" onclick="showTab('calendario', this)"><span class="tab-emoji">📅</span><span class="tab-text">Calendario</span></div>
     <div class="tab" data-i18n="tab.ranking" onclick="showTab('ranking', this)"><span class="tab-emoji">🏆</span><span class="tab-text">Ranking</span></div>
-    <div class="tab" data-i18n="tab.historial" onclick="showTab('historial', this)"><span class="tab-emoji">📋</span><span class="tab-text">Historial</span></div>
+    <div class="tab" id="tab-historial" data-i18n="tab.historial" onclick="showTab('historial', this)" style="display:none;"><span class="tab-emoji">📋</span><span class="tab-text">Historial</span></div>
     <div class="tab" data-i18n="tab.perfil" onclick="showTab('perfil', this)" style="position:relative;"><span class="tab-emoji">👤</span><span class="tab-text">Perfil</span><span id="badge-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
     <div class="tab" id="tab-admin" data-i18n="tab.admin" onclick="showTab('admin', this)" style="position:relative;display:none;"><span class="tab-emoji">🔧</span><span class="tab-text">Admin</span><span id="badge-admin-solicitudes" style="display:none;position:absolute;top:4px;right:4px;background:#e74c3c;color:#fff;font-size:0.6rem;font-weight:800;border-radius:50%;width:16px;height:16px;line-height:16px;text-align:center;box-shadow:0 0 0 2px var(--negro);"></span></div>
   </div>
@@ -1336,8 +1348,8 @@ window.addEventListener('error', function(e) {
 
         <!-- Botón apuntarse / cancelar (solo si tienes cuenta) -->
         <div id="pp-acciones-jugador" style="display:none;">
-          <button id="pp-btn-apuntar" class="btn btn-verde btn-full" onclick="apuntarmePartido()">✅ Apuntarme al partido</button>
-          <button id="pp-btn-cancelar" class="btn btn-gris btn-full" style="display:none;" onclick="cancelarInscripcionPartido()">❌ Cancelar mi inscripción</button>
+          <button id="pp-btn-apuntar" class="btn btn-verde btn-full" onclick="apuntarmePartido()" style="font-size:1.05rem;padding:16px;border-radius:16px;letter-spacing:0.3px;box-shadow:0 4px 20px rgba(48,209,88,0.3);">✅ Apuntarme al partido</button>
+          <button id="pp-btn-cancelar" class="btn btn-gris btn-full" style="display:none;padding:14px;" onclick="cancelarInscripcionPartido()">❌ Cancelar mi inscripción</button>
           <p id="pp-aviso-fuera-plazo" style="display:none;font-size:0.78rem;color:#f5a623;text-align:center;margin-top:8px;">⚠️ Te apuntas FUERA DE PLAZO. Entrarás como reserva.</p>
           <p id="pp-aviso-vetado" style="display:none;font-size:0.78rem;color:#e74c3c;text-align:center;margin-top:8px;">🚫 Estás vetado para este partido. Solo entrarás si faltan reservas.</p>
         </div>
@@ -4352,16 +4364,17 @@ function colorPorSlot(slot) {
 }
 
 function _refrescarVista() {
-  // Mostrar pestaña Admin solo a admins
-  const tabAdmin = document.getElementById('tab-admin');
-  if (tabAdmin) {
-    const esAdmin = esAdminActual(state);
-    tabAdmin.style.display = esAdmin ? '' : 'none';
-    // Si el admin cerró sesión o perdió el rol mientras estaba en Admin, redirigir a Partido
-    if (!esAdmin && document.querySelector('.page.active')?.id === 'page-admin') {
-      showTab('partido', document.querySelector('[data-i18n="tab.partido"]'));
-      return;
-    }
+  // Mostrar pestañas Admin e Historial solo a admins
+  const esAdmin = esAdminActual(state);
+  const tabAdmin    = document.getElementById('tab-admin');
+  const tabHistorial = document.getElementById('tab-historial');
+  if (tabAdmin)     tabAdmin.style.display     = esAdmin ? '' : 'none';
+  if (tabHistorial) tabHistorial.style.display = esAdmin ? '' : 'none';
+  // Si el admin cerró sesión o perdió el rol mientras estaba en Admin/Historial, redirigir a Partido
+  const paginaActiva = document.querySelector('.page.active')?.id;
+  if (!esAdmin && (paginaActiva === 'page-admin' || paginaActiva === 'page-historial')) {
+    showTab('partido', document.querySelector('[data-i18n="tab.partido"]'));
+    return;
   }
 
   const activa = document.querySelector('.page.active')?.id;
@@ -4428,9 +4441,14 @@ async function entrarLiga(id) {
   // Aplicar modo lectura pública si corresponde (oculta pestañas Partido/Admin/Historial)
   aplicarModoLecturaPublica();
 
-  // Mostrar pestaña Admin solo a admins (sincronía con el estado ya cargado)
-  const tabAdminEl = document.getElementById('tab-admin');
-  if (tabAdminEl && !modoLecturaPublica) tabAdminEl.style.display = esAdminActual(state) ? '' : 'none';
+  // Mostrar pestañas Admin e Historial solo a admins (sincronía con el estado ya cargado)
+  const _esAdminInicial = esAdminActual(state);
+  const tabAdminEl     = document.getElementById('tab-admin');
+  const tabHistorialEl = document.getElementById('tab-historial');
+  if (!modoLecturaPublica) {
+    if (tabAdminEl)     tabAdminEl.style.display     = _esAdminInicial ? '' : 'none';
+    if (tabHistorialEl) tabHistorialEl.style.display = _esAdminInicial ? '' : 'none';
+  }
 
   renderPartido();
   // Cargar avatares en segundo plano (re-renderiza el ranking cuando termina)
@@ -5198,6 +5216,27 @@ function calcularOrden(jugadores) {
   return { titulares, reservas, sancionados };
 }
 
+function getFormaJugador(nombre, n = 5) {
+  const partidos = state.partidos_jugados || [];
+  const forma = [];
+  for (let i = 0; i < partidos.length && forma.length < n; i++) {
+    const p = partidos[i];
+    if (!p.titulares || !p.titulares.includes(nombre)) continue;
+    if (!p.resultado) continue;
+    const enRojo = (p.equipoRojo || []).includes(nombre);
+    let res;
+    if (p.resultado === 'empate') {
+      res = 'E';
+    } else if ((enRojo && p.resultado === 'rojo') || (!enRojo && p.resultado === 'blanco')) {
+      res = 'V';
+    } else {
+      res = 'D';
+    }
+    forma.push(res);
+  }
+  return forma;
+}
+
 function renderRanking() {
   const query = (document.getElementById('searchInput')?.value || '').toLowerCase();
 
@@ -5264,9 +5303,11 @@ function renderRanking() {
       : stats.pct >= 60 ? 'var(--verde-neon)'
       : stats.pct >= 40 ? 'var(--amarillo)'
       : 'var(--rojo)';
-    const pctBadge = stats.jugados > 0
-      ? `<span style="font-size:0.7rem;color:${pctColor};background:rgba(255,255,255,0.04);border:1px solid ${pctColor}33;border-radius:4px;padding:2px 5px;flex-shrink:0;">${stats.pct}%</span>`
-      : '';
+    const pctBadge = `<div style="width:46px;flex-shrink:0;display:flex;justify-content:flex-end;align-items:center;">${
+      stats.jugados > 0
+        ? `<span style="font-size:0.7rem;color:${pctColor};background:rgba(255,255,255,0.04);border:1px solid ${pctColor}33;border-radius:4px;padding:2px 5px;">${stats.pct}%</span>`
+        : ''
+    }</div>`;
     const esReyWinrate = j.nombre === reyWinrateNombre;
     const trofeoBadge = esReyWinrate
       ? '<span title="Mejor winrate de la liga" style="font-size:0.95rem;margin-left:4px;">🏆</span>'
@@ -5276,6 +5317,7 @@ function renderRanking() {
     div.className = 'player-row' + (j.sancionado ? ' sancionado' : '');
     div.style.cursor = 'pointer';
     div.onclick = () => abrirFichaJugador(j.id);
+    const forma = getFormaJugador(j.nombre);
     div.innerHTML = `
       <div class="player-pos">${pos}</div>
       ${avatarHTML(j.nombre, j.uid, 32)}
@@ -5286,8 +5328,15 @@ function renderRanking() {
         ${j.portero ? '<span class="player-portero-badge">🧤</span>' : ''}
         ${j.sancionado ? '<span style="font-size:0.7rem;color:var(--rojo);margin-left:4px;">SANCIONADO</span>' : ''}
       </div>
+      <div style="display:flex;gap:3px;align-items:center;width:114px;flex-shrink:0;justify-content:center;">${Array.from({length:5}, (_,i) => {
+        const r = forma[i];
+        if (!r) return `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:rgba(255,255,255,0.06);color:transparent;font-size:0.65rem;font-weight:800;line-height:1;">·</span>`;
+        const bg = r === 'V' ? 'var(--verde-neon)' : r === 'D' ? 'var(--rojo)' : 'var(--amarillo)';
+        const fg = r === 'E' ? '#000' : '#fff';
+        return `<span style="display:inline-flex;align-items:center;justify-content:center;width:18px;height:18px;border-radius:4px;background:${bg};color:${fg};font-size:0.65rem;font-weight:800;line-height:1;">${r}</span>`;
+      }).join('')}</div>
       ${pctBadge}
-      <div style="font-size:0.75rem;color:#555;margin-right:4px;">${formatPts(j.totales)} tot</div>
+      <div style="font-size:0.75rem;color:#555;width:44px;flex-shrink:0;text-align:right;">${formatPts(j.totales)} tot</div>
       <div>
         <div class="player-puntos">${formatPts(j.puntos)}</div>
         <div class="player-puntos-label">pts</div>
@@ -5525,35 +5574,50 @@ function renderConvocadosPreview() {
     }
   }
 
+  const esAdmin = esAdminActual(state);
+
+  // Helper: construye un item de jugador con los mismos controles que la lista principal
+  const mkItem = (a, idx, esTit) => {
+    const div = document.createElement('div');
+    const inv  = a.esInvitado ? `<span style="background:rgba(245,166,35,0.18);color:#f5a623;font-size:0.6rem;padding:1px 5px;border-radius:4px;flex-shrink:0;">INV</span>` : '';
+    const vet  = a.rol === 'vetado' ? `<span style="font-size:0.75rem;flex-shrink:0;">🚫</span>` : '';
+    const esPortero = !!(state.jugadores?.find(jj => jj.nombre === a.nombre)?.portero);
+    const gk   = esPortero ? `<span style="font-size:0.75rem;flex-shrink:0;">🧤</span>` : '';
+    const baja = esAdmin
+      ? `<span onclick="event.stopPropagation();abrirModalBaja('${esc(a.nombre)}')" style="margin-left:auto;background:rgba(255,69,58,0.15);color:#ff453a;font-size:0.65rem;padding:3px 9px;border-radius:6px;cursor:pointer;flex-shrink:0;font-weight:600;">Baja</span>`
+      : '';
+    if (esTit) {
+      div.style.cssText = 'display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:#141f14;border:1px solid #2a3d2a;font-size:0.88rem;color:#ddd;';
+      div.innerHTML = `<span style="color:#4a8a4a;min-width:18px;font-size:0.82rem;font-weight:700;text-align:right;flex-shrink:0;">${idx+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">${esc(a.nombre)}</span>${gk}${inv}${vet}${baja}`;
+    } else {
+      div.style.cssText = 'display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:#111520;border:1px solid #1a1f2a;font-size:0.88rem;color:#888;';
+      div.innerHTML = `<span style="color:#3a3a6a;min-width:18px;font-size:0.82rem;font-weight:700;text-align:right;flex-shrink:0;">${idx+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(a.nombre)}</span>${gk}${inv}${vet}${baja}`;
+    }
+    return div;
+  };
+
   // Lista titulares: slots numerados, rellenos o vacíos
   const litEl = document.getElementById('conv-lista-tit');
   litEl.innerHTML = '';
   for (let i = 0; i < limite; i++) {
     const j = titulares[i];
-    const div = document.createElement('div');
     if (j) {
-      const esPortero = !!(state.jugadores?.find(jj => jj.nombre === j.nombre)?.portero);
-      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#141f14;border:1px solid #2a3d2a;font-size:0.9rem;color:#ddd;';
-      div.innerHTML = `<span style="color:#4a8a4a;min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;">${i+1}</span><span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-weight:600;">${esc(j.nombre)}</span>${esPortero ? '<span style="font-size:0.8rem;">🧤</span>' : ''}`;
+      litEl.appendChild(mkItem(j, i, true));
     } else {
-      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#111;border:1px dashed #222;font-size:0.9rem;color:#333;';
-      div.innerHTML = `<span style="min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;color:#2a2a2a;">${i+1}</span><span>— libre —</span>`;
+      const div = document.createElement('div');
+      div.style.cssText = 'display:flex;align-items:center;gap:7px;padding:7px 10px;border-radius:8px;background:#111;border:1px dashed #1e1e1e;font-size:0.88rem;color:#2e2e2e;';
+      div.innerHTML = `<span style="min-width:18px;font-size:0.82rem;font-weight:700;text-align:right;color:#252525;">${i+1}</span><span>— libre —</span>`;
+      litEl.appendChild(div);
     }
-    litEl.appendChild(div);
   }
 
   // Lista reservas
   const lirEl = document.getElementById('conv-lista-res');
   lirEl.innerHTML = '';
   if (reservas.length === 0) {
-    lirEl.innerHTML = '<div style="color:#333;font-size:0.82rem;padding:6px 10px;">Sin reservas</div>';
+    lirEl.innerHTML = '<div style="color:#2e2e2e;font-size:0.82rem;padding:7px 10px;">Sin reservas</div>';
   } else {
-    reservas.forEach((j, i) => {
-      const div = document.createElement('div');
-      div.style.cssText = 'display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:6px;background:#111520;border:1px solid #1a1f2a;font-size:0.9rem;color:#888;';
-      div.innerHTML = `<span style="color:#3a3a6a;min-width:20px;font-size:0.85rem;font-weight:700;text-align:right;">${i+1}</span><span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${esc(j.nombre)}</span>`;
-      lirEl.appendChild(div);
-    });
+    reservas.forEach((j, i) => lirEl.appendChild(mkItem(j, i, false)));
   }
 
   // Canvas del campo con los convocados actuales
@@ -6283,12 +6347,12 @@ function renderProximoPartido() {
   const eresAdminAqui = esAdminActual(state);
   document.getElementById('pp-acciones-admin').style.display = eresAdminAqui ? 'block' : 'none';
 
-  // Cuando hay alineación generada, ocultamos solo las listas pre-alineación
-  // (titulares/reservas en formato lista) porque ya se ven en el campo + panel.
-  // El resto (info, acciones jugador, acciones admin) sigue visible.
+  // Las listas pre-alineación (titulares/reservas) se ocultan:
+  // - Si hay alineación generada (se ven en el campo + panel)
+  // - Si la inscripción está abierta (se ven en el convocados preview)
   const bloqueListasPre = document.getElementById('pp-bloque-listas-pre');
   if (bloqueListasPre) {
-    bloqueListasPre.style.display = conAlineacion ? 'none' : 'grid';
+    bloqueListasPre.style.display = (conAlineacion || pp.estado === 'abierto') ? 'none' : 'grid';
   }
 
   // El botón "Cerrar inscripción" siempre está habilitado. Si faltan jugadores
